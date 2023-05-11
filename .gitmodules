@@ -1,0 +1,12 @@
+[submodule "IcarianEngine"]
+	path = IcarianEngine
+	url = https://github.com/rGovers/IcarianEngine.git
+[submodule "IcarianEditor/lib/imgui"]
+	path = IcarianEditor/lib/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "IcarianEditor/lib/implot"]
+	path = IcarianEditor/lib/implot
+	url = https://github.com/epezent/implot.git
+[submodule "IcarianEditor/lib/ImGuizmo"]
+	path = IcarianEditor/lib/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git

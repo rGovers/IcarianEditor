@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<About>
+    <ID>Core.@ProjectName@</ID>
+    <Name>@ProjectName@</Name>
+    <Description>This is an empty description.</Description>
+</About>

@@ -1,0 +1,10 @@
+*.dll
+*.pdb
+*.exe
+etc/
+lib/
+IcarianNative
+imgui.ini
+mono_crash*
+Debug/
+Release/
