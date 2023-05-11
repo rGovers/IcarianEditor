@@ -1,5 +1,5 @@
 # IcarianEditor
-The editor for Flare Engine.
+The editor for Icarian Engine.
 
 ## Prerequisites
 * cmake
