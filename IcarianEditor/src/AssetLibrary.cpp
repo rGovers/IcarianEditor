@@ -1,10 +1,15 @@
 #include "AssetLibrary.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 
 #include "Flare/IcarianAssert.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
+#include "mono/metadata/appdomain.h"
+#include "mono/metadata/object-forward.h"
+#include "mono/metadata/object.h"
 
 static AssetLibrary* Instance = nullptr;
 
@@ -264,10 +269,11 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 
     MonoClass* stringClass = mono_get_string_class();
     MonoClass* byteClass = mono_get_byte_class();
+    MonoClass* arrayClass = mono_get_array_class();
 
     const uint32_t defSize = (uint32_t)defAssets.size();
 
-    MonoArray* defDataArray = mono_array_new(editorDomain, byteClass, (uintptr_t)defSize);
+    MonoArray* defDataArray = mono_array_new(editorDomain, arrayClass, (uintptr_t)defSize);
     MonoArray* defPathArray = mono_array_new(editorDomain, stringClass, (uintptr_t)defSize);
     for (uint32_t i = 0; i < defSize; ++i)
     {
@@ -292,7 +298,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 
     const uint32_t sceneSize = (uint32_t)sceneAssets.size();
 
-    MonoArray* sceneDataArray = mono_array_new(editorDomain, byteClass, (uintptr_t)sceneSize);
+    MonoArray* sceneDataArray = mono_array_new(editorDomain, arrayClass, (uintptr_t)sceneSize);
     MonoArray* scenePathArray = mono_array_new(editorDomain, stringClass, (uintptr_t)sceneSize);
 
     for (uint32_t i = 0; i < sceneSize; ++i)

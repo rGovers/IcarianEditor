@@ -1,3 +1,8 @@
+# Got sick of intellisense being shit switched to clangd
+.clangd
+compile_commands.json
+
+.cache
 .vscode
 build/
 crossbuild/
