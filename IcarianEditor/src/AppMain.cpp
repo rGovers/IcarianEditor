@@ -162,11 +162,17 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
 
+    glGenVertexArrays(1, &m_vao);
+
+    glBindVertexArray(m_vao);
+
     m_titleSet = 0.0;
     m_refresh = false;
 }
 AppMain::~AppMain()
 {
+    glDeleteVertexArrays(1, &m_vao);
+
     delete m_project;
 
     delete m_assets;

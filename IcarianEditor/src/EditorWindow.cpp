@@ -113,6 +113,7 @@ void EditorWindow::Draw()
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
+    glEnable(GL_DEPTH_TEST);
 
     const glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
     const glm::mat4 invProj = glm::inverse(proj);

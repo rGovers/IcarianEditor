@@ -36,14 +36,13 @@ private:
 
     GLuint                    m_vbo;
     GLuint                    m_ibo;
-                
-    GLuint                    m_vao;
 
     std::vector<GizmoVertex>  m_vertices;
     std::vector<GLuint>       m_indices;
 
     glm::mat4                 m_view;
     glm::mat4                 m_proj;
+    glm::vec3                 m_forward;
 
     Gizmos();
     
@@ -60,6 +59,8 @@ public:
     static bool Manipulation(e_ManipulationMode a_mode, glm::vec3* a_translation, glm::quat* a_rotation, glm::vec3* a_scale);
 
     static void DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    
+    static void DrawIcoSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
     static void Render();
 };

@@ -66,7 +66,26 @@ namespace IcarianEditor
         {
             Matrix4 mat = Matrix4.FromTransform(a_gameObjectDef.Translation, a_gameObjectDef.Rotation, a_gameObjectDef.Scale) * a_parentTransform;
 
-            RenderComponents(a_gameObjectDef, true, mat);
+            bool selected = false;
+            if (Workspace.Selection != null)
+            {
+                foreach (SelectionObject obj in Workspace.Selection)
+                {
+                    if (obj.GameObject == null)
+                    {
+                        continue;
+                    }
+
+                    if (obj.GameObject.DefName == a_gameObjectDef.DefName)
+                    {
+                        selected = true;
+
+                        break;
+                    }
+                }
+            }
+            
+            RenderComponents(a_gameObjectDef, selected, mat);
 
             foreach (GameObjectDef c in a_gameObjectDef.Children)
             {
@@ -141,13 +160,11 @@ namespace IcarianEditor
 
             foreach (SceneObject obj in scene.SceneObjects)
             {
-                GameObjectDef def = DefLibrary.GetDef(obj.DefName) as GameObjectDef;
-
-                Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
+                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
 
                 if (def != null)
                 {
-                    RenderGameObjects(def, mat);
+                    RenderGameObjects(def, Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale));
                 }
             }
         }

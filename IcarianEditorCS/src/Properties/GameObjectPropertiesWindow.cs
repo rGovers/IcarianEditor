@@ -114,9 +114,24 @@ namespace IcarianEditor.Properties
                 {
                     ComponentDef comp = def.Components[i];
 
-                    if (GUI.DefField<ComponentDef>($"[{i}]", ref comp))
+                    // Allow inline editing for scene defs
+                    if (comp.IsSceneDef)
                     {
-                        def.Components[i] = comp;
+                        GUI.PushID($"[{i}]");
+                    
+                        if (GUI.StructView($"[{i}] Scene Component"))
+                        {
+                            BaseGUI(comp);
+                        }
+
+                        GUI.PopID();
+                    }
+                    else
+                    {
+                        if (GUI.DefField<ComponentDef>($"[{i}]", ref comp))
+                        {
+                            def.Components[i] = comp;
+                        }
                     }
                 }
 
@@ -124,36 +139,39 @@ namespace IcarianEditor.Properties
                 GUI.Unindent();
             }
 
-            show = GUI.ArrayView("Children", out addValue);
-
-            if (addValue)
+            if (!def.IsSceneDef)
             {
-                if (def.Children == null)
+                show = GUI.ArrayView("Children", out addValue);
+
+                if (addValue)
                 {
-                    def.Children = new List<GameObjectDef>();
-                }
-
-                def.Children.Add(null);
-            }
-
-            if (show && def.Children != null)
-            {
-                GUI.Indent();
-                GUI.PushID("ObjectChildren");
-
-                int count = def.Children.Count;
-                for (int i = 0; i < count; ++i)
-                {
-                    GameObjectDef child = def.Children[i];
-
-                    if (GUI.DefField<GameObjectDef>($"[{i}]", ref child))
+                    if (def.Children == null)
                     {
-                        def.Children[i] = child;
+                        def.Children = new List<GameObjectDef>();
                     }
+
+                    def.Children.Add(null);
                 }
 
-                GUI.PopID();
-                GUI.Unindent();
+                if (show && def.Children != null)
+                {
+                    GUI.Indent();
+                    GUI.PushID("ObjectChildren");
+
+                    int count = def.Children.Count;
+                    for (int i = 0; i < count; ++i)
+                    {
+                        GameObjectDef child = def.Children[i];
+
+                        if (GUI.DefField<GameObjectDef>($"[{i}]", ref child))
+                        {
+                            def.Children[i] = child;
+                        }
+                    }
+
+                    GUI.PopID();
+                    GUI.Unindent();
+                }
             }
         }
     }

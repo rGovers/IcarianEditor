@@ -34,6 +34,8 @@ private:
     RuntimeStorage*      m_rStorage;
     Workspace*           m_workspace;
 
+    GLuint               m_vao;
+
     bool                 m_focused;
 
     unsigned char        m_inputByte;
