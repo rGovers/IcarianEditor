@@ -29,7 +29,13 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void DrawLine(Vector3 a_start, Vector3 a_end, float a_width, Vector4 a_color);
         [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void DrawUVSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Vector4 a_color);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void DrawIcoSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Vector4 a_color);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void DrawCylinder(Vector3 a_pos, float a_height, float a_radius, uint a_subDivisions, float a_width, Vector4 a_color);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void DrawCapsule(Vector3 a_pos, float a_height, float a_radius, uint a_subDivisions, float a_width, Vector4 a_color);
 
         public static bool IsManipulating
         {
@@ -43,9 +49,23 @@ namespace IcarianEditor
         {
             DrawLine(a_start, a_end, a_width, a_color.ToVector4());
         }
+
+        public static void DrawUVSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Color a_color)
+        {
+            DrawUVSphere(a_pos, a_radius, a_subDivisions, a_width, a_color.ToVector4());
+        }
         public static void DrawIcoSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Color a_color)
         {
             DrawIcoSphere(a_pos, a_radius, a_subDivisions, a_width, a_color.ToVector4());
+        }
+
+        public static void DrawCylinder(Vector3 a_pos, float a_height, float a_radius, uint a_subDivisions, float a_width, Color a_color)
+        {
+            DrawCylinder(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color.ToVector4());
+        }
+        public static void DrawCapsule(Vector3 a_pos, float a_height, float a_radius, uint a_subDivisions, float a_width, Color a_color)
+        {
+            DrawCapsule(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color.ToVector4());
         }
 
         public static bool Manipulation(ManipulationMode a_mode, ref Vector3 a_translation, ref Quaternion a_rotation, ref Vector3 a_scale)

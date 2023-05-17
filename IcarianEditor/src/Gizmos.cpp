@@ -26,7 +26,10 @@ struct TransformValue
 
 #define GIZMOS_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEditor, Gizmos, DrawLine, { Gizmos::DrawLine(a_start, a_end, a_width, a_color); }, glm::vec3 a_start, glm::vec3 a_end, float a_width, glm::vec4 a_color) \
+    F(void, IcarianEditor, Gizmos, DrawUVSphere, { Gizmos::DrawUVSphere(a_pos, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
     F(void, IcarianEditor, Gizmos, DrawIcoSphere, { Gizmos::DrawIcoSphere(a_pos, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
+    F(void, IcarianEditor, Gizmos, DrawCylinder, { Gizmos::DrawCylinder(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
+    F(void, IcarianEditor, Gizmos, DrawCapsule, { Gizmos::DrawCapsule(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
     \
     F(uint32_t, IcarianEditor, Gizmos, GetManipulating, { return (uint32_t)ImGuizmo::IsUsing(); })
 
@@ -138,6 +141,34 @@ bool Gizmos::Manipulation(e_ManipulationMode a_mode, glm::vec3* a_translation, g
     return ret;
 }
 
+void Gizmos::DrawUVHemisphere(const glm::vec3& a_pos, float a_dir, float a_radius, uint32_t a_subDivisions, float a_width, const glm::vec4& a_color)
+{
+    const uint32_t halfSub = a_subDivisions / 2;
+
+    for (uint32_t x = 0; x < a_subDivisions; ++x)
+    {
+        const float angleA = (float(x + 0) / a_subDivisions) * glm::two_pi<float>();
+        const float angleB = (float(x + 1) / a_subDivisions) * glm::two_pi<float>();
+
+        const glm::vec2 dirA = glm::vec2(glm::sin(angleA), glm::cos(angleA));
+        const glm::vec2 dirB = glm::vec2(glm::sin(angleB), glm::cos(angleB));
+
+        for (uint32_t y = 0; y < halfSub; ++y)
+        {
+            const float lowFac = float(y + 0) / halfSub;
+            const float highFac = float(y + 1) / halfSub;
+            const float lowInvFac = 1 - lowFac;
+            const float highInvFac = 1 - highFac;
+
+            const glm::vec3 lowAngleA = glm::normalize(glm::vec3(dirA.x * lowInvFac, lowFac * a_dir, dirA.y * lowInvFac)) * a_radius;
+            const glm::vec3 lowAngleB = glm::normalize(glm::vec3(dirB.x * lowInvFac, lowFac * a_dir, dirB.y * lowInvFac)) * a_radius;
+            const glm::vec3 highAngleA = glm::normalize(glm::vec3(dirA.x * highInvFac, highFac * a_dir, dirA.y * highInvFac)) * a_radius;
+
+            DrawLine(a_pos + lowAngleA, a_pos + lowAngleB, a_width, a_color);
+            DrawLine(a_pos + lowAngleA, a_pos + highAngleA, a_width, a_color);
+        }
+    }
+}
 
 void Gizmos::DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width, const glm::vec4& a_color)
 {
@@ -186,8 +217,14 @@ static uint32_t PlaceVertex(std::unordered_map<uint64_t, uint32_t>* a_map, uint3
     return size;
 }
 
+void Gizmos::DrawUVSphere(const glm::vec3 &a_pos, float a_radius, uint32_t a_subDivisions, float a_width, const glm::vec4& a_color)
+{
+    DrawUVHemisphere(a_pos, 1.0f, a_radius, a_subDivisions, a_width, a_color);
+    DrawUVHemisphere(a_pos, -1.0f, a_radius, a_subDivisions, a_width, a_color);
+}
 void Gizmos::DrawIcoSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width, const glm::vec4& a_color)
 {
+    // TODO: Wasteful could improve down the line
     constexpr float X = 0.525731112119133606f;
     constexpr float Z = 0.850650808352039932f;
     constexpr float N = 0.0f;
@@ -258,10 +295,54 @@ void Gizmos::DrawIcoSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_su
         const glm::vec3 vertB = a_pos + vertices[indexB] * a_radius;
         const glm::vec3 vertC = a_pos + vertices[indexC] * a_radius;
 
-        Gizmos::DrawLine(vertA, vertB, a_width, a_color);
-        Gizmos::DrawLine(vertB, vertC, a_width, a_color);
-        Gizmos::DrawLine(vertC, vertA, a_width, a_color);
+        DrawLine(vertA, vertB, a_width, a_color);
+        DrawLine(vertB, vertC, a_width, a_color);
+        DrawLine(vertC, vertA, a_width, a_color);
     }
+}
+
+void Gizmos::DrawCylinder(const glm::vec3 &a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, const glm::vec4& a_color)
+{
+    const glm::vec3 cylinderTop = glm::vec3(0.0f, 1.0f, 0.0f) * a_height;
+    const glm::vec3 topPos = a_pos + cylinderTop;
+    const glm::vec3 bottomPos = a_pos - cylinderTop;
+
+    for (uint32_t i = 0; i < a_subDivisions; ++i)
+    {
+        const float angleA = (float(i + 0) / a_subDivisions) * glm::two_pi<float>();
+        const float angleB = (float(i + 1) / a_subDivisions) * glm::two_pi<float>();
+
+        const glm::vec3 dirA = glm::vec3(glm::sin(angleA), 0.0f, glm::cos(angleA)) * a_radius;
+        const glm::vec3 dirB = glm::vec3(glm::sin(angleB), 0.0f, glm::cos(angleB)) * a_radius;
+
+        DrawLine(topPos + dirA, topPos + dirB, a_width, a_color);
+        DrawLine(bottomPos + dirA, bottomPos + dirB, a_width, a_color);
+    }
+
+    const glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f) * a_radius;
+    const glm::vec3 forward = glm::vec3(0.0f, 0.0f, 1.0f) * a_radius;
+
+    DrawLine(topPos + right, bottomPos + right, a_width, a_color);
+    DrawLine(topPos - right, bottomPos - right, a_width, a_color);
+    DrawLine(topPos + forward, bottomPos + forward, a_width, a_color);
+    DrawLine(topPos - forward, bottomPos - forward, a_width, a_color);
+}
+void Gizmos::DrawCapsule(const glm::vec3& a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, const glm::vec4& a_color)
+{
+    const glm::vec3 cylinderTop = glm::vec3(0.0f, 1.0f, 0.0f) * (a_height - a_radius);
+    const glm::vec3 topPos = a_pos + cylinderTop;
+    const glm::vec3 bottomPos = a_pos - cylinderTop;
+
+    const glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f) * a_radius;
+    const glm::vec3 forward = glm::vec3(0.0f, 0.0f, 1.0f) * a_radius;
+
+    DrawUVHemisphere(topPos, 1.0f, a_radius, a_subDivisions, a_width, a_color);
+    DrawUVHemisphere(bottomPos, -1.0f, a_radius, a_subDivisions, a_width, a_color);
+
+    DrawLine(topPos + right, bottomPos + right, a_width, a_color);
+    DrawLine(topPos - right, bottomPos - right, a_width, a_color);
+    DrawLine(topPos + forward, bottomPos + forward, a_width, a_color);
+    DrawLine(topPos - forward, bottomPos - forward, a_width, a_color);
 }
 
 void Gizmos::Render()
