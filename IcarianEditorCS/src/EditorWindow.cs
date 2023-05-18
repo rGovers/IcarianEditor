@@ -36,6 +36,13 @@ namespace IcarianEditor
                     EDisplayAttribute att = t.GetCustomAttribute<EDisplayAttribute>();
                     if (att != null)
                     {
+                        if (s_componentLookup.ContainsKey(att.OverrideType))
+                        {
+                            Logger.Error($"EditorDisplay already exists: {t}, {att.OverrideType}");
+
+                            continue;
+                        }
+
                         s_componentLookup.Add(att.OverrideType, Activator.CreateInstance(t) as EditorDisplay);
                     }
                 }

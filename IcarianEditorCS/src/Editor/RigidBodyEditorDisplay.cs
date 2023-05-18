@@ -1,9 +1,8 @@
-using IcarianEditor.Editor;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using IcarianEngine.Physics;
 
-namespace IcarianEditor
+namespace IcarianEditor.Editor
 {
     [EDisplay(typeof(RigidBody))]
     public class RigidBodyEditorDisplay : EditorDisplay

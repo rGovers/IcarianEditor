@@ -4,6 +4,8 @@
 
 #include <tinyxml2.h>
 
+#include "Logger.h"
+
 void MonoProjectGenerator::GetScripts(std::vector<std::filesystem::path>* a_scripts, const std::filesystem::path& a_dir, const std::filesystem::path& a_workingDir)
 {
 	if (!std::filesystem::exists(a_dir))
@@ -16,7 +18,7 @@ void MonoProjectGenerator::GetScripts(std::vector<std::filesystem::path>* a_scri
 		if (iter.is_directory())
 		{
 			const std::filesystem::path r = AssetLibrary::GetRelativePath(a_workingDir, iter);
-			if (r.root_path() != "Editor")
+			if (r != "Editor")
 			{
 				GetScripts(a_scripts, iter, a_workingDir);
 			}
@@ -55,7 +57,7 @@ MonoProjectGenerator::~MonoProjectGenerator()
 	delete[] m_dependencies;
 }
 
-void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath) const
+void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath, const std::string_view& a_otherName, const std::filesystem::path& a_otherPath) const
 {
 	tinyxml2::XMLDocument doc;
 
@@ -184,6 +186,18 @@ void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::
 			{
 				reference->SetAttribute("Include", m_dependencies[i].c_str());
 			}
+		}
+
+		if (!a_otherName.empty() && !a_otherPath.empty())
+		{
+			tinyxml2::XMLElement* reference = doc.NewElement("Reference");
+			referenceItemGroup->InsertEndChild(reference);
+
+			reference->SetAttribute("Include", a_otherName.data());
+
+			tinyxml2::XMLElement* hintPath = doc.NewElement("HintPath");
+			reference->InsertEndChild(hintPath);
+			hintPath->SetText((a_otherPath / (std::string(a_otherName) + ".dll")).c_str());
 		}
 	}
 

@@ -415,10 +415,12 @@ void AppMain::Update(double a_delta, double a_time)
         m_refresh = false;
 
         const std::filesystem::path path = m_project->GetPath(); 
-        
-        if (m_runtime->Build(path.string(), m_project->GetName()))
+        const std::string pathStr = path.string();
+        const std::string_view projectName = m_project->GetName();
+
+        if (m_runtime->Build(pathStr, projectName))
         {
-            m_runtime->Start();
+            m_runtime->Start(pathStr, projectName);
         }
 
         m_assets->Refresh(path);

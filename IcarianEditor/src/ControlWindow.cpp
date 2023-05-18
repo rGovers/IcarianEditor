@@ -54,7 +54,8 @@ void ControlWindow::TransformControls()
 
 void ControlWindow::Update(double a_delta)
 {
-    ImGui::BeginGroup();
+    // ImGui decided fuck this one group in particular
+    // ImGui::BeginGroup();
 
     bool running = m_processManager->IsRunning();
     if (FlareImGui::ImageSwitchButton("Run Engine", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(32.0f)))
@@ -76,7 +77,7 @@ void ControlWindow::Update(double a_delta)
         }
     }
 
-    ImGui::EndGroup();
+    // ImGui::EndGroup();
 
     ImGui::SameLine();
 

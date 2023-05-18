@@ -31,8 +31,6 @@ namespace IcarianEditor
         {
             AssetLibrary.ClearAssets();
             DefLibrary.Clear();
-
-            // AppDomain.Unload(AppDomain.CurrentDomain);
         }
         
         // On Windows seems to need a main function and be executable to work

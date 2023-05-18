@@ -31,6 +31,8 @@ private:
     MonoMethod*   m_editorUpdateMethod;
     MonoMethod*   m_editorUnloadMethod;
 
+    MonoAssembly* m_projectEditorAssembly;
+
     MonoAssembly* m_engineAssembly;
     MonoImage*    m_engineImage;
 
@@ -54,7 +56,7 @@ public:
 
     bool Build(const std::filesystem::path& a_path, const std::string_view& a_name);
 
-    void Start();
+    void Start(const std::filesystem::path& a_path, const std::string_view& a_name);
 
     void Update();
 

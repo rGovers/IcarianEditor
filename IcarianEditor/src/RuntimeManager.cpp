@@ -1,6 +1,5 @@
 #include "Runtime/RuntimeManager.h"
 
-#include <assert.h>
 #include <chrono>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/debug-helpers.h>
@@ -8,6 +7,8 @@
 #include <string>
 
 #include "ConsoleCommand.h"
+#include "Flare/IcarianAssert.h"
+#include "Flare/IcarianDefer.h"
 #include "Logger.h"
 #include "MonoProjectGenerator.h"
 
@@ -90,7 +91,6 @@ RuntimeManager::RuntimeManager()
 
     mono_set_dirs("./lib", "./etc");
 
-    // m_mainDomain = mono_jit_init_version("IcarianCS", "v4.0");
     m_mainDomain = mono_jit_init("IcarianCS");
 
     m_editorDomain = nullptr;
@@ -99,46 +99,13 @@ RuntimeManager::RuntimeManager()
 }
 RuntimeManager::~RuntimeManager()
 {
+    // Aware of crash refer to TODO in Start
     mono_jit_cleanup(m_mainDomain);
 }
 
-bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::string_view& a_name)
+static bool ParseCommandOutput(const std::string_view& a_output)
 {
-    const std::filesystem::path cachePath = a_path / ".cache";
-    const std::filesystem::path projectPath = a_path / "Project";
-    const std::filesystem::path projectFile = cachePath / (std::string(a_name) + ".csproj");
-
-    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-
-    std::vector<std::filesystem::path> projectScripts;
-    MonoProjectGenerator::GetScripts(&projectScripts, projectPath, projectPath);
-
-    const std::string projectDependencies[] =
-    {
-        "System",
-        "System.Xml",
-        "IcarianEngine"
-    };
-
-    const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
-    project.Serialize(a_name, projectFile, std::filesystem::path("Core") / "Assemblies");
-
-    ConsoleCommand cmd = ConsoleCommand("xbuild");
-
-    const std::string args[] =
-    {
-        projectFile.string()
-    };
-    
-    const std::string out = cmd.Run(args, sizeof(args) / sizeof(*args));
-
-    const std::vector<std::string> outLines = SplitString(out);
-
-    const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
-
-    const double time = std::chrono::duration<double>(endTime - startTime).count();
-
-    Logger::Message("Project Built in " + std::to_string(time) + "s");
+    const std::vector<std::string> outLines = SplitString(a_output);
 
     bool error = false;
 
@@ -146,13 +113,11 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     {
         if (s.find("Build FAILED") != std::string::npos)
         {
-            error = true;
-
-            break;
+            return false;
         }
         else if (s.find("Build succeeded") != std::string::npos)
         {
-            break;
+            return true;
         }
         else if (s.find("error") != std::string::npos)
         {
@@ -166,12 +131,83 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         }
     }
 
-    m_built = !error;
+    return !error;
+}
+
+bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::string_view& a_name)
+{
+    const std::filesystem::path cachePath = a_path / ".cache";
+    const std::filesystem::path projectPath = a_path / "Project";
+    const std::filesystem::path projectFile = cachePath / (std::string(a_name) + ".csproj");
+    const std::filesystem::path assemblyPath = std::filesystem::path("Core") / "Assemblies";
+
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+    ICARIAN_DEFER(startTime, 
+    {
+        const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
+
+        const double time = std::chrono::duration<double>(endTime - startTime).count();
+
+        Logger::Message("Project Built in " + std::to_string(time) + "s");
+    });
+
+    std::vector<std::filesystem::path> projectScripts;
+    MonoProjectGenerator::GetScripts(&projectScripts, projectPath, projectPath);
+
+    const std::string projectDependencies[] =
+    {
+        "System",
+        "System.Xml",
+        "IcarianEngine"
+    };
+
+    const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
+    project.Serialize(a_name, projectFile, assemblyPath);
+
+    ConsoleCommand cmd = ConsoleCommand("xbuild");
+
+    const std::string projectArgs[] =
+    {
+        projectFile.string()
+    };
+    
+    const std::string out = cmd.Run(projectArgs, sizeof(projectArgs) / sizeof(*projectArgs));
+
+    m_built = ParseCommandOutput(out);
+
+    if (m_built)
+    {
+        const std::filesystem::path editorPath = projectPath / "Editor";
+        const std::filesystem::path editorProjectFile = cachePath / (std::string(a_name) + "Editor.csproj");
+
+        std::vector<std::filesystem::path> editorScripts;
+        MonoProjectGenerator::GetScripts(&editorScripts, editorPath, projectPath);
+
+        const std::string editorDependencies[] = 
+        {
+            "System",
+            "System.Xml",
+            "IcarianEngine",
+            "IcarianEditor"
+        };
+
+        const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
+        editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", a_name, cachePath / assemblyPath);
+
+        const std::string projectEditorArgs[] =
+        {
+            editorProjectFile.string()
+        };
+
+        const std::string output = cmd.Run(projectEditorArgs, sizeof(projectEditorArgs) / sizeof(*projectEditorArgs));
+
+        m_built = ParseCommandOutput(output);
+    }
 
     return m_built;
 }
 
-void RuntimeManager::Start()
+void RuntimeManager::Start(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
     if (m_editorDomain != nullptr && m_editorDomain != mono_get_root_domain())
     {
@@ -180,39 +216,50 @@ void RuntimeManager::Start()
         // I have no idea what is going on I have tried alot of methods and it seems I cannot get the AppDomain to unload 
         // It crashes everytime
         // This needs to be fixed but I am not sure what needs to be done and I do not want to spin up another process
-        // mono_domain_set(m_mainDomain, 1);
-        
-        // mono_gc_collect(mono_gc_max_generation());
-        // mono_domain_finalize(m_editorDomain, -1);
-        // mono_gc_collect(mono_gc_max_generation());
+        // UPDATE:
+        // Still need to be resolved but seem to be able to get hot reloading working in a janky way
+        // Not the correct way to do as there is no gurantee on deloading assemblies until AppDomain is finalised
+        // Seems to be a long standing bug in mono on some platforms
 
-        // MonoException* exc = NULL;
-         
-        // mono_domain_try_unload(m_editorDomain, (MonoObject**)&exc);
-
-        // mono_domain_unload(m_editorDomain);
-        // mono_assembly_close(m_editorAssembly);
-
-        mono_domain_set(m_editorDomain, 0);
-        mono_jit_thread_attach(m_editorDomain);
+        mono_domain_set(m_editorDomain, 1);
 
         mono_runtime_invoke(m_editorUnloadMethod, NULL, NULL, NULL);
+        
+        mono_domain_set(m_mainDomain, 1);
 
-        m_editorDomain = nullptr;
+        mono_assembly_close(m_engineAssembly);
+        mono_assembly_close(m_editorAssembly);
+        if (m_projectEditorAssembly != nullptr)
+        {
+            mono_assembly_close(m_projectEditorAssembly);
+        }
+
+        mono_gc_collect(mono_gc_max_generation());
     }
 
     m_editorDomain = mono_domain_create_appdomain("IcarianEditor", NULL);
-    assert(m_editorDomain != nullptr);
-    mono_domain_set(m_editorDomain, 1);
+    ICARIAN_ASSERT(m_editorDomain != nullptr);
+    mono_domain_set(m_editorDomain, 1);    
 
     m_editorAssembly = mono_domain_assembly_open(m_editorDomain, "./IcarianEditorCS.dll");
-    assert(m_editorAssembly != nullptr);
+    ICARIAN_ASSERT(m_editorAssembly != nullptr);
+
+    if (m_built)
+    {
+        const std::filesystem::path assemblyPath = a_path / ".cache" / "Editor" / (std::string(a_name) + "Editor.dll");
+
+        m_projectEditorAssembly = mono_domain_assembly_open(m_editorDomain, assemblyPath.string().c_str());
+    }
+
     m_editorImage = mono_assembly_get_image(m_editorAssembly);
     MonoClass* editorProgramClass = mono_class_from_name(m_editorImage, "IcarianEditor", "Program");
 
     MonoMethodDesc* loadDesc = mono_method_desc_new(":Load()", 0);
+    ICARIAN_DEFER(loadDesc, mono_method_desc_free(loadDesc));
     MonoMethodDesc* updateDesc = mono_method_desc_new(":Update(double)", 0);
+    ICARIAN_DEFER(updateDesc, mono_method_desc_free(updateDesc));
     MonoMethodDesc* unloadDesc = mono_method_desc_new(":Unload()", 0);
+    ICARIAN_DEFER(unloadDesc, mono_method_desc_free(unloadDesc));
 
     MonoMethod* loadMethod = mono_method_desc_search_in_class(loadDesc, editorProgramClass);
     m_editorUpdateMethod = mono_method_desc_search_in_class(updateDesc, editorProgramClass);
@@ -224,23 +271,21 @@ void RuntimeManager::Start()
     ATTACH_FUNCTION(IcarianEngine, Application, GetEditorState);
 
     m_engineAssembly = mono_domain_assembly_open(m_editorDomain, "IcarianCS.dll");
-    assert(m_engineAssembly != nullptr);
+    ICARIAN_ASSERT(m_engineAssembly != nullptr);
     m_engineImage = mono_assembly_get_image(m_engineAssembly);
 
     mono_runtime_invoke(loadMethod, NULL, NULL, NULL);
-
-    mono_method_desc_free(loadDesc);
-    mono_method_desc_free(updateDesc);
-    mono_method_desc_free(unloadDesc);
 }
 
 void RuntimeManager::Update()
 {
     if (m_built && m_editorDomain != nullptr)
     {
-        const double d = 0.0;
-        void* args[1];
-        args[0] = (void*)&d;
+        double d = 0.0;
+        void* args[] =
+        {
+            &d
+        };
 
         mono_runtime_invoke(m_editorUpdateMethod, NULL, args, NULL);
     }
@@ -263,11 +308,11 @@ void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std
         {
             cls = mono_class_from_name(m_editorImage, a_namespace.data(), a_class.data());
         }
-        assert(cls != nullptr);
+        ICARIAN_ASSERT(cls != nullptr);
 
         MonoMethodDesc* desc = mono_method_desc_new(a_method.data(), 0);
         MonoMethod* method = mono_method_desc_search_in_class(desc, cls);
-        assert(method != nullptr);
+        ICARIAN_ASSERT(method != nullptr);
 
         mono_method_desc_free(desc);
 
