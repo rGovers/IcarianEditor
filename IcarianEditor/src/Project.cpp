@@ -57,7 +57,7 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
     std::filesystem::path path = m_path / m_name;
     if (!path.has_extension())
     {
-        path += ".flareproj";
+        path += ".icproj";
     }
 
     tinyxml2::XMLDocument doc;
