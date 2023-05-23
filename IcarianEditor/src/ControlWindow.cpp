@@ -11,6 +11,9 @@
 #include "Runtime/RuntimeManager.h"
 #include "Workspace.h"
 
+// Fixes windows issues
+#undef max
+
 ControlWindow::ControlWindow(AppMain* a_app, ProcessManager* a_processManager, RuntimeManager* a_runtimeManager, Workspace* a_workspace, Project* a_project) : Window("Control")
 {
     m_app = a_app;

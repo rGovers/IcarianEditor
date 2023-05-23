@@ -197,7 +197,7 @@ void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::
 
 			tinyxml2::XMLElement* hintPath = doc.NewElement("HintPath");
 			reference->InsertEndChild(hintPath);
-			hintPath->SetText((a_otherPath / (std::string(a_otherName) + ".dll")).c_str());
+			hintPath->SetText((a_otherPath / (std::string(a_otherName) + ".dll")).string().c_str());
 		}
 	}
 
