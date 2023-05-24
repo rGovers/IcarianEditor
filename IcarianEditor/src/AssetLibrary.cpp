@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include "Flare/IcarianAssert.h"
+#include "Flare/IcarianDefer.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
 #include "mono/metadata/appdomain.h"
@@ -132,9 +133,13 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
                 asset.AssetType = AssetType_Other;
             }
 
-            std::ifstream file = std::ifstream(iter.path());
+            // Must resist urge to throw Windows under bus for own mistakes.
+            // Forgot to pass second argument and was causing obscure bugs on Windows.
+            std::ifstream file = std::ifstream(iter.path(), std::ios::binary);
             if (file.good() && file.is_open())
             {
+                ICARIAN_DEFER_closeIFile(file);
+
                 // Get file size by reading the entire file and seek back to the start
                 // Could use os specific stuff to find file size but it is os specific
                 file.ignore(std::numeric_limits<std::streamsize>::max());
@@ -146,8 +151,6 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
                 file.read(asset.Data, asset.Size);
 
                 m_assets.emplace_back(asset);
-
-                file.close();
             }
             else
             {
@@ -512,12 +515,12 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
     {
         const std::filesystem::path p = pPath / a.Path;
 
-        std::ofstream file = std::ofstream(p);
+        std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            file.write(a.Data, a.Size);
+            ICARIAN_DEFER_closeOFile(file);
 
-            file.close();
+            file.write(a.Data, a.Size);
         }
     }
 }
