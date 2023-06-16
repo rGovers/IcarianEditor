@@ -82,18 +82,28 @@ bool FileDialog::GenerateFileDirs(std::list<std::filesystem::path>* a_dirs, std:
     return false;
 }
 
-bool FileDialog::DirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, std::filesystem::path* a_path)
+bool FileDialog::DirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, std::filesystem::path* a_path, const glm::vec2& a_size)
 {
-    bool ret = true;
-
     const ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 region = ImGui::GetContentRegionAvail();
 
-    if (ImGui::BeginChild("Dir", { region.x - style.FramePadding.x, region.y - ImGui::GetFrameHeightWithSpacing() * 2}))
+    ImVec2 size = ImVec2(a_size.x, a_size.y);
+    if (size.x < 0.0f)
+    {
+        size.x = region.x - style.FramePadding.x;
+    }
+    if (size.y < 0.0f)
+    {
+        size.y = region.y - ImGui::GetFrameHeightWithSpacing() * 2;
+    }
+
+    bool ret = true;
+
+    if (ImGui::BeginChild("Dir", size))
     {
         if (std::filesystem::exists(*a_path))
         {
-            ImGui::Columns(3);
+            ImGui::Columns(glm::max(1, (int)(size.x / 150.0f)));
             ImGui::BeginGroup();
 
             ret = IDirectoryExplorer(a_dirs, a_path);
@@ -107,18 +117,30 @@ bool FileDialog::DirectoryExplorer(const std::list<std::filesystem::path>& a_dir
 
     return ret;
 }
-bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, const std::list<std::filesystem::path>& a_files, std::filesystem::path* a_path, std::string* a_name)
+bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, const std::list<std::filesystem::path>& a_files, std::filesystem::path* a_path, std::string* a_name, const glm::vec2& a_size)
 {
-    bool ret = true;
-
     const ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 region = ImGui::GetContentRegionAvail();
 
-    if (ImGui::BeginChild("Dir", { region.x - style.FramePadding.x, region.y - ImGui::GetFrameHeightWithSpacing() * 2}))
+    ImVec2 size = ImVec2(a_size.x, a_size.y);
+    if (size.x < 0.0f)
+    {
+        size.x = region.x - style.FramePadding.x;
+    }
+    if (size.y < 0.0f)
+    {
+        size.y = region.y - ImGui::GetFrameHeightWithSpacing() * 2;
+    }
+
+    bool ret = true;
+
+    if (ImGui::BeginChild("Dir", size))
     {
         if (std::filesystem::exists(*a_path))
         {
-            ImGui::Columns(3);
+            const int columns = glm::max(1, (int)(size.x / 150.0f));
+
+            ImGui::Columns(columns);
             ImGui::BeginGroup();
 
             ret = IDirectoryExplorer(a_dirs, a_path);
@@ -128,7 +150,7 @@ bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, co
 
             ImGui::Separator();
 
-            ImGui::Columns(3);
+            ImGui::Columns(columns);
             ImGui::BeginGroup();
 
             for (const std::filesystem::path& path : a_files)

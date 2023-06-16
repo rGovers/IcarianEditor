@@ -8,6 +8,7 @@
 #include "AssetLibrary.h"
 #include "IcarianEditorConfig.h"
 #include "Logger.h"
+#include "Modals/BuildProjectModal.h"
 #include "Modals/CreateProjectModal.h"
 #include "Modals/ErrorModal.h"
 #include "Modals/OpenProjectModal.h"
@@ -147,5 +148,35 @@ void Project::Save() const
     else
     {
         m_app->PushModal(new ErrorModal("Saving Invalid Project"));
+    }
+}
+void Project::Build()
+{
+    if (IsValidProject())
+    {
+        Logger::Message("Build Project");
+
+        std::vector<std::string> buildSystems;
+
+        for (const auto& iter : std::filesystem::directory_iterator("BuildFiles", std::filesystem::directory_options::skip_permission_denied))
+        {
+            if (iter.is_directory())
+            {
+                buildSystems.emplace_back(iter.path().filename().string());
+            }
+        }
+
+        if (buildSystems.empty())
+        {
+            m_app->PushModal(new ErrorModal("No Build Systems Found"));
+            
+            return;
+        }
+
+        m_app->PushModal(new BuildProjectModal(m_app, m_assetLibrary, this, buildSystems));
+    }
+    else
+    {
+        m_app->PushModal(new ErrorModal("Building Invalid Project"));
     }
 }

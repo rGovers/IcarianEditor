@@ -12,6 +12,7 @@
 #include "Datastore.h"
 #include "FileHandler.h"
 #include "Flare/IcarianAssert.h"
+#include "Flare/IcarianDefer.h"
 #include "Gizmos.h"
 #include "GUI.h"
 #include "Modals/CreateProjectModal.h"
@@ -108,10 +109,14 @@ static void SetImguiStyle()
 
     style.FrameRounding = 4.0f;
     style.WindowRounding = 6.0f;
+    style.ChildRounding = 8.0f;
     style.WindowBorderSize = 0.0f;
     style.ChildBorderSize = 0.0f;
     style.PopupBorderSize = 0.0f;
     style.WindowMenuButtonPosition = ImGuiDir_Right;
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
 }
 
 AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
@@ -224,6 +229,8 @@ void AppMain::Update(double a_delta, double a_time)
 
     std::string title = "IcarianEditor";
 
+    // ImGui::ShowStyleEditor();
+
     const int focusState = glfwGetWindowAttrib(window, GLFW_FOCUSED);
     if (!m_focused && focusState)
     {
@@ -271,7 +278,7 @@ void AppMain::Update(double a_delta, double a_time)
 
             if (ImGui::MenuItem("Build Project", nullptr, nullptr, validProject))
             {
-                Logger::Error("Build Project Not Implemented");
+                m_project->Build();
             }
 
             ImGui::Separator();
@@ -360,12 +367,15 @@ void AppMain::Update(double a_delta, double a_time)
 
     if (!m_modals.empty())
     {
-        Modal* modal = m_modals[m_modals.size() - 1];
+        const uint32_t index = (uint32_t)m_modals.size() - 1;
+
+        Modal* modal = m_modals[index];
 
         if (!modal->Display())
         {
-            delete modal;
-            m_modals.pop_back();
+            ICARIAN_DEFER_del(modal);
+
+            m_modals.erase(m_modals.begin() + index);
         }
     }
 
@@ -416,7 +426,7 @@ void AppMain::Update(double a_delta, double a_time)
 
         const std::filesystem::path path = m_project->GetPath(); 
         const std::string pathStr = path.string();
-        const std::string_view projectName = m_project->GetName();
+        const std::string projectName = m_project->GetName();
 
         if (m_runtime->Build(pathStr, projectName))
         {

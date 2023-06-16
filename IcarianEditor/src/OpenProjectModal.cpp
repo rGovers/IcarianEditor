@@ -28,13 +28,16 @@ bool OpenProjectModal::Update()
     char buffer[BufferSize];
 
     const std::string pathStr = m_path.string();
-    const uint32_t pathLen = (uint32_t)pathStr.length();
+    uint32_t pathLen = (uint32_t)pathStr.length();
     if (pathLen > BufferSize)
     {
         m_app->PushModal(new ErrorModal("Path exceeds buffer size"));
 
         m_path = IO::GetHomePath();
+
+        pathLen = (uint32_t)m_path.string().length();
     }
+    
     for (uint32_t i = 0; i < pathLen; ++i)
     {
         buffer[i] = pathStr[i];
@@ -59,12 +62,14 @@ bool OpenProjectModal::Update()
         FileDialog::GenerateFileDirs(&m_dirs, &m_files, m_path);
     }
 
-    const uint32_t nameLen = (uint32_t)m_name.length();
+    uint32_t nameLen = (uint32_t)m_name.length();
     if (nameLen > BufferSize)
     {
         m_app->PushModal(new ErrorModal("Name exceeds buffer size"));
 
         m_name.clear();
+
+        nameLen = 0;
     }
 
     for (uint32_t i = 0; i < nameLen; ++i)
@@ -98,7 +103,7 @@ bool OpenProjectModal::Update()
 
         if (!std::filesystem::exists(m_path / m_name))
         {
-            if (!std::filesystem::exists(m_path / (m_name + ".flareproj")))
+            if (!std::filesystem::exists(m_path / (m_name + ".icproj")))
             {
                 m_app->PushModal(new ErrorModal("File does not exist"));
 

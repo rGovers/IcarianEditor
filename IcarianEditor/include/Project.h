@@ -31,7 +31,7 @@ public:
     {
         return m_path;
     }
-    inline std::string_view GetName() const
+    inline std::string GetName() const
     {
         return m_name;
     }
@@ -53,4 +53,6 @@ public:
     void New();
     void Open();
     void Save() const;
+
+    void Build();
 };

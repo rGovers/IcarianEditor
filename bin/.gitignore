@@ -8,3 +8,4 @@ imgui.ini
 mono_crash*
 Debug/
 Release/
+BuildFiles/
