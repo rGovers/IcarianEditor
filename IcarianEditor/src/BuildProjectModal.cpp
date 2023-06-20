@@ -6,6 +6,7 @@
 #include "FileDialog.h"
 #include "IO.h"
 #include "LoadingTasks/BuildLoadingTask.h"
+#include "LoadingTasks/CopyBuildLibraryLoadingTask.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
 #include "LoadingTasks/SerializeAssetsLoadingTask.h"
 #include "Modals/ErrorModal.h"
@@ -64,6 +65,13 @@ void BuildProjectModal::OptionsDisplay()
 
 bool BuildProjectModal::Update()
 {
+    if (m_exportOptions.empty())
+    {
+        m_app->PushModal(new ErrorModal("No export options available"));
+
+        return false;
+    }
+
     char buffer[BufferSize];
 
     std::string pathStr = m_path.string();
@@ -146,8 +154,9 @@ bool BuildProjectModal::Update()
         LoadingTask* tasks[] = 
         {
             new GenerateConfigLoadingTask(m_path, m_name, "Vulkan"),
-            new BuildLoadingTask(m_path, m_project),
-            new SerializeAssetsLoadingTask(m_path, m_library)
+            new BuildLoadingTask(m_path, m_exportOptions[m_selectedExport], m_project),
+            new SerializeAssetsLoadingTask(m_path, m_library),
+            new CopyBuildLibraryLoadingTask(m_path, m_name, m_exportOptions[m_selectedExport])
         };
 
         m_app->PushModal(new LoadingModal(tasks, sizeof(tasks) / sizeof(*tasks)));

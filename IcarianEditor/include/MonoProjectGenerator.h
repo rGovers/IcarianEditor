@@ -3,6 +3,12 @@
 #include <filesystem>
 #include <vector>
 
+struct MonoExternalReference
+{
+	std::string Name;
+	std::filesystem::path Path;
+};
+
 class MonoProjectGenerator
 {
 private:
@@ -20,5 +26,5 @@ public:
 	MonoProjectGenerator(const std::filesystem::path* a_scripts, uint32_t a_scriptCount, const std::string* a_dependencies, uint32_t a_dependencyCount);
 	~MonoProjectGenerator();
 
-	void Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath, const std::string_view& a_otherName = "", const std::filesystem::path& a_otherPath = "") const;
+	void Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath, const MonoExternalReference* a_externalReferences = nullptr, uint32_t a_externalReferenceCount = 0) const;
 };

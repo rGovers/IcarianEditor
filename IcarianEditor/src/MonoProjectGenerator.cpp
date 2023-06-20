@@ -57,7 +57,7 @@ MonoProjectGenerator::~MonoProjectGenerator()
 	delete[] m_dependencies;
 }
 
-void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath, const std::string_view& a_otherName, const std::filesystem::path& a_otherPath) const
+void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::filesystem::path& a_path, const std::filesystem::path& a_outPath, const MonoExternalReference* a_externalReferences, uint32_t a_externalReferenceCount) const
 {
 	tinyxml2::XMLDocument doc;
 
@@ -188,16 +188,19 @@ void MonoProjectGenerator::Serialize(const std::string_view& a_name, const std::
 			}
 		}
 
-		if (!a_otherName.empty() && !a_otherPath.empty())
+		if (a_externalReferences != nullptr)
 		{
-			tinyxml2::XMLElement* reference = doc.NewElement("Reference");
-			referenceItemGroup->InsertEndChild(reference);
-
-			reference->SetAttribute("Include", a_otherName.data());
-
-			tinyxml2::XMLElement* hintPath = doc.NewElement("HintPath");
-			reference->InsertEndChild(hintPath);
-			hintPath->SetText((a_otherPath / (std::string(a_otherName) + ".dll")).string().c_str());
+			for (uint32_t i = 0; i < a_externalReferenceCount; ++i)
+			{
+				tinyxml2::XMLElement* reference = doc.NewElement("Reference");
+				referenceItemGroup->InsertEndChild(reference);
+	
+				reference->SetAttribute("Include", a_externalReferences[i].Name.c_str());
+	
+				tinyxml2::XMLElement* hintPath = doc.NewElement("HintPath");
+				reference->InsertEndChild(hintPath);
+				hintPath->SetText(a_externalReferences[i].Path.string().c_str());
+			}
 		}
 	}
 

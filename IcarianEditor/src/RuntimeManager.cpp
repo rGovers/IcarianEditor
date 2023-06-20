@@ -191,8 +191,13 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
             "IcarianEditor"
         };
 
+        const MonoExternalReference externalDependencies[] =
+        {
+            { std::string(a_name), cachePath / assemblyPath },
+        };
+
         const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
-        editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", a_name, cachePath / assemblyPath);
+        editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", externalDependencies, sizeof(externalDependencies) / sizeof(*externalDependencies));
 
         const std::string projectEditorArgs[] =
         {

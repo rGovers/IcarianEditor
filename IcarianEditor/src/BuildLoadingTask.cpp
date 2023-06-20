@@ -6,10 +6,11 @@
 #include "MonoProjectGenerator.h"
 #include "Project.h"
 
-BuildLoadingTask::BuildLoadingTask(const std::filesystem::path& a_path, Project* a_project)
+BuildLoadingTask::BuildLoadingTask(const std::filesystem::path& a_path, const std::string_view& a_platform, Project* a_project)
 {
     m_project = a_project;
 
+    m_platform = a_platform;
     m_path = a_path;
 }
 BuildLoadingTask::~BuildLoadingTask()
@@ -36,13 +37,17 @@ void BuildLoadingTask::Run()
     const std::string projectDependencies[] =
     {
         "System",
-        "System.Xml",
-        "IcarianEngine"
+        "System.Xml"
     };
 
-    // TODO: Need to change this down the line to use the pre built engine assemblies as dependencies but for now this will do
+    // Want to use the pre built engine assemblies as dependencies incase they have been updated or platform specific
+    const MonoExternalReference externalProjects[] = 
+    {
+        { "IcarianCS", std::filesystem::current_path() / "BuildFiles" / m_platform / "lib" / "IcarianCS.dll" }
+    };
+
     const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
-    project.Serialize(projectName, projectFile, std::filesystem::path("build") / "Assemblies");
+    project.Serialize(projectName, projectFile, std::filesystem::path("build") / "Assemblies", externalProjects, sizeof(externalProjects) / sizeof(*externalProjects));
 
     ConsoleCommand cmd = ConsoleCommand("xbuild");
 
@@ -52,6 +57,7 @@ void BuildLoadingTask::Run()
         "/p:Configuration=Release",
     };
 
+    // TODO: Down the line add error states for loading tasks to allow for error early outs
     cmd.Run(cmdArgs, sizeof(cmdArgs) / sizeof(*cmdArgs));
 
     const std::filesystem::path finalPath = m_path / "Core" / "Assemblies";
@@ -63,6 +69,7 @@ void BuildLoadingTask::Run()
     {
         const std::filesystem::path filename = iter.path().filename();
 
+        // Do not need the engine dlls as they will be already loaded
         if (filename == "IcarianCS.dll" || filename == "IcarianEditorCS.dll")
         {
             continue;
