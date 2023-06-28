@@ -193,6 +193,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
 
     std::vector<FlareBase::Vertex> vertices;
     std::vector<uint32_t> indices;
+    float radius;
 
     AssetLibrary* library = Instance->GetLibrary();
     if (p.extension() == ".obj")
@@ -201,7 +202,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::OBJLoader_LoadData(dat, size, &vertices, &indices))
+        if (dat != nullptr && size > 0 && FlareBase::OBJLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::Vertex));
         }
@@ -212,7 +213,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices))
+        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::Vertex));
         }

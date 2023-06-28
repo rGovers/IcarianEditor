@@ -93,14 +93,15 @@ Model* Model::FromFile(const std::filesystem::path& a_path)
 
     std::vector<FlareBase::Vertex> vertices;
     std::vector<uint32_t> indices;
+    float radius;
 
     if (ext == ".dae")
     {
-        FlareBase::ColladaLoader_LoadFile(a_path, &vertices, &indices);
+        FlareBase::ColladaLoader_LoadFile(a_path, &vertices, &indices, &radius);
     }
     else if (ext == ".obj")
     {
-        FlareBase::OBJLoader_LoadFile(a_path, &vertices, &indices);
+        FlareBase::OBJLoader_LoadFile(a_path, &vertices, &indices, &radius);
     }
 
     const uint32_t vertexCount = (uint32_t)vertices.size();
