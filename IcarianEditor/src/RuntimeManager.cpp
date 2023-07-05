@@ -193,7 +193,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
 
         const MonoExternalReference externalDependencies[] =
         {
-            { std::string(a_name), cachePath / assemblyPath },
+            { std::string(a_name), cachePath / assemblyPath / (std::string(a_name) + ".dll") },
         };
 
         const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
