@@ -1,13 +1,11 @@
 #include "ProcessManager.h"
+#include "Flare/IcarianDefer.h"
 
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
 #ifndef WIN32
-#include <poll.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <csignal>
 #include <unistd.h>
 #endif
 
@@ -26,79 +24,14 @@ static std::filesystem::path GetAddr(const std::string_view& a_addr)
 
 ProcessManager::ProcessManager()
 {
-    const std::filesystem::path addrStr = GetAddr(PipeName);
+    m_pipe = nullptr;
 
 #if WIN32
-    m_pipeSock = INVALID_SOCKET;
-
-    ZeroMemory(&m_processInfo, sizeof(m_processInfo));
-    m_processInfo.hProcess = INVALID_HANDLE_VALUE;
-    m_processInfo.hThread = INVALID_HANDLE_VALUE;
-    
-    // Failsafe for unsafe close
-    DeleteFileA(addrStr.string().c_str());
+    const std::filesystem::path addrStr = GetAddr(PipeName);
     
     WSADATA wsaData = { };
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-    {
-        Logger::Error("Failed to start WSA");
-        assert(0);
-    }
-    
-    m_serverSock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (m_serverSock == INVALID_SOCKET)
-    {
-        Logger::Error("Failed creating IPC");
-        perror("socket");
-        assert(0);
-    }
-    
-    sockaddr_un addr;
-    ZeroMemory(&addr, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strcpy_s(addr.sun_path, addrStr.string().c_str());
-
-    if (bind(m_serverSock, (sockaddr*)&addr, sizeof(addr)) < 0)
-    {
-        Logger::Error("Failed binding IPC");
-        perror("bind");
-        assert(0);
-    }
-#else
-    m_pipeSock = -1;
-    m_process = -1;   
-
-    // Failsafe for unsafe close 
-    // Frees the IPC from past instances
-    unlink(addrStr.c_str());
-    
-    m_serverSock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (m_serverSock < 0)
-    {
-        Logger::Error("Failed creating IPC");
-        perror("socket");
-        assert(0);
-    }
-    
-    struct sockaddr_un addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, addrStr.c_str());
-
-    if (bind(m_serverSock, (struct sockaddr*)&addr, SUN_LEN(&addr)) < 0)
-    {
-        Logger::Error("Failed binding IPC");
-        perror("bind");
-        assert(0);
-    }
+    ICARIAN_ASSERT_MSG_R(WSAStartup(MAKEWORD(2, 2), &wsaData) == 0, "Failed to start WSA");
 #endif
-    
-    if (listen(m_serverSock, 10) < 0)
-    {
-        Logger::Error("Failed setting IPC listen");
-        perror("listen");
-        assert(0);
-    }
 
     m_resize = false;
 
@@ -127,22 +60,20 @@ ProcessManager::~ProcessManager()
 {
     glDeleteTextures(1, &m_tex);
 
-#if WIN32
-    closesocket(m_serverSock);
-
-    const std::filesystem::path addrStr = GetAddr(PipeName);
-    
-    DeleteFileA(addrStr.string().c_str());
-    
+#if WIN32    
     WSACleanup();
-#else
-    close(m_serverSock);
 #endif
 }
 
-#if WIN32
-void ProcessManager::DestroyProc()
+void ProcessManager::Terminate()
 {
+    if (m_pipe != nullptr)
+    {
+        delete m_pipe;
+        m_pipe = nullptr;
+    }
+
+#if WIN32
     if (m_processInfo.hProcess != INVALID_HANDLE_VALUE)
     {
         CloseHandle(m_processInfo.hProcess);
@@ -153,90 +84,13 @@ void ProcessManager::DestroyProc()
         CloseHandle(m_processInfo.hThread);
         m_processInfo.hThread = INVALID_HANDLE_VALUE;
     }
-}
-#endif
-
-FlareBase::PipeMessage ProcessManager::ReceiveMessage()
-{
-    FlareBase::PipeMessage msg;
-
-#if WIN32
-    const int size = recv(m_pipeSock, (char*)&msg, FlareBase::PipeMessage::Size, 0);
-    if (size == SOCKET_ERROR)
-    {
-        Logger::Error("Connection Error: " + std::to_string(WSAGetLastError()));
-        m_pipeSock = INVALID_SOCKET;
-
-        return FlareBase::PipeMessage();
-    }
-    if (size >= FlareBase::PipeMessage::Size)
-    {
-        msg.Data = new char[msg.Length];
-        char* dataBuffer = msg.Data;
-        uint32_t len = (uint32_t)(dataBuffer - msg.Data);
-        while (len < msg.Length)
-        {
-            const int ret = recv(m_pipeSock, dataBuffer, (int)(msg.Length - len), 0);
-            if (ret != SOCKET_ERROR)
-            {
-                dataBuffer += ret;
-
-                len = (uint32_t)(dataBuffer - msg.Data);
-            }
-            else
-            {
-                m_pipeSock = INVALID_SOCKET;
-
-                return FlareBase::PipeMessage();
-            }
-        }
-
-        return msg;
-    }
 #else
-    const uint32_t size = (uint32_t)read(m_pipeSock, &msg, FlareBase::PipeMessage::Size);
-    if (size >= FlareBase::PipeMessage::Size)
+    if (m_process > 0)
     {
-        msg.Data = new char[msg.Length];
-        char* dataBuffer = msg.Data;
-        uint32_t len = (uint32_t)(dataBuffer - msg.Data);
-        while (len < msg.Length)
-        {
-            dataBuffer += read(m_pipeSock, dataBuffer, msg.Length - len);
-
-            len = (uint32_t)(dataBuffer - msg.Data);
-        }
-
-        return msg;
+        kill(m_process, SIGTERM);
+        m_process = -1;
     }
 #endif
-    
-    return FlareBase::PipeMessage();
-}
-void ProcessManager::PushMessage(const FlareBase::PipeMessage& a_message) const
-{
-#if WIN32
-    send(m_pipeSock, (const char*)&a_message, FlareBase::PipeMessage::Size, 0);
-    if (a_message.Data != nullptr)
-    {
-        send(m_pipeSock, a_message.Data, (int)a_message.Length, 0);
-    }
-#else
-    write(m_pipeSock, &a_message, FlareBase::PipeMessage::Size);
-    if (a_message.Data != nullptr)
-    {
-        write(m_pipeSock, a_message.Data, a_message.Length);
-    }
-#endif
-}
-
-void ProcessManager::InitMessage() const
-{
-    Logger::Message("Connected to IcarianEngine");
-
-    const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
-
-    PushMessage({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data });
 }
 
 bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
@@ -247,6 +101,15 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
 #if WIN32
+    const FlareBase::IPCPipe* serverPipe = FlareBase::IPCPipe::Create(GetAddr(PipeName).string());
+    if (serverPipe == nullptr)
+    {
+        Logger::Error("Failed to create IPC Pipe");
+
+        return false;
+    }
+    ICARIAN_DEFER_del(serverPipe);
+
     const std::string args = "IcarianNative.exe --headless " + workingDirArg;
 
     STARTUPINFO si;
@@ -273,41 +136,38 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
         Logger::Error("Failed to spawn process: " + std::to_string(GetLastError()));
     }
     
-    timeval tv;
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
-
-    fd_set fdSet;
-    FD_ZERO(&fdSet);
-    FD_SET(m_serverSock, &fdSet);
-    if (select((int)(m_serverSock + 1), &fdSet, NULL, NULL, &tv) <= 0)
+    m_pipe = serverPipe->Accept();
+    if (m_pipe == nullptr)
     {
-        Logger::Error("Failed connecting to IcarianEngine");
+        Logger::Error("Failed to connect to IcarianEngine");
+        DestroyProc();
 
         return false;
     }
 
-    if (FD_ISSET(m_serverSock, &fdSet))
+    const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
+
+    if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
     {
-        m_pipeSock = accept(m_serverSock, NULL, NULL);
-        if ((int)m_pipeSock < 0)
-        {
-            Logger::Error("Failed connecting to IcarianEngine");
+        Logger::Error("Failed to send resize message to IcarianEngine");
+        Terminate();
 
-            return false;
-        }
-
-        InitMessage();
-
-        return true;
+        return false;
     }
-    
-    Logger::Error("Failed to start IcarianEngine");
 
-    DestroyProc();
+    return true;
 #else
     if (m_process == -1)
     {
+        const FlareBase::IPCPipe* serverPipe = FlareBase::IPCPipe::Create(GetAddr(PipeName).string());
+        if (serverPipe == nullptr)
+        {
+            Logger::Error("Failed to create IPC Pipe");
+
+            return false;
+        }
+        ICARIAN_DEFER_del(serverPipe);
+
         // This is a bit odd leaving this here as a note
         // This create another copy of the process on unix systems 
         // You can tell if you are the parent or child process based on the return result
@@ -325,6 +185,8 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
         else if (m_process == 0)
         {
             // Starting the engine
+            // In a weird state cause in a forked process so doing stuff C style
+            // Once execution is started state is normal again
             if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), nullptr) < 0)
             {
                 printf("Failed to start process");
@@ -333,43 +195,29 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             }
         }
         else
-        {
-            // Communicating with the engine
-            struct timeval tv;
-            tv.tv_sec = 5;
-            tv.tv_usec = 0;
-
-            fd_set fdSet;
-            FD_ZERO(&fdSet);
-            FD_SET(m_serverSock, &fdSet);
-
-            if (select(m_serverSock + 1, &fdSet, NULL, NULL, &tv) <= 0)
+        {            
+            // State is correct cause in the parent process so can use inbuilt stuff
+            m_pipe = serverPipe->Accept();
+            if (m_pipe == nullptr)
             {
-                Logger::Error("Failed connecting to IcarianEngine");
+                Logger::Error("Failed to connect to IcarianEngine");
+                kill(m_process, SIGTERM);   
+                m_process = -1;
 
                 return false;
             }
 
-            if (FD_ISSET(m_serverSock, &fdSet))
+            const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
+
+            if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
             {
-                m_pipeSock = accept(m_serverSock, NULL, NULL);
-                if (m_pipeSock < 0)
-                {
-                    Logger::Error("Failed connecting to IcarianEngine");
+                Logger::Error("Failed to send resize message to IcarianEngine");
+                Terminate();
 
-                    return false;
-                }
-
-                InitMessage();
-
-                return true;
+                return false;
             }
-            
-            Logger::Error("Failed to start IcarianEngine");
 
-            kill(m_process, SIGTERM);
-
-            m_process = -1;
+            return true;
         }
     }
 #endif
@@ -377,117 +225,134 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     return false;
 }
 
-void ProcessManager::PollMessage()
+void ProcessManager::PollMessage(bool a_blockError)
 {
-    const FlareBase::PipeMessage msg = ReceiveMessage();
+    std::queue<FlareBase::PipeMessage> messages;
 
-    switch (msg.Type)
+    if (!m_pipe->Receive(&messages))
     {
-    case FlareBase::PipeMessageType_PushFrame:
-    {
-        if (msg.Length == m_width * m_height * 4)
+        if (!a_blockError)
         {
-            glBindTexture(GL_TEXTURE_2D, m_tex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, msg.Data);
+            Logger::Error("Failed to receive message from IcarianEngine");
         }
 
-        break;
+        Terminate();
+
+        return;
     }
-    case FlareBase::PipeMessageType_FrameData:
+
+    while (!messages.empty())
     {
-        const double delta = *(double*)(msg.Data + 0);
-        const double time = *(double*)(msg.Data + 4);
+        const FlareBase::PipeMessage msg = messages.front();
+        ICARIAN_DEFER(msg, if (msg.Data != nullptr) { delete[] msg.Data; });
+        messages.pop();
 
-        ++m_frames;
-
-        m_frameTime -= delta;
-        if (m_frameTime <= 0)
+        switch (msg.Type)
         {
-            m_fps = m_frames * 2;
-            m_frameTime += 0.5;
-            m_frames = 0;
-        }
-
-        break;
-    }
-    case FlareBase::PipeMessageType_UpdateData:
-    {
-        const double delta = *(double*)(msg.Data + 0);
-        const double time = *(double*)(msg.Data + 4);
-
-        ++m_updates;
-
-        m_updateTime -= delta;
-        if (m_updateTime <= 0)
+        case FlareBase::PipeMessageType_PushFrame:
         {
-            m_ups = m_updates * 2;
-            m_updateTime += 0.5f;
-            m_updates = 0;
-        }
-
-        break;
-    }
-    case FlareBase::PipeMessageType_Message:
-    {
-        constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
-
-        const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
-
-        switch (*(e_LoggerMessageType*)msg.Data)
-        {
-        case LoggerMessageType_Message:
-        {
-            Logger::Message(str, false);
+            if (msg.Length == m_width * m_height * 4)
+            {
+                glBindTexture(GL_TEXTURE_2D, m_tex);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, msg.Data);
+            }
 
             break;
         }
-        case LoggerMessageType_Warning:
+        case FlareBase::PipeMessageType_FrameData:
         {
-            Logger::Warning(str, false);
+            const double delta = *(double*)(msg.Data + 0);
+            const double time = *(double*)(msg.Data + 4);
+
+            ++m_frames;
+
+            m_frameTime -= delta;
+            if (m_frameTime <= 0)
+            {
+                m_fps = m_frames * 2;
+                m_frameTime += 0.5;
+                m_frames = 0;
+            }
 
             break;
         }
-        case LoggerMessageType_Error:
+        case FlareBase::PipeMessageType_UpdateData:
         {
-            Logger::Error(str, false);
+            const double delta = *(double*)(msg.Data + 0);
+            const double time = *(double*)(msg.Data + 4);
+
+            ++m_updates;
+
+            m_updateTime -= delta;
+            if (m_updateTime <= 0)
+            {
+                m_ups = m_updates * 2;
+                m_updateTime += 0.5f;
+                m_updates = 0;
+            }
 
             break;
         }
+        case FlareBase::PipeMessageType_Message:
+        {
+            constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
+
+            const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
+
+            switch (*(e_LoggerMessageType*)msg.Data)
+            {
+            case LoggerMessageType_Message:
+            {
+                Logger::Message(str, false);
+
+                break;
+            }
+            case LoggerMessageType_Warning:
+            {
+                Logger::Warning(str, false);
+
+                break;
+            }
+            case LoggerMessageType_Error:
+            {
+                Logger::Error(str, false);
+
+                break;
+            }
+            }
+
+            break;
         }
+        case FlareBase::PipeMessageType_ProfileScope:
+        {
+            ProfilerData::PushData(*(ProfileScope*)msg.Data);
 
-        break;
-    }
-    case FlareBase::PipeMessageType_ProfileScope:
-    {
-        ProfilerData::PushData(*(ProfileScope*)msg.Data);
-
-        break;
-    }
-    case FlareBase::PipeMessageType_Close:
-    {
+            break;
+        }
+        case FlareBase::PipeMessageType_Close:
+        {
 #if WIN32
-        m_processInfo.hProcess = INVALID_HANDLE_VALUE;
-        m_processInfo.hThread = INVALID_HANDLE_VALUE;
+            m_processInfo.hProcess = INVALID_HANDLE_VALUE;
+            m_processInfo.hThread = INVALID_HANDLE_VALUE;
 #else
-        m_process = -1;
+            m_process = -1;
 #endif
-        break;
-    }
-    case FlareBase::PipeMessageType_Null:
-    {
-        break;
-    }
-    default:
-    {
-        Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
+            delete m_pipe;
+            m_pipe = nullptr;
 
-        break;
-    }
-    }
+            return;
+        }
+        case FlareBase::PipeMessageType_Null:
+        {
+            break;
+        }
+        default:
+        {
+            Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
 
-    if (msg.Data != nullptr)
-    {
-        delete[] msg.Data;
+            break;
+        }
+        }
     }
 }
 
@@ -502,47 +367,34 @@ void ProcessManager::Update()
         m_process = -1;
 #endif
 
+        if (m_pipe != nullptr)
+        {
+            delete m_pipe;
+            m_pipe = nullptr;
+        }
+
         return;
     }
 
-#if WIN32
-    timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 5;
+    PollMessage();
 
-    fd_set fdSet;
-    FD_ZERO(&fdSet);
-    FD_SET(m_pipeSock, &fdSet);
-    if (m_pipeSock != INVALID_SOCKET && select((int)(m_pipeSock + 1), &fdSet, NULL, NULL, &tv) > 0)
+    if (m_pipe == nullptr)
     {
-        PollMessage();
+        return;
     }
-#else
-    struct pollfd fds;
-    fds.fd = m_pipeSock;
-    fds.events = POLLIN;
-
-    while (poll(&fds, 1, 1) > 0)
-    {
-        if (fds.revents & (POLLNVAL | POLLERR | POLLHUP))
-        {
-            m_pipeSock = -1;
-
-            return;
-        }
-
-        if (fds.revents & POLLIN)
-        {
-            PollMessage();
-        }
-    }
-#endif
 
     // Engine only pushes one frame at a time
     // Do it this way so the editor does not get overwhelmed with frame data
     // Cause extreme lag if I do not throttle the push frames ~1 fps
     // IPCs are only so fast
-    PushMessage({ FlareBase::PipeMessageType_UnlockFrame });
+    if (!m_pipe->Send({ FlareBase::PipeMessageType_UnlockFrame }))
+    {
+        Logger::Error("Failed to send unlock frame message to IcarianEngine");
+
+        Terminate();
+
+        return; 
+    }
 
     if (m_resize)
     {
@@ -550,36 +402,46 @@ void ProcessManager::Update()
 
         const glm::ivec2 size = glm::ivec2((int)m_width, (int)m_height);
 
-        PushMessage({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size});
+        if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
+        {
+            Logger::Error("Failed to send resize message to IcarianEngine");
+
+            Terminate();
+
+            return;   
+        }
     }
 }
 void ProcessManager::Stop()
 {
     Logger::Message("Stopping IcarianEngine Instance");
     
-    PushMessage({ FlareBase::PipeMessageType_Close });
+    if (!m_pipe->Send({ FlareBase::PipeMessageType_Close }))
+    {
+        Logger::Error("Failed to send close message to IcarianEngine");
 
-#if WIN32
-    while (m_pipeSock != INVALID_SOCKET && m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE)
-    {
-        PollMessage();
-    }
-    
-    if (m_pipeSock != INVALID_SOCKET)
-    {
-        closesocket(m_pipeSock);
-        m_pipeSock = INVALID_SOCKET;
-    }
-#else
-    while (m_process != -1)
-    {
-        PollMessage();
+        Terminate();
+
+        return;
     }
 
-    close(m_pipeSock);
-    m_pipeSock = -1;
-#endif
-    
+    const std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
+    while (IsRunning())
+    {
+        const std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        const std::chrono::duration<double> delta = end - start;
+        if (delta.count() > 5.0)
+        {
+            Logger::Error("Failed to close IcarianEngine Instance");
+
+            Terminate();
+
+            return;
+        }
+
+        PollMessage(true);        
+    }    
 }
 void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
 {
@@ -591,24 +453,45 @@ void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
         m_resize = true;
     }
 }
-void ProcessManager::PushCursorPos(const glm::vec2& a_cPos) const
+void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 {
     if (IsRunning())
     {
-        PushMessage({ FlareBase::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos});
+        if (!m_pipe->Send({ FlareBase::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
+        {
+            Logger::Error("Failed to send cursor position message to IcarianEngine");
+
+            Terminate();
+
+            return;
+        }
     }
 }
-void ProcessManager::PushMouseState(unsigned char a_state) const
+void ProcessManager::PushMouseState(unsigned char a_state)
 {
     if (IsRunning())
     {
-        PushMessage({ FlareBase::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state });
+        if (!m_pipe->Send({ FlareBase::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state }))
+        {
+            Logger::Error("Failed to send mouse state message to IcarianEngine");
+
+            Terminate();
+
+            return;
+        }
     }
 }
-void ProcessManager::PushKeyboardState(FlareBase::KeyboardState& a_state) const
+void ProcessManager::PushKeyboardState(FlareBase::KeyboardState& a_state)
 {
     if (IsRunning())
     {
-        PushMessage({ FlareBase::PipeMessageType_KeyboardState, FlareBase::KeyboardState::ElementCount, (char*)a_state.ToData() });
+        if (!m_pipe->Send({ FlareBase::PipeMessageType_KeyboardState, FlareBase::KeyboardState::ElementCount, (char*)a_state.ToData() }))
+        {
+            Logger::Error("Failed to send keyboard state message to IcarianEngine");
+
+            Terminate();
+
+            return;
+        }
     }
 }

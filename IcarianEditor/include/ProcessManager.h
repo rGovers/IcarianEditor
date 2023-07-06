@@ -3,10 +3,10 @@
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
-#include "Flare/WindowsHeaders.h"
-
 #include "Flare/InputBindings.h"
+#include "Flare/IPCPipe.h"
 #include "Flare/PipeMessage.h"
+#include "Flare/WindowsHeaders.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -19,18 +19,14 @@ private:
     static constexpr std::string_view PipeName = "IcarianEngine-IPC";
 
 #if WIN32
-    SOCKET              m_serverSock;
-    SOCKET              m_pipeSock;
-
     PROCESS_INFORMATION m_processInfo;
 
     void DestroyProc();
 #else
     int                 m_process;
-         
-    int                 m_serverSock;
-    int                 m_pipeSock;    
 #endif
+
+    FlareBase::IPCPipe* m_pipe;
 
     bool                m_resize;
                         
@@ -46,12 +42,10 @@ private:
     double              m_fps;
                         
     GLuint              m_tex;
-
-    FlareBase::PipeMessage ReceiveMessage();
-    void PushMessage(const FlareBase::PipeMessage& a_message) const;
     
-    void InitMessage() const;
-    void PollMessage();
+    void PollMessage(bool a_blockError = false);
+
+    void Terminate();
 
 protected:
 
@@ -62,9 +56,9 @@ public:
     inline bool IsRunning() const
     {
 #if WIN32
-        return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_pipeSock != INVALID_SOCKET && m_serverSock != INVALID_SOCKET;
+        return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_pipe != nullptr;
 #else
-        return m_process > 0 && m_pipeSock >= 0 && m_serverSock >= 0;
+        return m_process > 0 && m_pipe != nullptr;
 #endif
     }
 
@@ -93,9 +87,9 @@ public:
 
     void SetSize(uint32_t a_width, uint32_t a_height);
    
-    void PushCursorPos(const glm::vec2& a_cPos) const;
-    void PushMouseState(unsigned char a_state) const;
-    void PushKeyboardState(FlareBase::KeyboardState& a_state) const;
+    void PushCursorPos(const glm::vec2& a_cPos);
+    void PushMouseState(unsigned char a_state);
+    void PushKeyboardState(FlareBase::KeyboardState& a_state);
 
     bool Start(const std::filesystem::path& a_workingDir);
     void Update();
