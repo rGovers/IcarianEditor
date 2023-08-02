@@ -303,19 +303,19 @@ void ProcessManager::PollMessage(bool a_blockError)
             {
             case LoggerMessageType_Message:
             {
-                Logger::Message(str, false);
+                Logger::Message(str, false, false);
 
                 break;
             }
             case LoggerMessageType_Warning:
             {
-                Logger::Warning(str, false);
+                Logger::Warning(str, false, false);
 
                 break;
             }
             case LoggerMessageType_Error:
             {
-                Logger::Error(str, false);
+                Logger::Error(str, false, false);
 
                 break;
             }

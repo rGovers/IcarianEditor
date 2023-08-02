@@ -13,6 +13,7 @@ ConsoleWindow::ConsoleWindow() : Window("Console")
     m_flags = 0;
     m_flags |= 0b1 << DisplayWarningBit;
     m_flags |= 0b1 << DisplayErrorBit;
+    m_flags |= 0b1 << DisplayEditorBit;
     m_flags |= 0b1 << CollapseBit;
 }   
 ConsoleWindow::~ConsoleWindow()
@@ -20,7 +21,7 @@ ConsoleWindow::~ConsoleWindow()
     Logger::RemoveConsoleWindow(this);
 }
 
-void ConsoleWindow::AddMessage(const std::string_view& a_message, e_LoggerMessageType a_type)
+void ConsoleWindow::AddMessage(const std::string_view& a_message, bool a_editor, e_LoggerMessageType a_type)
 {
     if (m_messages.size() > MaxMessages)
     {
@@ -40,6 +41,7 @@ void ConsoleWindow::AddMessage(const std::string_view& a_message, e_LoggerMessag
     }
 
     ConsoleMessage msg;
+    msg.Editor = a_editor;
     msg.Type = a_type;
     msg.Count = 1;
     msg.Message = a_message;
@@ -59,8 +61,21 @@ void ConsoleWindow::Update(double a_delta)
     bool displayMessage = (m_flags & 0b1 << DisplayMessageBit) != 0;
     bool displayWarning = (m_flags & 0b1 << DisplayWarningBit) != 0;
     bool displayError = (m_flags & 0b1 << DisplayErrorBit) != 0;
+    bool displayEditor = (m_flags & 0b1 << DisplayEditorBit) != 0;
     bool collapse = (m_flags & 0b1 << CollapseBit) != 0;
 
+    if (ImGui::Checkbox("Display Editor", &displayEditor))
+    {
+        if (displayEditor)
+        {
+            m_flags |= 0b1 << DisplayEditorBit;
+        }
+        else 
+        {
+            m_flags &= ~(0b1 << DisplayEditorBit);
+        }
+    }
+    ImGui::SameLine();
     if (ImGui::Checkbox("Display Message", &displayMessage))
     {
         if (displayMessage)
@@ -116,6 +131,11 @@ void ConsoleWindow::Update(double a_delta)
     ImGui::BeginChild("##Messages");
     for (const ConsoleMessage msg : m_messages)
     {
+        if (!displayEditor && msg.Editor)
+        {
+            continue;
+        }
+
         ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
         bool display = displayMessage;
 
@@ -151,7 +171,7 @@ void ConsoleWindow::Update(double a_delta)
                 {
                     const std::string c = "[" + std::to_string(msg.Count)  + "]";
 
-                    ImGui::Text(c.c_str());
+                    ImGui::Text("%s", c.c_str());
 
                     ImGui::SameLine();
                 }
@@ -162,7 +182,7 @@ void ConsoleWindow::Update(double a_delta)
                     ImGui::SameLine();
                 }
 
-                ImGui::TextColored(color, msg.Message.c_str());
+                ImGui::TextColored(color, "%s", msg.Message.c_str());
             }
             else
             {
@@ -174,7 +194,7 @@ void ConsoleWindow::Update(double a_delta)
                         ImGui::SameLine();
                     }
 
-                    ImGui::TextColored(color, msg.Message.c_str());
+                    ImGui::TextColored(color, "%s", msg.Message.c_str());
                 }
             }
         }

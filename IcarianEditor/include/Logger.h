@@ -25,7 +25,7 @@ public:
     static void AddConsoleWindow(ConsoleWindow* a_window);
     static void RemoveConsoleWindow(ConsoleWindow* a_window);
 
-    static void Message(const std::string_view& a_string, bool a_print = true);
-    static void Warning(const std::string_view& a_string, bool a_print = true);
-    static void Error(const std::string_view& a_string, bool a_print = true);
+    static void Message(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
+    static void Warning(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
+    static void Error(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
 };

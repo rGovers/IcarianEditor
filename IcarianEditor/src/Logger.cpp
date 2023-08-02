@@ -23,7 +23,7 @@ void Logger::RemoveConsoleWindow(ConsoleWindow* a_window)
     }
 }
 
-void Logger::Message(const std::string_view& a_string, bool a_print)
+void Logger::Message(const std::string_view& a_string, bool a_editor, bool a_print)
 {
     if (a_print)
     {
@@ -32,10 +32,10 @@ void Logger::Message(const std::string_view& a_string, bool a_print)
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, LoggerMessageType_Message);
+        console->AddMessage(a_string, a_editor, LoggerMessageType_Message);
     }
 }
-void Logger::Warning(const std::string_view& a_string, bool a_print)
+void Logger::Warning(const std::string_view& a_string, bool a_editor, bool a_print)
 {
     if (a_print)
     {
@@ -44,10 +44,10 @@ void Logger::Warning(const std::string_view& a_string, bool a_print)
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, LoggerMessageType_Warning);
+        console->AddMessage(a_string, a_editor, LoggerMessageType_Warning);
     }
 }
-void Logger::Error(const std::string_view& a_string, bool a_print)
+void Logger::Error(const std::string_view& a_string, bool a_editor, bool a_print)
 {
     if (a_print)
     {
@@ -56,6 +56,6 @@ void Logger::Error(const std::string_view& a_string, bool a_print)
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, LoggerMessageType_Error);
+        console->AddMessage(a_string, a_editor, LoggerMessageType_Error);
     }
 }
