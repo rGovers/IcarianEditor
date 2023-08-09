@@ -18,6 +18,8 @@ private:
     std::filesystem::path m_path;
     std::string           m_name;
 
+    bool                  m_shouldRefresh;
+
     void NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name);
     void OpenCallback(const std::filesystem::path& a_path, const std::string_view& a_name);
 
@@ -48,6 +50,15 @@ public:
     inline bool IsValidProject() const
     {
         return !m_path.empty() && !m_name.empty();
+    }
+
+    inline bool ShouldRefresh()
+    {
+        return m_shouldRefresh;
+    }
+    inline void SetRefresh(bool a_shouldRefresh)
+    {
+        m_shouldRefresh = a_shouldRefresh;
     }
 
     void New();

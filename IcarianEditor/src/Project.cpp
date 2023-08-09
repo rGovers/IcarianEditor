@@ -42,6 +42,8 @@ Project::Project(AppMain* a_app, AssetLibrary* a_assetLibrary, Workspace* a_work
     m_app = a_app;
     m_assetLibrary = a_assetLibrary;
     m_workspace = a_workspace;
+
+    m_shouldRefresh = false;
 }
 Project::~Project()
 {

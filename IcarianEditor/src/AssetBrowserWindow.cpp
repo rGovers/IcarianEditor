@@ -3,15 +3,19 @@
 #include <filesystem>
 #include <imgui.h>
 
+#include "AppMain.h"
 #include "AssetLibrary.h"
 #include "Datastore.h"
 #include "FileHandler.h"
 #include "FlareImGui.h"
 #include "Logger.h"
+#include "Modals/ConfirmModal.h"
+#include "Modals/RenamePathModal.h"
 #include "Project.h"
 
-AssetBrowserWindow::AssetBrowserWindow(Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser")
 {
+    m_app = a_app;
     m_assetLibrary = a_assetLibrary;
     m_project = a_project;
 
@@ -88,6 +92,86 @@ void AssetBrowserWindow::Refresh()
 
     MakeDirectoryNode(-1, m_project->GetProjectPath());
 }
+
+class DeleteAssetData : public ConfirmModalData
+{
+private:
+    Project*              m_project;
+    
+    std::filesystem::path m_path;
+
+protected:
+
+public:
+    DeleteAssetData(Project* a_project, const std::filesystem::path& a_path) 
+    {
+        m_project = a_project;
+
+        m_path = a_path;
+    }
+    virtual ~DeleteAssetData() { }
+
+    virtual void Confirm() override
+    {
+        // TODO: Should allow for partial update of tree instead of full refresh
+        // Full refresh of project is expensive as it requires a full reload of
+        // all assets and recompilation of code
+        // Would require knowing what assets are affected by the delete plus
+        // would need to walk the whole tree because of directory linking
+        // Hypothetically possible to delete system files if not careful but
+        // would require user to go out of their way 
+        // Because of the above naive implementation is used for now
+        std::filesystem::remove_all(m_path);
+
+        m_project->SetRefresh(true);
+    }
+};
+
+void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath)
+{
+    if (ImGui::BeginMenu("New"))
+    {
+        if (ImGui::MenuItem("Folder"))
+        {
+            const std::filesystem::path newPath = a_path / "New Folder";
+
+            std::filesystem::create_directory(newPath);
+
+            m_project->SetRefresh(true);
+        }
+
+        ImGui::EndMenu();
+    }
+}
+void AssetBrowserWindow::AssetMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath)
+{
+    const bool isFolder = a_assetPath.empty();
+
+    if (ImGui::Selectable("Rename"))
+    {
+        if (isFolder)
+        {
+            m_app->PushModal(new RenamePathModal(m_app, m_project, a_path));
+        }
+        else
+        {
+            m_app->PushModal(new RenamePathModal(m_app, m_project, a_assetPath));
+        }
+    }
+
+    if (ImGui::Selectable("Delete")) 
+    {
+        if (isFolder)
+        {
+            m_app->PushModal(new ConfirmModal("Are you sure you want to delete this folder?", new DeleteAssetData(m_project, a_path)));   
+        }
+        else 
+        {
+            m_app->PushModal(new ConfirmModal("Are you sure you want to delete this asset?", new DeleteAssetData(m_project, a_assetPath)));
+        }
+    }
+}
+
 void AssetBrowserWindow::Update(double a_delta)
 {
     if (m_curIndex == -1)
@@ -138,10 +222,11 @@ void AssetBrowserWindow::Update(double a_delta)
         }
         else
         {
-            ImGui::Text(fileName.c_str());
+            ImGui::Text("%s", fileName.c_str());
         }
     }
 
+    bool contextCaptured = false;
     if (ImGui::BeginChild("##Explorer"))
     {
         const float width = ImGui::GetWindowWidth();
@@ -154,10 +239,17 @@ void AssetBrowserWindow::Update(double a_delta)
         for (uint32_t index : node.Children)
         {
             const DirectoryNode& cNode = m_fileTree[index];
-            ImGui::BeginGroup();
-            
+
             const std::filesystem::path p = std::filesystem::path(cNode.Path);
-            
+
+            // Failsafe for when a folder is deleted
+            if (!std::filesystem::exists(p))
+            {
+                continue;
+            }
+
+            ImGui::BeginGroup();
+
             const std::string fileName = p.filename().string();
 
             Texture* tex = folderTex;
@@ -168,12 +260,28 @@ void AssetBrowserWindow::Update(double a_delta)
             }
 
             FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+            if (ImGui::IsItemHovered())
             {
-                m_curIndex = index;
+                if (ImGui::IsMouseDoubleClicked(0))
+                {
+                    m_curIndex = index;
+                }                
             }
 
-            ImGui::Text(fileName.c_str());
+            if (!contextCaptured && ImGui::BeginPopupContextItem()) 
+            {
+                BaseMenu(cNode.Path, "");
+
+                ImGui::Separator();
+
+                AssetMenu(cNode.Path, "");
+
+                ImGui::EndPopup();
+
+                contextCaptured = true;
+            }
+
+            ImGui::Text("%s", fileName.c_str());
 
             ImGui::EndGroup();
 
@@ -184,6 +292,12 @@ void AssetBrowserWindow::Update(double a_delta)
 
         for (const std::filesystem::path& path : node.Files)
         {
+            // Failsafe for when a file is deleted
+            if (!std::filesystem::exists(path))
+            {
+                continue;
+            }
+
             ImGui::BeginGroup();
 
             const std::string fileName = path.stem().string();
@@ -196,7 +310,7 @@ void AssetBrowserWindow::Update(double a_delta)
             FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
 
             uint32_t size;
-            const char *data;
+            const char* data;
             m_assetLibrary->GetAsset(workingPath, path, &size, &data);
 
             const std::filesystem::path rPath = AssetLibrary::GetRelativePath(workingPath, path);
@@ -226,7 +340,7 @@ void AssetBrowserWindow::Update(double a_delta)
                 }
             }
             
-            ImGui::Text(fileName.c_str());
+            ImGui::Text("%s", fileName.c_str());
 
             ImGui::EndGroup();
 
@@ -234,6 +348,13 @@ void AssetBrowserWindow::Update(double a_delta)
         }
 
         ImGui::Columns();
+    }
+
+    if (!contextCaptured && ImGui::BeginPopupContextWindow())
+    {
+        BaseMenu(node.Path, "");
+
+        ImGui::EndPopup();
     }
 
     ImGui::EndChild();

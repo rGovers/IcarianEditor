@@ -163,7 +163,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));
     m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
     m_windows.emplace_back(new GameWindow(m_process));
-    m_windows.emplace_back(new AssetBrowserWindow(m_project, m_assets));
+    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
 
@@ -244,6 +244,13 @@ void AppMain::Update(double a_delta, double a_time)
     if (validProject)
     {
         title += " [" + std::string(m_project->GetName()) + "]";
+
+        if (m_project->ShouldRefresh())
+        {
+            m_refresh = true;
+
+            m_project->SetRefresh(false);
+        }
     }
 
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -312,7 +319,7 @@ void AppMain::Update(double a_delta, double a_time)
 
                 if (ImGui::MenuItem("Asset Browser"))
                 {
-                    m_windows.emplace_back(new AssetBrowserWindow(m_project, m_assets));
+                    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
                 }                
 
                 if (ImGui::MenuItem("Console"))

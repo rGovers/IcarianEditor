@@ -91,6 +91,13 @@ bool CreateProjectModal::Update()
             return true;
         }
 
+        if (!IO::ValidatePathName(m_name))
+        {
+            m_app->PushModal(new ErrorModal("Invalid Name"));
+
+            return true;
+        }
+
         if (!std::filesystem::exists(m_path))
         {
             m_app->PushModal(new ErrorModal("Directory does not exist"));

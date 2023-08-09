@@ -6,6 +6,7 @@
 #include <list>
 #include <vector>
 
+class AppMain;
 class AssetLibrary;
 class Project;
 
@@ -22,6 +23,7 @@ class AssetBrowserWindow : public Window
 private:
     static constexpr int ItemWidth = 128;
 
+    AppMain*                   m_app;
     AssetLibrary*              m_assetLibrary;
     Project*                   m_project;
 
@@ -30,11 +32,14 @@ private:
 
     void MakeDirectoryNode(uint32_t a_parent, const std::filesystem::path& a_path);
     void TraverseFolderTree(uint32_t a_index);
+    
+    void BaseMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath);
+    void AssetMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath);
 
 protected:
 
 public:
-    AssetBrowserWindow(Project* a_project, AssetLibrary* a_assetLibrary);
+    AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary);
     virtual ~AssetBrowserWindow();
     
     virtual void Refresh();
