@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <cstdlib>
 
-std::string IO::GetHomePath()
+#include "Logger.h"
+
+std::filesystem::path IO::GetHomePath()
 {
 #if WIN32
     const std::string homePath = std::getenv("HOMEPATH");
@@ -65,4 +67,53 @@ bool IO::ValidatePathName(const std::string_view& a_name)
 #endif 
 
     return true;
+}
+
+void IO::OpenFileExplorer(const std::filesystem::path& a_path)
+{
+#if WIN32
+    // I know I should be using the Win32 API but this is easier.
+    // I like when I dont have to write 100 lines of code to do something simple.
+    // And to those that say but C++ and Vulkan I say hush.
+    const std::string path = a_path.string();
+
+    const std::string command = "explorer.exe " + path;
+
+    system(command.c_str());
+#else
+    const std::string path = a_path.string();
+
+    // TODO: Need to improve as only works with Linux systems that have xdg
+    const std::string command = "xdg-open \"" + path + "\"";
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file explorer!");
+    }
+#endif
+}
+void IO::OpenFile(const std::filesystem::path& a_path)
+{
+#if WIN32
+    const std::string path = a_path.string();
+
+    const std::string command = "start " + path;
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#else
+    const std::string path = a_path.string();
+
+    const std::string command = "xdg-open \"" + path + "\"";
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#endif
 }

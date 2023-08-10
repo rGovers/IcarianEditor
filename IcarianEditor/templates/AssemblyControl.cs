@@ -8,7 +8,7 @@ namespace @ProjectName@
         public override void Init()
         {
             // Assembly Initialization
-            Logger.Message("Hello World from Flare Engine");
+            Logger.Message("Hello World from Icarian Engine");
         }
 
         public override void Update()
@@ -19,7 +19,7 @@ namespace @ProjectName@
         public override void Close()
         {
             // Assembly Shutdown
-            Logger.Message("Flare Engine says goodbye");
+            Logger.Message("Icarian Engine says goodbye");
         }
     }
 }

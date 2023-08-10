@@ -8,10 +8,19 @@
 #include "Datastore.h"
 #include "FileHandler.h"
 #include "FlareImGui.h"
+#include "IO.h"
 #include "Logger.h"
 #include "Modals/ConfirmModal.h"
+#include "Modals/CreateAssemblyControlModal.h"
+#include "Modals/CreateDefTableModal.h"
+#include "Modals/CreateFileModal.h"
+#include "Modals/CreateRigidBodyScriptModal.h"
+#include "Modals/CreateSciptableModal.h"
+#include "Modals/CreateTriggerBodyScriptModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
+#include "Templates/Scene.h"
+#include "Texture.h"
 
 AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser")
 {
@@ -129,6 +138,8 @@ public:
 
 void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath)
 {
+    const bool isFolder = a_assetPath.empty();
+
     if (ImGui::BeginMenu("New"))
     {
         if (ImGui::MenuItem("Folder"))
@@ -140,7 +151,68 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
             m_project->SetRefresh(true);
         }
 
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu("Script"))
+        {
+            if (ImGui::MenuItem("Assembly Control"))
+            {
+                m_app->PushModal(new CreateAssemblyControlModal(m_app, m_project, a_path));
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Scriptable"))
+            {
+                m_app->PushModal(new CreateScriptableModal(m_app, m_project, a_path));
+            }
+
+            if (ImGui::MenuItem("Rigid Body"))
+            {
+                m_app->PushModal(new CreateRigidBodyScriptModal(m_app, m_project, a_path));
+            }
+
+            if (ImGui::MenuItem("Trigger Body"))
+            {
+                m_app->PushModal(new CreateTriggerBodyScriptModal(m_app, m_project, a_path));
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Def Table"))
+            {
+                m_app->PushModal(new CreateDefTableModal(m_app, m_project, a_path));   
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Scene"))
+        {
+            const uint32_t len = (uint32_t)strlen(SCENETEMPLATE);
+
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SCENETEMPLATE, len, "New Scene", ".iscene"));
+        }
+
         ImGui::EndMenu();
+    }
+
+    ImGui::Separator();
+
+    if (ImGui::MenuItem("Show in file explorer"))
+    {
+        if (isFolder)
+        {
+            IO::OpenFileExplorer(a_path);
+        }
+        else
+        {
+            const std::filesystem::path assetPath = a_assetPath.parent_path();
+
+            IO::OpenFileExplorer(assetPath);
+        }
     }
 }
 void AssetBrowserWindow::AssetMenu(const std::filesystem::path& a_path, const std::filesystem::path& a_assetPath)
@@ -203,6 +275,14 @@ void AssetBrowserWindow::Update(double a_delta)
 
     ImGui::BeginGroup();
 
+    const Texture* resetTex = Datastore::GetTexture("Textures/Icons/Icon_Reset.png");
+    if (ImGui::ImageButton((ImTextureID)resetTex->GetHandle(), { 16.0f, 16.0f }))
+    {
+        m_project->SetRefresh(true);
+    }
+
+    ImGui::SameLine();
+
     for (const uint32_t index : breadcrumbs)
     {
         const DirectoryNode& node = m_fileTree[index];
@@ -217,7 +297,7 @@ void AssetBrowserWindow::Update(double a_delta)
             }
 
             ImGui::SameLine();
-            ImGui::Text(">");
+            ImGui::Text("/");
             ImGui::SameLine();
         }
         else
@@ -260,12 +340,9 @@ void AssetBrowserWindow::Update(double a_delta)
             }
 
             FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
-            if (ImGui::IsItemHovered())
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
             {
-                if (ImGui::IsMouseDoubleClicked(0))
-                {
-                    m_curIndex = index;
-                }                
+                m_curIndex = index;
             }
 
             if (!contextCaptured && ImGui::BeginPopupContextItem()) 
@@ -321,7 +398,7 @@ void AssetBrowserWindow::Update(double a_delta)
                 {
                     if (openCallback == nullptr)
                     {
-                        Logger::Error("Not Implemented File Open");
+                        IO::OpenFile(path);
                     }
                     else
                     {
@@ -337,6 +414,21 @@ void AssetBrowserWindow::Update(double a_delta)
 
                         ImGui::EndDragDropSource();
                     }
+                }
+
+                if (!contextCaptured && ImGui::BeginPopupContextItem())
+                {
+                    const std::filesystem::path dirPath = path.parent_path();
+
+                    BaseMenu(dirPath, path);
+
+                    ImGui::Separator();
+
+                    AssetMenu(dirPath, path);
+
+                    ImGui::EndPopup();
+
+                    contextCaptured = true;
                 }
             }
             

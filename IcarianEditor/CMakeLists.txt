@@ -32,9 +32,34 @@ FileToHeader(
     VARIABLE_NAME "AssemblyControlTemplateCS"
 )
 FileToHeader(
+    SOURCE_FILE "templates/Scriptable.cs"
+    HEADER_FILE "include/Templates/ScriptableCS.h"
+    VARIABLE_NAME "ScriptableTemplateCS"
+)
+FileToHeader(
+    SOURCE_FILE "templates/RigidBody.cs"
+    HEADER_FILE "include/Templates/RigidBodyCS.h"
+    VARIABLE_NAME "RigidBodyTemplateCS"
+)
+FileToHeader(
+    SOURCE_FILE "templates/TriggerBody.cs"
+    HEADER_FILE "include/Templates/TriggerBodyCS.h"
+    VARIABLE_NAME "TriggerBodyTemplateCS"
+)
+FileToHeader(
+    SOURCE_FILE "templates/DefTable.cs"
+    HEADER_FILE "include/Templates/DefTableCS.h"
+    VARIABLE_NAME "DefTableTemplateCS"
+)
+FileToHeader(
     SOURCE_FILE "templates/about.xml"
     HEADER_FILE "include/Templates/About.h"
     VARIABLE_NAME "AboutTemplate"
+)
+FileToHeader(
+    SOURCE_FILE "templates/Scene.iscene"
+    HEADER_FILE "include/Templates/Scene.h"
+    VARIABLE_NAME "SceneTemplate"
 )
 
 FileToHeader(
