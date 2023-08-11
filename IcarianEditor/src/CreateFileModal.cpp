@@ -77,7 +77,8 @@ bool CreateFileModal::Update()
         std::ofstream file = std::ofstream(path, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            ICARIAN_DEFER_closeOFile(file);
+            IDEFER(file.close());
+            // ICARIAN_DEFER_closeOFile(file);
             file.write(m_data, m_size);
 
             m_project->SetRefresh(true);

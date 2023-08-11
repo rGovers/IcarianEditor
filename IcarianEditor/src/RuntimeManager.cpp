@@ -142,7 +142,15 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     const std::filesystem::path assemblyPath = std::filesystem::path("Core") / "Assemblies";
 
     const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-    ICARIAN_DEFER(startTime, 
+    // ICARIAN_DEFER(startTime, 
+    // {
+    //     const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
+
+    //     const double time = std::chrono::duration<double>(endTime - startTime).count();
+
+    //     Logger::Message("Project Built in " + std::to_string(time) + "s");
+    // });
+    IDEFER(
     {
         const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
 
@@ -260,11 +268,14 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     MonoClass* editorProgramClass = mono_class_from_name(m_editorImage, "IcarianEditor", "Program");
 
     MonoMethodDesc* loadDesc = mono_method_desc_new(":Load()", 0);
-    ICARIAN_DEFER(loadDesc, mono_method_desc_free(loadDesc));
+    // ICARIAN_DEFER(loadDesc, mono_method_desc_free(loadDesc));
+    IDEFER(mono_method_desc_free(loadDesc));
     MonoMethodDesc* updateDesc = mono_method_desc_new(":Update(double)", 0);
-    ICARIAN_DEFER(updateDesc, mono_method_desc_free(updateDesc));
+    // ICARIAN_DEFER(updateDesc, mono_method_desc_free(updateDesc));
+    IDEFER(mono_method_desc_free(updateDesc));
     MonoMethodDesc* unloadDesc = mono_method_desc_new(":Unload()", 0);
-    ICARIAN_DEFER(unloadDesc, mono_method_desc_free(unloadDesc));
+    // ICARIAN_DEFER(unloadDesc, mono_method_desc_free(unloadDesc));
+    IDEFER(mono_method_desc_free(unloadDesc));
 
     MonoMethod* loadMethod = mono_method_desc_search_in_class(loadDesc, editorProgramClass);
     m_editorUpdateMethod = mono_method_desc_search_in_class(updateDesc, editorProgramClass);

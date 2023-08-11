@@ -138,14 +138,10 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
             std::ifstream file = std::ifstream(iter.path(), std::ios::binary);
             if (file.good() && file.is_open())
             {
-                ICARIAN_DEFER_closeIFile(file);
+                // ICARIAN_DEFER_closeIFile(file);
+                IDEFER(file.close());
 
-                // Get file size by reading the entire file and seek back to the start
-                // Could use os specific stuff to find file size but it is os specific
-                file.ignore(std::numeric_limits<std::streamsize>::max());
-                asset.Size = (uint32_t)file.gcount();
-                file.clear();
-                file.seekg(0, std::ios::beg);
+                asset.Size = (uint32_t)std::filesystem::file_size(iter.path());
 
                 asset.Data = new char[asset.Size];
                 file.read(asset.Data, asset.Size);
@@ -518,7 +514,8 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            ICARIAN_DEFER_closeOFile(file);
+            IDEFER(file.close());
+            // ICARIAN_DEFER_closeOFile(file);
 
             file.write(a.Data, a.Size);
         }

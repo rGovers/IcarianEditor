@@ -72,7 +72,8 @@ bool CreateRigidBodyScriptModal::Update()
         std::ofstream file = std::ofstream(path, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            ICARIAN_DEFER_closeOFile(file);
+            // ICARIAN_DEFER_closeOFile(file);
+            IDEFER(file.close());
             file.write(str.c_str(), str.length());
 
             m_project->SetRefresh(true);

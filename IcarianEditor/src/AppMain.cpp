@@ -380,7 +380,8 @@ void AppMain::Update(double a_delta, double a_time)
 
         if (!modal->Display())
         {
-            ICARIAN_DEFER_del(modal);
+            // ICARIAN_DEFER_del(modal);
+            IDEFER(delete modal);
 
             m_modals.erase(m_modals.begin() + index);
         }

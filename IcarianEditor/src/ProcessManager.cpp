@@ -166,7 +166,8 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
             return false;
         }
-        ICARIAN_DEFER_del(serverPipe);
+        // ICARIAN_DEFER_del(serverPipe);
+        IDEFER(delete serverPipe);
 
         // This is a bit odd leaving this here as a note
         // This create another copy of the process on unix systems 
@@ -244,7 +245,12 @@ void ProcessManager::PollMessage(bool a_blockError)
     while (!messages.empty())
     {
         const FlareBase::PipeMessage msg = messages.front();
-        ICARIAN_DEFER(msg, if (msg.Data != nullptr) { delete[] msg.Data; });
+        // ICARIAN_DEFER(msg, if (msg.Data != nullptr) { delete[] msg.Data; });
+        IDEFER(
+        if (msg.Data != nullptr)
+        {
+            delete[] msg.Data;
+        });
         messages.pop();
 
         switch (msg.Type)
