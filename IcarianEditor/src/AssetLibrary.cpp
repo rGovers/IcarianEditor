@@ -138,10 +138,14 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
             std::ifstream file = std::ifstream(iter.path(), std::ios::binary);
             if (file.good() && file.is_open())
             {
-                // ICARIAN_DEFER_closeIFile(file);
                 IDEFER(file.close());
 
-                asset.Size = (uint32_t)std::filesystem::file_size(iter.path());
+                // Fuck Windows
+                // asset.Size = (uint32_t)std::filesystem::file_size(iter.path());
+                file.ignore(std::numeric_limits<std::streamsize>::max());
+                asset.Size = (uint32_t)file.gcount();
+                file.clear();
+                file.seekg(0, std::ios::beg);
 
                 asset.Data = new char[asset.Size];
                 file.read(asset.Data, asset.Size);

@@ -9,11 +9,11 @@
 #include <unistd.h>
 #endif
 
-#include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
 
+#include "Flare/IcarianAssert.h"
 #include "Logger.h"
 #include "ProfilerData.h"
 
@@ -27,8 +27,6 @@ ProcessManager::ProcessManager()
     m_pipe = nullptr;
 
 #if WIN32
-    const std::filesystem::path addrStr = GetAddr(PipeName);
-    
     WSADATA wsaData = { };
     ICARIAN_ASSERT_MSG_R(WSAStartup(MAKEWORD(2, 2), &wsaData) == 0, "Failed to start WSA");
 #endif
@@ -108,7 +106,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
         return false;
     }
-    ICARIAN_DEFER_del(serverPipe);
+    IDEFER(delete serverPipe);
 
     const std::string args = "IcarianNative.exe --headless " + workingDirArg;
 
@@ -140,7 +138,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     if (m_pipe == nullptr)
     {
         Logger::Error("Failed to connect to IcarianEngine");
-        DestroyProc();
+        Terminate();
 
         return false;
     }
