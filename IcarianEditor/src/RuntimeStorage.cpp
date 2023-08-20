@@ -276,7 +276,7 @@ RuntimeStorage::~RuntimeStorage()
 
 void RuntimeStorage::Clear()
 {
-    for (Model* mdl : m_models)
+    for (const Model* mdl : m_models)
     {
         if (mdl != nullptr)
         {
@@ -285,7 +285,7 @@ void RuntimeStorage::Clear()
     }
     m_models.clear();
 
-    for (VertexShader* v : m_vertexShaders)
+    for (const VertexShader* v : m_vertexShaders)
     {
         if (v != nullptr)
         {
@@ -294,7 +294,7 @@ void RuntimeStorage::Clear()
     }
     m_vertexShaders.clear();
 
-    for (PixelShader* p : m_pixelShaders)
+    for (const PixelShader* p : m_pixelShaders)
     {
         if (p != nullptr)
         {
@@ -302,6 +302,9 @@ void RuntimeStorage::Clear()
         }
     }
     m_pixelShaders.clear();
+
+    m_renderPrograms.clear();
+    m_samplers.clear();
 }
 
 uint32_t RuntimeStorage::GenerateVertexShader(const std::string_view& a_str)

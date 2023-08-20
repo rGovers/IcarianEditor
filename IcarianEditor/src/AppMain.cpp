@@ -441,6 +441,8 @@ void AppMain::Update(double a_delta, double a_time)
             m_runtime->Start(pathStr, projectName);
         }
 
+        m_rStorage->Clear();
+
         m_assets->Refresh(path);
         m_assets->BuildDirectory(path / ".cache");
 
