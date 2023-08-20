@@ -4,6 +4,7 @@
 
 #include "AssetLibrary.h"
 #include "Flare/ColladaLoader.h"
+#include "Flare/IcarianDefer.h"
 #include "Flare/OBJLoader.h"
 #include "Model.h"
 #include "PixelShader.h"
@@ -225,14 +226,15 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
 FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Texture, GenerateFromFile), MonoString* a_path)
 {
     char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
     const std::filesystem::path p = std::filesystem::path(str);
-    mono_free(str);
 
     AssetLibrary* library = Instance->GetLibrary();
     if (p.extension() == ".png")
     {
         const char* dat;
         uint32_t size;
+        library->GetAsset(p, &size, &dat);
 
         if (dat != nullptr && size > 0)
         {
@@ -240,7 +242,8 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Texture, GenerateFromFile), Mo
             int height;
             int channels;
 
-            const stbi_uc* pixels = stbi_load_from_memory((stbi_uc*)dat, (int)size, &width, &height, &channels, STBI_rgb_alpha);
+            stbi_uc* pixels = stbi_load_from_memory((stbi_uc*)dat, (int)size, &width, &height, &channels, STBI_rgb_alpha);
+            IDEFER(stbi_image_free(pixels));
 
             return Instance->GenerateTexture((uint32_t)width, (uint32_t)height, (unsigned char*)pixels);
         }
