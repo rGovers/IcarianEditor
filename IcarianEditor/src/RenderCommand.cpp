@@ -124,6 +124,37 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
     glUseProgram(handle);
 
+    switch (program.CullingMode) 
+    {
+    case FlareBase::CullMode_None:
+    {
+        glDisable(GL_CULL_FACE);
+
+        break;
+    }
+    case FlareBase::CullMode_Back:
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+
+        break;
+    }
+    case FlareBase::CullMode_Front:
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
+
+        break;
+    }
+    case FlareBase::CullMode_Both:
+    {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT_AND_BACK);
+
+        break;
+    }
+    }
+
     for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
     {
         const FlareBase::ShaderBufferInput& input = program.ShaderBufferInputs[i];
