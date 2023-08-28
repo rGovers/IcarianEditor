@@ -8,6 +8,7 @@
 class RuntimeManager;
 class RuntimeStorage;
 class ShaderProgram;
+class ShaderStorageObject;
 class UniformBuffer;
 
 #include "ShaderBuffers.h"
@@ -22,6 +23,7 @@ private:
 
     UniformBuffer*                               m_cameraBuffer;
     UniformBuffer*                               m_transformBuffer;
+    ShaderStorageObject*                         m_transformBatchBuffer;
 
     RenderCommand(RuntimeStorage* a_storage);
     

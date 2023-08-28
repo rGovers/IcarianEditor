@@ -62,6 +62,14 @@ std::string GLSL_FromFShader(const std::string_view& a_str)
 			{
 				rStr = GLSL_UNIFORM_STRING(args[1], args[3], GLSL_TIME_SHADER_STRUCTURE);
 			}
+			else if (args[0] == "SSModelBuffer")
+			{
+				rStr = GLSL_SSBO_STRING(args[1], args[3], GLSL_MODEL_SSBO_STRUCTURE, MODEL_SHADER_NAMESTR);
+			}
+		}
+		else if (defName == "instancedstructure")
+		{
+			rStr = args[0] + ".objects[gl_InstanceID]";
 		}
 		else if (defName == "pushbuffer")
 		{

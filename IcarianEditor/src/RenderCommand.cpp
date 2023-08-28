@@ -1,5 +1,6 @@
 #include "RenderCommand.h"
 
+#include "Flare/IcarianAssert.h"
 #include "Flare/RenderProgram.h"
 #include "Logger.h"
 #include "Model.h"
@@ -7,6 +8,7 @@
 #include "Runtime/RuntimeStorage.h"
 #include "ShaderProgram.h"
 #include "ShaderStorage.h"
+#include "ShaderStorageObject.h"
 #include "UniformBuffer.h"
 
 static RenderCommand* Instance = nullptr;
@@ -48,7 +50,13 @@ static constexpr GLenum GetFormat(const FlareBase::VertexInputAttrib& a_input)
     {
         return GL_UNSIGNED_INT;
     }
+    default:
+    {
+        ICARIAN_ASSERT_MSG(0, "Invalid vertex type");
     }
+    }
+
+    return GL_FLOAT;
 }
 
 RenderCommand::RenderCommand(RuntimeStorage* a_storage)
@@ -62,6 +70,7 @@ RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 
     m_cameraBuffer = new UniformBuffer(&cameraBuffer, sizeof(cameraBuffer));
     m_transformBuffer = new UniformBuffer(&modelBuffer, sizeof(modelBuffer));
+    m_transformBatchBuffer = new ShaderStorageObject(&modelBuffer, sizeof(modelBuffer));
 }
 RenderCommand::~RenderCommand()
 {
@@ -167,11 +176,21 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
             break;
         }
+        case FlareBase::ShaderBufferType_SSModelBuffer:
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_transformBatchBuffer->GetHandle());
+
+            break;
+        }
         case FlareBase::ShaderBufferType_ModelBuffer:
         {
             glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
 
             break;
+        }
+        default:
+        {
+            continue;
         }
         }
     }
@@ -213,8 +232,28 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
     buffer.Model = a_transform;
     buffer.InvModel = glm::inverse(a_transform);
 
-    Instance->m_transformBuffer->WriteBuffer(&buffer, sizeof(buffer));
-    // glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
+    // TODO: Write to batch buffer if batched
+    bool batched = false;
+    for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
+    {
+        const FlareBase::ShaderBufferInput& input = program.ShaderBufferInputs[i];
+
+        if (input.BufferType == FlareBase::ShaderBufferType_SSModelBuffer)
+        {
+            batched = true;
+
+            break;
+        }
+    }
+
+    if (batched)
+    {
+        Instance->m_transformBatchBuffer->WriteBuffer(&buffer, sizeof(buffer));   
+    }
+    else 
+    {
+        Instance->m_transformBuffer->WriteBuffer(&buffer, sizeof(buffer));
+    }
 
     const GLuint vbo = model->GetVBO();
     const GLuint ibo = model->GetIBO();
