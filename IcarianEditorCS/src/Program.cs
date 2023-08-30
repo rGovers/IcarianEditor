@@ -24,7 +24,7 @@ namespace IcarianEditor
 
         static void Update(double a_delta)
         {
-            
+            AnimationMaster.Update(a_delta);
         }
 
         static void Unload()

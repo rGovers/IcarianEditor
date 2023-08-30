@@ -17,13 +17,29 @@ namespace IcarianEditor.Editor
                 return;
             }
 
-            // Material mat = AssetLibrary.GetMaterial(def.MaterialDef);
-            // if (mat == null)
-            // {
-            //     return;
-            // }
+            Material mat = AssetLibrary.GetMaterial(def.MaterialDef);
+            if (mat == null)
+            {
+                return;
+            }
 
-            Gizmos.DrawIcoSphere(a_transform[3].XYZ, 0.5f, 2, 0.01f, Color.Red);
+            Model model = AssetLibrary.LoadSkinnedModel(def.ModelPath);
+            if (model == null)
+            {
+                return;
+            }
+
+            Skeleton skeleton = AssetLibrary.LoadSkeleton(def.SkeletonPath);
+            if (skeleton == null)
+            {
+                return;
+            }
+
+            RenderCommand.BindMaterial(mat);
+
+            AnimationMaster.DrawSkeleton(skeleton, model, a_transform);
+
+            // Gizmos.DrawIcoSphere(a_transform[3].XYZ, 0.5f, 2, 0.01f, Color.Red);
         }
     }
 }

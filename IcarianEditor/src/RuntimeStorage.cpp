@@ -18,6 +18,13 @@ static RuntimeStorage* Instance = nullptr;
 
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
 
+struct RuntimeBoneData
+{
+    MonoArray* Names;
+    MonoArray* Parents;
+    MonoArray* BindPoses;
+};
+
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
@@ -158,7 +165,7 @@ FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(Material, DestroyProgram), uint32_
     Instance->DestroyRenderProgram(a_addr);
 }
 
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateModel), MonoArray* a_vertices, MonoArray* a_indices, uint16_t a_vertexStride)
+RUNTIME_FUNCTION(uint32_t, Model, GenerateModel, 
 {
     const uint32_t vertexCount = (uint32_t)mono_array_length(a_vertices);
     const uint32_t indexCount = (uint32_t)mono_array_length(a_indices);
@@ -166,38 +173,35 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateModel), MonoArr
     const uint32_t vertexSize = vertexCount * a_vertexStride;
 
     char* vertices = new char[vertexSize];
+    IDEFER(delete[] vertices);
     for (uint32_t i = 0; i < vertexSize; ++i)
     {
         vertices[i] = *mono_array_addr_with_size(a_vertices, 1, i);
     }
 
     uint32_t* indices = new uint32_t[indexCount];
+    IDEFER(delete[] indices);
     for (uint32_t i = 0; i < indexCount; ++i)
     {
         indices[i] = mono_array_get(a_indices, uint32_t, i);
     }
 
-    const uint32_t addr = Instance->GenerateModel(vertices, vertexCount, indices, indexCount, a_vertexStride);
-
-    delete[] vertices;
-    delete[] indices;
-
-    return addr;
-}
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), MonoString* a_path)
+    return Instance->GenerateModel(vertices, vertexCount, indices, indexCount, a_vertexStride);
+}, MonoArray* a_vertices, MonoArray* a_indices, uint16_t a_vertexStride)
+RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
 
     const std::filesystem::path p = std::filesystem::path(str);
-
-    mono_free(str);
+    const std::filesystem::path ext = p.extension();
 
     std::vector<FlareBase::Vertex> vertices;
     std::vector<uint32_t> indices;
     float radius;
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (p.extension() == ".obj")
+    if (ext == ".obj")
     {
         const char* dat;
         uint32_t size;
@@ -208,7 +212,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::Vertex));
         }
     }
-    else if (p.extension() == ".dae")
+    else if (ext == ".dae")
     {
         const char* dat;
         uint32_t size;
@@ -221,7 +225,87 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Model, GenerateFromFile), Mono
     }
 
     return -1;
-}
+}, MonoString* a_path)
+RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile, 
+{
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    const std::filesystem::path p = std::filesystem::path(str);
+    const std::filesystem::path ext = p.extension();
+
+    std::vector<FlareBase::SkinnedVertex> vertices;
+    std::vector<uint32_t> indices;
+    float radius;
+
+    AssetLibrary* library = Instance->GetLibrary();
+    if (ext == ".dae")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        {
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::SkinnedVertex));
+        }
+    }
+
+    return -1;
+}, MonoString* a_path)
+
+RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData, 
+{
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    const std::filesystem::path p = std::filesystem::path(str);
+    const std::filesystem::path ext = p.extension();
+
+    RuntimeBoneData data;
+
+    data.BindPoses = NULL;
+    data.Names = NULL;
+    data.Parents = NULL;
+
+    std::vector<BoneData> bones;
+
+    AssetLibrary* library = Instance->GetLibrary();
+    if (ext == ".dae")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadBoneData(dat, size, &bones))
+        {
+            MonoDomain* domain = mono_domain_get();
+            MonoClass* fClass = mono_get_single_class();
+
+            const uint32_t count = (uint32_t)bones.size();
+            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
+            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
+            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const BoneData& bone = bones[i];
+
+                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
+                for (uint32_t j = 0; j < 16; ++j)
+                {
+                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
+                }
+
+                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
+                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
+                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
+            }
+        }   
+    }
+
+    return data;
+}, MonoString* a_path)
 
 FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Texture, GenerateFromFile), MonoString* a_path)
 {
@@ -265,6 +349,9 @@ RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateModel);
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateFromFile);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
+
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Texture, GenerateFromFile);
 
