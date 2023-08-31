@@ -21,6 +21,9 @@ namespace IcarianEditor
         extern static uint GetUInt(string a_label, IntPtr a_int);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetBitField(string a_label, IntPtr a_int, uint a_bitCount);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetFloat(string a_label, IntPtr a_float);
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetVec2(string a_label, IntPtr a_vec);
@@ -271,6 +274,22 @@ namespace IcarianEditor
             {
                 ret = true;
                 a_int = (uint)handle.Target;
+            }
+
+            handle.Free();
+
+            return ret;
+        }
+
+        public static bool BitField(string a_label, ref uint a_value, uint a_bitCount = 8)
+        {
+            GCHandle handle = GCHandle.Alloc(a_value, GCHandleType.Pinned);
+
+            bool ret = false;
+            if (GetBitField(a_label, handle.AddrOfPinnedObject(), a_bitCount) != 0)
+            {
+                ret = true;
+                a_value = (uint)handle.Target;
             }
 
             handle.Free();
