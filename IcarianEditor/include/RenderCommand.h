@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include <unordered_map>
+#include <vector>
 
 class RuntimeManager;
 class RuntimeStorage;
@@ -12,6 +13,17 @@ class ShaderStorageObject;
 class UniformBuffer;
 
 #include "ShaderBuffers.h"
+
+struct BoneData
+{
+    uint32_t Parent;
+    glm::mat4 InvBind;
+    glm::mat4 Transform;
+};
+struct SkeletonData
+{
+    std::vector<BoneData> Bones;
+};
 
 class RenderCommand
 {
@@ -24,6 +36,8 @@ private:
     UniformBuffer*                               m_cameraBuffer;
     UniformBuffer*                               m_transformBuffer;
     ShaderStorageObject*                         m_transformBatchBuffer;
+
+    std::vector<SkeletonData>                    m_skeletonData;
 
     RenderCommand(RuntimeStorage* a_storage);
     

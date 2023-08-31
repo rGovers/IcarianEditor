@@ -6,11 +6,15 @@ using IcarianEngine.Rendering.Animation;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace IcarianEditor
 {
     public static class AnimationMaster
     {
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GenerateSkeletonBuffer();
+        
         static List<Skeleton> s_updatedSkeletons = new List<Skeleton>();
 
         static Dictionary<Skeleton, SkeletonAnimator> s_skeletonAnimators = new Dictionary<Skeleton, SkeletonAnimator>();
@@ -61,7 +65,8 @@ namespace IcarianEditor
 
         public static void DrawSkeleton(Skeleton a_skeleton, Model a_model, Matrix4 a_matrix)
         {
-            Gizmos.DrawCapsule(a_matrix[3].XYZ, 1.0f, 0.5f, 8, 0.01f, Color.Red);
+            RenderCommand.DrawModel(a_matrix, a_model);
+            // Gizmos.DrawCapsule(a_matrix[3].XYZ, 1.0f, 0.5f, 8, 0.01f, Color.Red);
         }
     }
 }

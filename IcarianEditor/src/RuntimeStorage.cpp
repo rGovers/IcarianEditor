@@ -41,7 +41,12 @@ struct RuntimeBoneData
     F(uint32_t, IcarianEngine.Rendering, TextureSampler, GenerateRenderTextureDepthSampler, { return 0; }, uint32_t a_renderTexture, uint32_t a_filter, uint32_t a_addressMode) \
     F(void, IcarianEngine.Rendering, TextureSampler, DestroySampler, { }, uint32_t a_addr) \
     \
-    F(void, IcarianEngine.Rendering, Model, DestroyModel, { Instance->DestroyModel(a_addr); }, uint32_t a_addr)
+    F(void, IcarianEngine.Rendering, Model, DestroyModel, { Instance->DestroyModel(a_addr); }, uint32_t a_addr) \
+    \
+    \
+    /* Just to stop mono complaining */ \
+    F(uint32_t, IcarianEngine.Rendering.Animation, Animator, GenerateBuffer, { return 0; }) \
+    F(void, IcarianEngine, Transform, SetTransformMatrix, { }, uint32_t a_addr, MonoArray* a_transform) \
 
 RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
