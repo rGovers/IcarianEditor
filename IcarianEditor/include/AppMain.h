@@ -40,6 +40,8 @@ private:
 
     unsigned char        m_inputByte;
 
+    std::vector<bool>    m_runtimeModalState;
+
 protected:
 
 public:
@@ -53,5 +55,10 @@ public:
         m_refresh = true;
     }
 
+    bool GetRuntimeModalState(uint32_t a_index);
+    void SetRuntimeModalState(uint32_t a_index, bool a_state);
+
     void PushModal(Modal* a_modal);
+    void DispatchRuntimeModal(const std::string_view& a_title, const glm::vec2& a_size, uint32_t a_index);
+    void RemoveRuntimeModal(uint32_t a_index);
 };

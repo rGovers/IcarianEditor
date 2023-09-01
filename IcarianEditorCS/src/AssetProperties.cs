@@ -336,7 +336,7 @@ namespace IcarianEditor
         static void SerializeDefs(string[] a_paths)
         {
             uint defCount = (uint)a_paths.LongLength;
-            List<Def> defs = DefLibrary.GetDefs();
+            IEnumerable<Def> defs = DefLibrary.GetDefs();
 
             for (uint i = 0; i < defCount; ++i)
             {
@@ -389,7 +389,7 @@ namespace IcarianEditor
         {
             Workspace.Selection = new List<SelectionObject>();
 
-            List<Def> defs = DefLibrary.GetDefs();
+            IEnumerable<Def> defs = DefLibrary.GetDefs();
 
             foreach (Def def in defs)
             {

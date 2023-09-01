@@ -10,7 +10,7 @@ Modal::Modal(const std::string_view& a_displayName, const glm::vec2& a_size)
 
     m_displayName = a_displayName;
 
-    m_idStr = m_displayName + "[" + std::to_string(ID++) + "]";
+    m_idStr = m_displayName + "##[" + std::to_string(ID++) + "]";
 }
 Modal::~Modal()
 {

@@ -161,10 +161,32 @@ namespace IcarianEditor.Properties
                 {
                     Def def = (Def)a_obj;
                     Def normDef = (Def)a_normVal; 
+                    
+                    // Cant pass types to generics so time for the song and dance
+                    Type guiType = typeof(GUI);
 
-                    if (GUI.RDefField(a_name, ref def, normDef))
+                    // I would get the method by name but throws an exception is multiple methods are found
+                    MethodInfo[] methods = guiType.GetMethods(BindingFlags.Static | BindingFlags.Public);
+
+                    foreach (MethodInfo method in methods)
                     {
-                        a_obj = def;
+                        if (method.Name != "RDefField")
+                        {
+                            continue;
+                        }
+
+                        if (method.IsGenericMethod)
+                        {
+                            MethodInfo genericInfo = method.MakeGenericMethod(a_type);
+
+                            object[] args = new object[] { a_name, def, normDef, false };
+                            if ((bool)genericInfo.Invoke(null, args))
+                            {
+                                a_obj = args[1] as Def;
+                            }
+
+                            break;
+                        }
                     }
                 }
                 else if (a_type.IsSubclassOf(typeof(Enum)))

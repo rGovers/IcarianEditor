@@ -39,6 +39,15 @@ struct WidthStack
 #define STACK_ID(str) const IDStack idStackTVal = IDStack(str)
 #define STACK_G_ID(str) STACK_ID(Instance->GetID() + (str))
 
+RUNTIME_FUNCTION(uint32_t, GUI, GetButton, 
+{
+    char* str = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(str));
+
+    STACK_G_ID(str);
+    return (uint32_t)ImGui::Button(str);
+}, MonoString* a_str)
+
 RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox, 
 {
     char* mStr = mono_string_to_utf8(a_str);
@@ -61,6 +70,8 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox,
 }, MonoString* a_str, uint32_t* a_value)
 RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
 {
+    *a_dispatchModal = 0;
+
     char* mStr = mono_string_to_utf8(a_str);
     IDEFER(mono_free(mStr));
 
@@ -75,7 +86,7 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
 
     if (ImGui::Button(preview, { Instance->GetFieldWidth(), 0 }))
     {
-        Logger::Error("Not implemented use drag and drop");
+        *a_dispatchModal = 1;
     }
     
     if (ImGui::BeginDragDropTarget())
@@ -90,7 +101,7 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
     }
 
     return NULL;
-}, MonoString* a_str, MonoString* a_preview, MonoString* a_value)
+}, MonoString* a_str, MonoString* a_preview, uint32_t* a_dispatchModal)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetInt,
 {
@@ -383,6 +394,10 @@ RUNTIME_FUNCTION(void, GUI, PopID,
 {
     Instance->PopID();
 })
+RUNTIME_FUNCTION(MonoString*, GUI, GetCurrentID,
+{
+    return mono_string_new(mono_domain_get(), Instance->GetID().c_str());
+})
 
 RUNTIME_FUNCTION(void, GUI, Label, 
 {
@@ -443,6 +458,8 @@ void GUI::Init(RuntimeManager* a_runtime)
     {
         Instance = new GUI(a_runtime);
         
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetButton);
+
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCheckbox);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetDef);
@@ -475,6 +492,7 @@ void GUI::Init(RuntimeManager* a_runtime)
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PushID);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PopID);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCurrentID);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Label);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetSelectable);

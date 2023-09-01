@@ -1,3 +1,4 @@
+using IcarianEditor.Modals;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using System;
@@ -10,10 +11,12 @@ namespace IcarianEditor
     public class GUI
     {
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetButton(string a_label);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetCheckbox(string a_label, IntPtr a_bool);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        extern static string GetDef(string a_label, string a_preview);
+        extern static string GetDef(string a_label, string a_preview, IntPtr a_dispatchModal);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetInt(string a_label, IntPtr a_int);
@@ -62,6 +65,8 @@ namespace IcarianEditor
         public extern static void PushID(string a_id);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void PopID();
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static string GetCurrentID();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void Label(string a_str);
@@ -80,6 +85,14 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetCtrlModifier();
 
+        struct DefVal
+        {
+            public string Input;
+            public Def Def;
+        }
+
+        static List<DefVal> s_defValues = new List<DefVal>();
+
         public static bool ShiftModifier
         {
             get
@@ -93,6 +106,11 @@ namespace IcarianEditor
             {
                 return GetCtrlModifier() != 0;
             }
+        }
+
+        public static bool Button(string a_label)
+        {
+            return GetButton(a_label) != 0;
         }
 
         public static bool RCheckbox(string a_label, ref bool a_value, bool a_default)
@@ -203,6 +221,22 @@ namespace IcarianEditor
             {
                 ret = true;
                 a_enum = Enum.Parse(type, list[(int)handle.Target]);
+            }
+
+            handle.Free();
+
+            return ret;
+        }
+
+        public static bool StringSelector(string a_label, string[] a_strings, ref int a_selected)
+        {
+            GCHandle handle = GCHandle.Alloc(a_selected, GCHandleType.Pinned);
+
+            bool ret = false;
+            if (GetStringList(a_label, a_strings, handle.AddrOfPinnedObject()) != 0)
+            {
+                ret = true;
+                a_selected = (int)handle.Target;
             }
 
             handle.Free();
@@ -543,7 +577,16 @@ namespace IcarianEditor
             return false;
         }
 
-        public static bool RDefField<T>(string a_label, ref T a_def, T a_default) where T : Def
+        internal static void PushDef(string a_input, Def a_def)
+        {
+            DefVal val = new DefVal();
+            val.Input = a_input;
+            val.Def = a_def;
+
+            s_defValues.Add(val);
+        }
+
+        public static bool RDefField<T>(string a_label, ref T a_def, T a_default, bool a_useSceneDefs = false) where T : Def
         {
             bool ret = false;
             if (a_def != a_default)
@@ -555,46 +598,27 @@ namespace IcarianEditor
                 }
             }
 
-            if (DefField<T>(a_label, ref a_def))
+            if (DefField<T>(a_label, ref a_def, a_useSceneDefs))
             {
                 ret = true;
             }
 
             return ret;
         }
-        public static bool DefField<T>(string a_label, ref T a_def) where T : Def
+        public static bool DefField<T>(string a_label, ref T a_def, bool a_useSceneDefs = false) where T : Def
         {
-            Def def = a_def;
-            if (DefField(a_label, ref def))
+            foreach (DefVal val in s_defValues)
             {
-                a_def = def as T;
-
-                return true;
-            }
-
-            return false;
-        }
-        public static bool RDefField(string a_label, ref Def a_def, Def a_default)
-        {
-            bool ret = false;
-            if (a_def != a_default)
-            {
-                if (ResetButton(a_label + "_R") != 0)
+                if (val.Input == a_label)
                 {
-                    a_def = a_default;
-                    ret = true;
+                    IcarianEngine.Logger.Message($"{val.Def.DefName} {val.Def.DefPath}");
+                    a_def = val.Def as T;
+                    s_defValues.Remove(val);
+
+                    return true;
                 }
             }
 
-            if (DefField(a_label, ref a_def))
-            {
-                ret = true;
-            }
-
-            return ret;
-        }
-        public static bool DefField(string a_label, ref Def a_def)
-        {
             string preview = null;
             if (a_def != null)
             {
@@ -606,14 +630,112 @@ namespace IcarianEditor
                 preview = "Null";
             }
 
-            string ret = GetDef(a_label, preview);
+            GCHandle handle = GCHandle.Alloc(0U, GCHandleType.Pinned);
+
+            string ret = GetDef(a_label, preview, handle.AddrOfPinnedObject());
+            bool dispatch = (uint)handle.Target != 0;
+
+            handle.Free();
+
+            if (dispatch)
+            {
+                new GUIGetDefSelectorModal<T>(a_label, a_def, a_useSceneDefs);
+            }
+
             if (ret != null)
             {
                 a_def = null;
 
-                List<Def> defList = DefLibrary.GetDefs();
+                IEnumerable<T> defList = DefLibrary.GetDefs<T>();
+                foreach (T def in defList)
+                {
+                    if (!a_useSceneDefs && def.IsSceneDef)
+                    {
+                        continue;
+                    }
+
+                    if (def.DefPath == ret)
+                    {
+                        a_def = def;
+
+                        break;
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+        public static bool RDefField(string a_label, ref Def a_def, Def a_default, bool a_useSceneDefs = false)
+        {
+            bool ret = false;
+            if (a_def != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_def = a_default;
+                    ret = true;
+                }
+            }
+
+            if (DefField(a_label, ref a_def, a_useSceneDefs))
+            {
+                ret = true;
+            }
+
+            return ret;
+        }
+        public static bool DefField(string a_label, ref Def a_def, bool a_useSceneDefs = false)
+        {
+            string id = $"{GetCurrentID()}: {a_label}";
+
+            foreach (DefVal val in s_defValues)
+            {
+                if (val.Input == id)
+                {
+                    a_def = val.Def;
+                    s_defValues.Remove(val);
+
+                    return true;
+                }
+            }
+
+            string preview = null;
+            if (a_def != null)
+            {
+                preview = a_def.DefName;
+            }
+
+            if (preview == null)
+            {
+                preview = "Null";
+            }
+
+            GCHandle handle = GCHandle.Alloc(0U, GCHandleType.Pinned);
+
+            string ret = GetDef(a_label, preview, handle.AddrOfPinnedObject());
+            bool dispatch = (uint)handle.Target != 0;
+            
+            handle.Free();
+
+            if (dispatch)
+            {
+                new GUIGetDefSelectorModal<Def>(id, a_def, a_useSceneDefs);
+            }
+
+            if (ret != null)
+            {
+                a_def = null;
+
+                IEnumerable<Def> defList = DefLibrary.GetDefs();
                 foreach (Def def in defList)
                 {
+                    if (!a_useSceneDefs && def.IsSceneDef)
+                    {
+                        continue;
+                    }
+
                     if (def.DefPath == ret)
                     {
                         a_def = def;

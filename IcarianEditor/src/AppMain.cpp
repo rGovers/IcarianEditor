@@ -16,6 +16,7 @@
 #include "Gizmos.h"
 #include "GUI.h"
 #include "Modals/CreateProjectModal.h"
+#include "Modals/RuntimeModal.h"
 #include "ProcessManager.h"
 #include "ProfilerData.h"
 #include "Project.h"
@@ -33,6 +34,8 @@
 #include "Workspace.h"
 
 #include "Modals/ErrorModal.h"
+
+static AppMain* Instance = nullptr;
 
 static void GLAPIENTRY MessageCallback
 ( 
@@ -119,8 +122,22 @@ static void SetImguiStyle()
     colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
 }
 
+RUNTIME_FUNCTION(void, Modal, PushModal,
+{
+    char* title = mono_string_to_utf8(a_title);
+    IDEFER(mono_free(title));
+
+    Instance->DispatchRuntimeModal(title, a_size, a_index);
+}, MonoString* a_title, glm::vec2 a_size, uint32_t a_index)
+RUNTIME_FUNCTION(void, Modal, PushModalState,
+{
+    Instance->SetRuntimeModalState(a_index, a_state);
+}, uint32_t a_index, uint32_t a_state)
+
 AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 {
+    Instance = this;
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
@@ -173,6 +190,9 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     m_titleSet = 0.0;
     m_refresh = false;
+
+    BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModal);
+    BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModalState);
 }
 AppMain::~AppMain()
 {
@@ -380,7 +400,6 @@ void AppMain::Update(double a_delta, double a_time)
 
         if (!modal->Display())
         {
-            // ICARIAN_DEFER_del(modal);
             IDEFER(delete modal);
 
             m_modals.erase(m_modals.begin() + index);
@@ -475,7 +494,33 @@ void AppMain::Update(double a_delta, double a_time)
     }
 }
 
+bool AppMain::GetRuntimeModalState(uint32_t a_index)
+{
+    if (a_index >= m_runtimeModalState.size())
+    {
+        return false;
+    }
+
+    return m_runtimeModalState[a_index];
+}
+void AppMain::SetRuntimeModalState(uint32_t a_index, bool a_state)
+{
+    if (a_index >= m_runtimeModalState.size())
+    {
+        m_runtimeModalState.resize(a_index + 1);
+    }
+
+    m_runtimeModalState[a_index] = a_state;
+}
+
 void AppMain::PushModal(Modal* a_modal)
 {
     m_modals.emplace_back(a_modal);
+}
+
+void AppMain::DispatchRuntimeModal(const std::string_view& a_title, const glm::vec2& a_size, uint32_t a_index)
+{
+    SetRuntimeModalState(a_index, true);
+
+    m_modals.emplace_back(new RuntimeModal(this, m_runtime, a_index, a_title, a_size));
 }
