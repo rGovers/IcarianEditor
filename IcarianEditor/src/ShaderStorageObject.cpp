@@ -15,6 +15,7 @@ ShaderStorageObject::~ShaderStorageObject()
 void ShaderStorageObject::WriteBuffer(const void* a_object, uint32_t a_size) const
 {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_handle);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, a_size, a_object);
+    // glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, a_size, a_object);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, a_size, a_object, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }

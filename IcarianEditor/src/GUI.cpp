@@ -24,18 +24,6 @@ struct IDStack
     }
 };
 
-struct WidthStack
-{
-    WidthStack(float a_width)
-    {
-        ImGui::PushItemWidth(a_width);
-    }
-    ~WidthStack()
-    {
-        ImGui::PopItemWidth();
-    }
-};
-
 #define STACK_ID(str) const IDStack idStackTVal = IDStack(str)
 #define STACK_G_ID(str) STACK_ID(Instance->GetID() + (str))
 

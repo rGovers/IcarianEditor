@@ -3,6 +3,7 @@
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -14,15 +15,16 @@ class UniformBuffer;
 
 #include "ShaderBuffers.h"
 
-struct BoneData
+struct RBoneData
 {
+    std::string Name;
     uint32_t Parent;
     glm::mat4 InvBind;
     glm::mat4 Transform;
 };
 struct SkeletonData
 {
-    std::vector<BoneData> Bones;
+    std::vector<RBoneData> Bones;
 };
 
 class RenderCommand
@@ -36,6 +38,7 @@ private:
     UniformBuffer*                               m_cameraBuffer;
     UniformBuffer*                               m_transformBuffer;
     ShaderStorageObject*                         m_transformBatchBuffer;
+    ShaderStorageObject*                         m_skeletonBuffer;
 
     std::vector<SkeletonData>                    m_skeletonData;
 
@@ -53,4 +56,9 @@ public:
     static void DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr);
 
     static void PushCameraBuffer(const CameraShaderBuffer& a_buffer);
+
+    static uint32_t GenerateSkeletonBuffer();
+    static void PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose);
+    static void SetBoneTransform(uint32_t a_addr, const std::string_view& a_object, const glm::mat4& a_transform);
+    static void BindSkeletonBuffer(uint32_t a_addr);
 };
