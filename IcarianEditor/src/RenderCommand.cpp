@@ -319,7 +319,7 @@ void RenderCommand::PushBoneData(uint32_t a_addr, const std::string_view& a_obje
     data.Name = std::string(a_object);
     data.Parent = a_parent;
     data.InvBind = glm::inverse(a_bindPose);
-    data.Transform = glm::mat4(1.0f);
+    data.Transform = a_bindPose;
 
     Instance->m_skeletonData[a_addr].Bones.push_back(data);
 }
@@ -340,17 +340,20 @@ void RenderCommand::SetBoneTransform(uint32_t a_addr, const std::string_view& a_
 
 static glm::mat4 GetBoneTransform(const SkeletonData& a_skeleton, uint32_t a_boneAddr)
 {
+    ICARIAN_ASSERT(a_boneAddr < a_skeleton.Bones.size());
+
     const RBoneData& bone = a_skeleton.Bones[a_boneAddr];
 
+    const glm::mat4 transform = bone.Transform * bone.InvBind;
+    
     if (bone.Parent != -1)
     {
         const glm::mat4 parent = GetBoneTransform(a_skeleton, bone.Parent);
-        const glm::mat4 transform = bone.Transform * bone.InvBind;
 
         return parent * transform;
     }
 
-    return bone.Transform * bone.InvBind;
+    return transform;
 }
 void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 {
@@ -370,9 +373,7 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 
     for (uint32_t i = 0; i < count; ++i)
     {
-        // transforms[i] = GetBoneTransform(data, i);
-        // transforms[i] = data.Bones[i].InvBind * data.Bones[i].Transform;
-        transforms[i] = glm::mat4(1);
+        transforms[i] = GetBoneTransform(data, i);
     }
 
     Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
