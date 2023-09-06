@@ -406,7 +406,7 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    m_runtime->Update();
+    m_runtime->Update(a_delta);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

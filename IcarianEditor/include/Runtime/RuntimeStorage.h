@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <mono/metadata/object.h>
 #include <vector>
 
 class AssetLibrary;
@@ -75,6 +76,8 @@ public:
     
     uint32_t GenerateTexture(uint32_t a_width, uint32_t a_height, const unsigned char* a_data);
     void DestroyTexture(uint32_t a_addr);
+
+    MonoArray* LoadAnimationClip(const std::filesystem::path& a_path) const;
 
     void Clear();
 };

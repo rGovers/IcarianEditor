@@ -58,7 +58,9 @@ public:
 
     void Start(const std::filesystem::path& a_path, const std::string_view& a_name);
 
-    void Update();
+    void Update(double a_delta);
+
+    MonoClass* GetClass(const std::string_view& a_namespace, const std::string_view& a_name) const;
 
     void BindFunction(const std::string_view& a_location, void* a_function);
     void ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args) const;

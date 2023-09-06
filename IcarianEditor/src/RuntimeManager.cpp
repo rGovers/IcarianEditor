@@ -293,18 +293,34 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     mono_runtime_invoke(loadMethod, NULL, NULL, NULL);
 }
 
-void RuntimeManager::Update()
+void RuntimeManager::Update(double a_delta)
 {
     if (m_built && m_editorDomain != nullptr)
     {
-        double d = 0.0;
         void* args[] =
         {
-            &d
+            &a_delta
         };
 
         mono_runtime_invoke(m_editorUpdateMethod, NULL, args, NULL);
     }
+}
+
+MonoClass* RuntimeManager::GetClass(const std::string_view& a_namespace, const std::string_view& a_class) const
+{
+    if (m_editorDomain != NULL)
+    {
+        if (a_namespace.find("IcarianEngine") != std::string::npos)
+        {
+            return mono_class_from_name(m_engineImage, a_namespace.data(), a_class.data());
+        }
+        else 
+        {
+            return mono_class_from_name(m_editorImage, a_namespace.data(), a_class.data());
+        }
+    }
+
+    return NULL;
 }
 
 void RuntimeManager::BindFunction(const std::string_view& a_location, void* a_function)
@@ -315,15 +331,7 @@ void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std
 {
     if (m_editorDomain != nullptr)
     {
-        MonoClass* cls = nullptr;
-        if (a_namespace.find("IcarianEngine") != std::string::npos)
-        {
-            cls = mono_class_from_name(m_engineImage, a_namespace.data(), a_class.data());
-        }
-        else
-        {
-            cls = mono_class_from_name(m_editorImage, a_namespace.data(), a_class.data());
-        }
+        MonoClass* cls = GetClass(a_namespace, a_class);
         ICARIAN_ASSERT(cls != nullptr);
 
         MonoMethodDesc* desc = mono_method_desc_new(a_method.data(), 0);

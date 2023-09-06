@@ -58,7 +58,9 @@ public:
     static void PushCameraBuffer(const CameraShaderBuffer& a_buffer);
 
     static uint32_t GenerateSkeletonBuffer();
-    static void PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose);
+    static void PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose, const glm::mat4& a_invBindPose);
     static void SetBoneTransform(uint32_t a_addr, const std::string_view& a_object, const glm::mat4& a_transform);
     static void BindSkeletonBuffer(uint32_t a_addr);
+
+    static void DrawBones(uint32_t a_addr, const glm::mat4& a_transform);
 };

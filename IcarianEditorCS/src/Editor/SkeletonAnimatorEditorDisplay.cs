@@ -1,3 +1,4 @@
+using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using IcarianEngine.Rendering.Animation;
@@ -19,7 +20,7 @@ namespace IcarianEditor.Editor
             
             if (a_selected)
             {
-                Gizmos.DrawIcoSphere(a_transform[3].XYZ, 0.1f, 1, 0.01f, Color.Blue);
+                AnimationMaster.DrawBones(a_transform, AssetLibrary.LoadSkeleton(def.SkeletonPath));
             }
         }
     }

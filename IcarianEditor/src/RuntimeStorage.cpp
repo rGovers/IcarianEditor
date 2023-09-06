@@ -4,6 +4,7 @@
 
 #include "AssetLibrary.h"
 #include "Flare/ColladaLoader.h"
+#include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "Flare/OBJLoader.h"
 #include "Model.h"
@@ -25,6 +26,17 @@ struct RuntimeBoneData
     MonoArray* BindPoses;
 };
 
+struct RuntimeAnimationFrame
+{
+    float Time;
+    MonoArray* Transform;
+};
+struct RuntimeAnimationData
+{
+    MonoString* Name;
+    MonoArray* Frames;
+};
+
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
@@ -32,6 +44,8 @@ struct RuntimeBoneData
     F(FlareBase::RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, FlareBase::RenderProgram a_program) \
     F(void, IcarianEngine.Rendering, Material, SetTexture, { Instance->SetProgramTexture(a_addr, a_slot, a_samplerAddr); }, uint32_t a_addr, uint32_t a_slot, uint32_t a_samplerAddr) \
+    \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadAnimationClip(str); }, MonoString* a_path) \
     \
     F(void, IcarianEngine.Rendering, Texture, DestroyTexture, { Instance->DestroyTexture(a_addr); }, uint32_t a_addr) \
     \
@@ -551,4 +565,60 @@ void RuntimeStorage::DestroyTexture(uint32_t a_addr)
 {
     delete m_textures[a_addr];
     m_textures[a_addr] = nullptr;
+}
+
+MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path) const
+{
+    MonoArray* data = NULL;
+
+    MonoDomain* domain = m_runtime->GetEditorDomain();
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationData");
+    ICARIAN_ASSERT(animationDataClass != NULL);
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrame");
+    ICARIAN_ASSERT(animationFrameClass != NULL);
+    MonoClass* floatClass = mono_get_single_class();
+
+    uint32_t size;
+    const char* dat;
+    m_assets->GetAsset(a_path, &size, &dat);
+
+    std::vector<ColladaAnimationData> animations;
+    if (size > 0 && dat != nullptr && FlareBase::ColladaLoader_LoadAnimationData(dat, size, &animations))
+    {
+        const uint32_t count = (uint32_t)animations.size();
+        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const ColladaAnimationData& animation = animations[i];
+
+            RuntimeAnimationData animData;
+            animData.Name = mono_string_new(domain, animation.Name.c_str());
+
+            const uint32_t frameCount = (uint32_t)animation.Frames.size();
+            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
+            for (uint32_t j = 0; j < frameCount; ++j)
+            {
+                const ColladaAnimationFrame& frame = animation.Frames[j];
+
+                RuntimeAnimationFrame animFrame;
+                animFrame.Time = frame.Time;
+
+                const float* t = (float*)&frame.Transform;
+
+                MonoArray* transform = mono_array_new(domain, floatClass, 16);
+                for (uint32_t k = 0; k < 16; ++k)
+                {
+                    mono_array_set(transform, float, k, t[k]);
+                }
+
+                animFrame.Transform = transform;
+
+                mono_array_set(animData.Frames, RuntimeAnimationFrame, j, animFrame);
+            }
+
+            mono_array_set(data, RuntimeAnimationData, i, animData);
+        }
+    }
+
+    return data;
 }

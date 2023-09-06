@@ -3,6 +3,7 @@
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "Flare/RenderProgram.h"
+#include "Gizmos.h"
 #include "Logger.h"
 #include "Model.h"
 #include "Runtime/RuntimeManager.h"
@@ -37,6 +38,22 @@ RUNTIME_FUNCTION(void, RenderCommand, DrawModel,
     RenderCommand::DrawModel(transform, a_modelAddr);
 }, MonoArray* a_transform, uint32_t a_modelAddr)
 
+RUNTIME_FUNCTION(void, SkeletonAnimator, PushTransform,
+{
+    char* str = mono_string_to_utf8(a_object);
+    IDEFER(mono_free(str));
+
+    glm::mat4 transform;
+    float* f = (float*)&transform;
+
+    for (int i = 0; i < 16; ++i)   
+    {
+        f[i] = mono_array_get(a_transform, float, i);
+    }
+
+    RenderCommand::SetBoneTransform(a_addr, str, transform);
+}, uint32_t a_addr, MonoString* a_object, MonoArray* a_transform)
+
 RUNTIME_FUNCTION(void, AnimationMaster, PushBoneData, 
 {
     char* objectName = mono_string_to_utf8(a_object);
@@ -50,8 +67,28 @@ RUNTIME_FUNCTION(void, AnimationMaster, PushBoneData,
         f[i] = mono_array_get(a_bindPose, float, i);
     }
 
-    RenderCommand::PushBoneData(a_addr, objectName, a_parent, bindPose);
-}, uint32_t a_addr, MonoString* a_object, uint32_t a_parent, MonoArray* a_bindPose)
+    glm::mat4 invBindPose;
+    f = (float*)&invBindPose;
+
+    for (int i = 0; i < 16; ++i)   
+    {
+        f[i] = mono_array_get(a_invBindPose, float, i);
+    }
+
+    RenderCommand::PushBoneData(a_addr, objectName, a_parent, bindPose, invBindPose);
+}, uint32_t a_addr, MonoString* a_object, uint32_t a_parent, MonoArray* a_bindPose, MonoArray* a_invBindPose)
+RUNTIME_FUNCTION(void, AnimationMaster, DrawBones, 
+{
+    glm::mat4 transform;
+    float* f = (float*)&transform;
+
+    for (int i = 0; i < 16; ++i)   
+    {
+        f[i] = mono_array_get(a_transform, float, i);
+    }
+
+    RenderCommand::DrawBones(a_addr, transform);
+}, uint32_t a_addr, MonoArray* a_transform)
 
 RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 {
@@ -86,7 +123,10 @@ void RenderCommand::Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage)
 
         BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, RenderCommand, DrawModel);
         
+        BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, SkeletonAnimator, PushTransform);
+
         BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, PushBoneData);
+        BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, DrawBones);
     }
 }
 void RenderCommand::Destroy()
@@ -311,14 +351,14 @@ uint32_t RenderCommand::GenerateSkeletonBuffer()
 
     return addr;
 }
-void RenderCommand::PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose)
+void RenderCommand::PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose, const glm::mat4& a_invBindPose)
 {
     ICARIAN_ASSERT(a_addr < Instance->m_skeletonData.size());
 
     RBoneData data;
     data.Name = std::string(a_object);
     data.Parent = a_parent;
-    data.InvBind = glm::inverse(a_bindPose);
+    data.InvBind = a_invBindPose;
     data.Transform = a_bindPose;
 
     Instance->m_skeletonData[a_addr].Bones.push_back(data);
@@ -344,7 +384,7 @@ static glm::mat4 GetBoneTransform(const SkeletonData& a_skeleton, uint32_t a_bon
 
     const RBoneData& bone = a_skeleton.Bones[a_boneAddr];
 
-    const glm::mat4 transform = bone.Transform * bone.InvBind;
+    const glm::mat4 transform = bone.Transform;
     
     if (bone.Parent != -1)
     {
@@ -373,7 +413,8 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 
     for (uint32_t i = 0; i < count; ++i)
     {
-        transforms[i] = GetBoneTransform(data, i);
+        transforms[i] = GetBoneTransform(data, i) * data.Bones[i].InvBind;
+        // transforms[i] = data.Bones[i].Transform * data.Bones[i].InvBind;
     }
 
     Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
@@ -390,5 +431,41 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 
             break;
         }
+    }
+}
+
+void RenderCommand::DrawBones(uint32_t a_addr, const glm::mat4& a_transform)
+{
+    ICARIAN_ASSERT(a_addr < Instance->m_skeletonData.size());
+
+    const SkeletonData& data = Instance->m_skeletonData[a_addr];
+
+    for (const RBoneData& bone : data.Bones)
+    {
+        glm::mat4 transform = bone.Transform;
+        uint32_t parent = bone.Parent;
+        while (parent != -1)
+        {
+            const RBoneData& parentBone = data.Bones[parent];
+
+            transform = parentBone.Transform * transform;
+            // transform = transform * parentBone.Transform;
+
+            parent = parentBone.Parent;
+        }
+
+        const glm::mat4 mat = a_transform * transform;
+
+        const glm::vec3 forward = mat[2].xyz();
+        const glm::vec3 up = mat[1].xyz();
+        const glm::vec3 right = mat[0].xyz();
+
+        const glm::vec3 pos = mat[3].xyz();
+
+        Gizmos::DrawIcoSphere(pos, 0.01f, 0, 0.001f, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+        
+        Gizmos::DrawLine(pos, pos + forward * 0.02f, 0.001f, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        Gizmos::DrawLine(pos, pos + up * 0.02f, 0.001f, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+        Gizmos::DrawLine(pos, pos + right * 0.02f, 0.001f, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
     }
 }

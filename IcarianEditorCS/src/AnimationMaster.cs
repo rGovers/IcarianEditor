@@ -15,9 +15,11 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GenerateSkeletonBuffer();
         [MethodImpl(MethodImplOptions.InternalCall)]
-        extern static void PushBoneData(uint a_addr, string a_object, uint a_parent, Matrix4 a_bindPose);
+        extern static void PushBoneData(uint a_addr, string a_object, uint a_parent, float[] a_bindPose, float[] a_inverseBindPose);
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static void BindSkeletonBuffer(uint a_addr);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static void DrawBones(uint a_addr, float[] a_transform);
         
         struct SkeletonData
         {
@@ -36,6 +38,22 @@ namespace IcarianEditor
             s_deltaTime = a_delta;
 
             s_updatedSkeletons.Clear();
+        }
+
+        static void GenerateBones(uint a_buffer, Skeleton a_skeleton, Bone a_bone, Matrix4 a_inverse)
+        {
+            Matrix4 bindPose = a_bone.BindingPose;
+            Matrix4 inverseBindPose = Matrix4.Inverse(bindPose);
+
+            Matrix4 transform = bindPose * a_inverse;
+
+            PushBoneData(a_buffer, a_bone.Name, a_bone.Parent, transform.ToArray(), inverseBindPose.ToArray());
+
+            IEnumerable<Bone> children = a_skeleton.GetChildren(a_bone);
+            foreach (Bone child in children)
+            {
+                GenerateBones(a_buffer, a_skeleton, child, inverseBindPose);
+            }
         }
 
         public static void UpdateSkeleton(SkeletonAnimatorDef a_def)
@@ -57,9 +75,9 @@ namespace IcarianEditor
                 Type type = a_def.ComponentType;
 
                 uint buffer = GenerateSkeletonBuffer();
-                foreach (Bone bone in skeleton.Bones)
+                foreach (Bone bone in skeleton.RootBones)
                 {
-                    PushBoneData(buffer, bone.Name, bone.Parent, bone.BindingPose);
+                    GenerateBones(buffer, skeleton, bone, Matrix4.Identity);
                 }
 
                 SkeletonAnimator animator = Activator.CreateInstance(type) as SkeletonAnimator;
@@ -69,6 +87,10 @@ namespace IcarianEditor
                 // I think reflection has had enough of my shit and C# is screaming for mercy
                 PropertyInfo propertyInfo = type.GetProperty("Def");
                 propertyInfo.SetValue(animator, a_def);
+
+                // But it lets me get this one?
+                FieldInfo fieldInfo = type.GetField("m_buffer", BindingFlags.Instance | BindingFlags.NonPublic);
+                fieldInfo.SetValue(animator, buffer);
 
                 animator.Init();
 
@@ -95,7 +117,18 @@ namespace IcarianEditor
             BindSkeletonBuffer(data.BufferAddr);
 
             RenderCommand.DrawModel(a_matrix, a_model);
-            // Gizmos.DrawCapsule(a_matrix[3].XYZ, 1.0f, 0.5f, 8, 0.01f, Color.Red);
+        }
+
+        public static void DrawBones(Matrix4 a_transform, Skeleton a_skeleton)
+        {
+            if (!s_skeletonData.ContainsKey(a_skeleton))
+            {
+                return;
+            }
+
+            SkeletonData data = s_skeletonData[a_skeleton];
+
+            DrawBones(data.BufferAddr, a_transform.ToArray());
         }
     }
 }
