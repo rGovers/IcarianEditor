@@ -59,6 +59,9 @@ namespace IcarianEditor
         extern static uint ShowArrayView(string a_title, IntPtr a_addValue);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint ShowTexture(string a_path, Vector2 a_size);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void Tooltip(string a_title, string a_str);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -771,6 +774,11 @@ namespace IcarianEditor
             return ret;
         }
         
+        public static bool Texture(string a_path, Vector2 a_size)
+        {
+            return ShowTexture(a_path, a_size) != 0;
+        }
+
         public static bool Node(string a_str)
         {
             return NodeI(a_str) != 0;

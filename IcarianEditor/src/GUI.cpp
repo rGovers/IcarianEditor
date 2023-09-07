@@ -3,10 +3,12 @@
 #include <glm/glm.hpp>
 #include <string>
 
+#include "Datastore.h"
 #include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
+#include "Texture.h"
 
 static GUI* Instance = nullptr;
 
@@ -371,6 +373,22 @@ RUNTIME_FUNCTION(uint32_t, GUI, ShowArrayView,
     return (uint32_t)ImGui::CollapsingHeader(str);
 }, MonoString* a_str, uint32_t* a_addValue)
 
+RUNTIME_FUNCTION(uint32_t, GUI, ShowTexture, 
+{
+    char* path = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(path));
+
+    const Texture* texture = Datastore::GetTexture(path);
+    if (texture != nullptr)
+    {
+        ImGui::Image((ImTextureID)texture->GetHandle(), ImVec2(a_size.x, a_size.y));
+
+        return 1;
+    }
+
+    return 0;
+}, MonoString* a_path, glm::vec2 a_size)
+
 RUNTIME_FUNCTION(void, GUI, PushID, 
 {
     char* str = mono_string_to_utf8(a_str);
@@ -475,6 +493,8 @@ void GUI::Init(RuntimeManager* a_runtime)
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowStructView);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowArrayView);
+
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowTexture);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Tooltip);
 

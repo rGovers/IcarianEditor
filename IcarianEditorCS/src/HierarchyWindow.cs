@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using IcarianEngine;
 using IcarianEngine.Definitions;
+using IcarianEngine.Maths;
 
 namespace IcarianEditor
 {
@@ -134,6 +135,23 @@ namespace IcarianEditor
 
                 GUI.SameLine();
 
+                if (a_def.IsSceneDef)
+                {
+                    if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
+                    {
+                        GUI.SameLine();
+                    }
+                }
+                else
+                {
+                    if (GUI.Texture("Textures/Icons/Icon_GameObject.png", new Vector2(16.0f, 16.0f)))
+                    {
+                        GUI.SameLine();
+                    }
+                }
+
+                GUI.SameLine();
+
                 if (GUI.Selectable(name))
                 {
                     a_selectionID = id;
@@ -152,6 +170,21 @@ namespace IcarianEditor
             else
             {
                 GUI.NIndent();
+
+                if (a_def.IsSceneDef)
+                {
+                    if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
+                    {
+                        GUI.SameLine();
+                    }
+                }
+                else
+                {
+                    if (GUI.Texture("Textures/Icons/Icon_GameObject.png", new Vector2(16.0f, 16.0f)))
+                    {
+                        GUI.SameLine();
+                    }
+                }
 
                 if (GUI.Selectable(name))
                 {
