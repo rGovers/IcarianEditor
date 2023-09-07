@@ -10,12 +10,14 @@
 
 #include "AssetLibrary.h"
 #include "Datastore.h"
+#include "EditorConfig.h"
 #include "FileHandler.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "Gizmos.h"
 #include "GUI.h"
 #include "Modals/CreateProjectModal.h"
+#include "Modals/EditorConfigModal.h"
 #include "Modals/RuntimeModal.h"
 #include "ProcessManager.h"
 #include "ProfilerData.h"
@@ -163,6 +165,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     m_process = new ProcessManager();
     m_runtime = new RuntimeManager();
 
+    EditorConfig::Init(m_runtime);
+
     m_assets = new AssetLibrary(m_runtime);
     m_rStorage = new RuntimeStorage(m_runtime, m_assets);
 
@@ -234,6 +238,8 @@ AppMain::~AppMain()
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
+
+    EditorConfig::Destroy();
 }
 
 void AppMain::Update(double a_delta, double a_time)
@@ -316,6 +322,16 @@ void AppMain::Update(double a_delta, double a_time)
             }
 
             ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit"))
+        {
+            IDEFER(ImGui::EndMenu());
+
+            if (ImGui::MenuItem("Config"))
+            {
+                m_modals.emplace_back(new EditorConfigModal());
+            }
         }
 
         if (ImGui::BeginMenu("Windows"))

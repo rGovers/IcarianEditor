@@ -9,3 +9,4 @@ mono_crash*
 Debug/
 Release/
 BuildFiles/
+editorConfig.xml

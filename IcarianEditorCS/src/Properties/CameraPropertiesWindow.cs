@@ -14,8 +14,20 @@ namespace IcarianEditor.Properties
                 return;
             }
 
-            GUI.FloatField("FOV", ref def.FOV);
+            if (EditorConfig.UseDegrees)
+            {
+                float fov = def.FOV * Mathf.RadToDeg;
+                if (GUI.FloatField("FOV", ref fov))
+                {
+                    def.FOV = fov * Mathf.DegToRad;
+                }
+            }
+            else
+            {
+                GUI.FloatField("FOV", ref def.FOV);
+            }
             GUI.Tooltip("FOV", "Field of View for the camera.");
+            
             GUI.RFloatField("Near", ref def.Near, 0.1f);
             GUI.Tooltip("Near", "Near clipping plane for the camera.");
             GUI.RFloatField("Far", ref def.Far, 100.0f);

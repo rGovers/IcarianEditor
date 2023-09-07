@@ -35,8 +35,17 @@ namespace IcarianEditor.Properties
 
             if (m_lastDef != def)
             {
-                m_euler = def.Rotation.ToEuler();
-                m_axisAngle = def.Rotation.ToAxisAngle();
+                Quaternion rotation = def.Rotation;
+                if (rotation == Quaternion.Identity)
+                {
+                    m_euler = Vector3.Zero;
+                    m_axisAngle = Vector4.UnitY;
+                }
+                else
+                {
+                    m_euler = rotation.ToEuler();
+                    m_axisAngle = rotation.ToAxisAngle();
+                }
 
                 m_lastDef = def;
             }
@@ -45,31 +54,69 @@ namespace IcarianEditor.Properties
             {
             case RotationMode.Euler:
             {
-                if (GUI.RVec3Field("Euler", ref m_euler, Vector3.Zero))
+                if (EditorConfig.UseDegrees)
                 {
-                    def.Rotation = Quaternion.FromEuler(m_euler);
+                    Vector3 euler = m_euler * Mathf.RadToDeg;
+                    if (GUI.RVec3Field("Euler", ref euler, Vector3.Zero))
+                    {
+                        m_euler = euler * Mathf.DegToRad;
+                        def.Rotation = Quaternion.FromEuler(m_euler);
 
-                    m_axisAngle = def.Rotation.ToAxisAngle();
+                        m_axisAngle = def.Rotation.ToAxisAngle();
+                    }
+                }
+                else
+                {
+                    if (GUI.RVec3Field("Euler", ref m_euler, Vector3.Zero))
+                    {
+                        def.Rotation = Quaternion.FromEuler(m_euler);
+
+                        m_axisAngle = def.Rotation.ToAxisAngle();
+                    }
                 }
 
                 break;
             }
             case RotationMode.AxisAngle:
             {
-                if (GUI.RVec4Field("Axis Angle", ref m_axisAngle, Vector4.UnitY))
+                if (EditorConfig.UseDegrees)
                 {
-                    float mag = m_axisAngle.Magnitude;
-                    if (mag > 0)
+                    Vector4 axisAngle = new Vector4(m_axisAngle.XYZ, m_axisAngle.W * Mathf.RadToDeg);
+                    if (GUI.RVec4Field("Axis Angle", ref axisAngle, Vector4.UnitY))
                     {
-                        def.Rotation = Quaternion.FromAxisAngle(m_axisAngle.XYZ / mag, m_axisAngle.W);
-                    }
-                    else
-                    {
-                        def.Rotation = Quaternion.Identity;
-                    }
+                        m_axisAngle = new Vector4(axisAngle.XYZ, axisAngle.W * Mathf.DegToRad);
 
-                    m_euler = def.Rotation.ToEuler();
+                        float mag = m_axisAngle.Magnitude;
+                        if (mag > 0)
+                        {
+                            def.Rotation = Quaternion.FromAxisAngle(m_axisAngle.XYZ / mag, m_axisAngle.W);
+                        }
+                        else
+                        {
+                            def.Rotation = Quaternion.Identity;
+                        }
+
+                        m_euler = def.Rotation.ToEuler();
+                    }
                 }
+                else
+                {
+                    if (GUI.RVec4Field("Axis Angle", ref m_axisAngle, Vector4.UnitY))
+                    {
+                        float mag = m_axisAngle.Magnitude;
+                        if (mag > 0)
+                        {
+                            def.Rotation = Quaternion.FromAxisAngle(m_axisAngle.XYZ / mag, m_axisAngle.W);
+                        }
+                        else
+                        {
+                            def.Rotation = Quaternion.Identity;
+                        }
+
+                        m_euler = def.Rotation.ToEuler();
+                    }
+                }
+                
 
                 break;
             }
