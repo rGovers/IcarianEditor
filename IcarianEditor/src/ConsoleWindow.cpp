@@ -49,6 +49,14 @@ void ConsoleWindow::AddMessage(const std::string_view& a_message, bool a_editor,
     m_messages.emplace_back(msg);
 }
 
+struct ConsoleDrawList
+{
+    Texture* Tex;
+    ImVec4 Color;
+    uint32_t Count;
+    std::string Message;
+};
+
 void ConsoleWindow::Update(double a_delta)
 {
     if (ImGui::Button("Clear"))
@@ -124,9 +132,11 @@ void ConsoleWindow::Update(double a_delta)
         }
     }
 
-    const Texture* infoTex = Datastore::GetTexture("Textures/Icons/Console_Info.png");
-    const Texture* warningTex = Datastore::GetTexture("Textures/Icons/Console_Warning.png");
-    const Texture* errorTex = Datastore::GetTexture("Textures/Icons/Console_Error.png");
+    Texture* infoTex = Datastore::GetTexture("Textures/Icons/Console_Info.png");
+    Texture* warningTex = Datastore::GetTexture("Textures/Icons/Console_Warning.png");
+    Texture* errorTex = Datastore::GetTexture("Textures/Icons/Console_Error.png");
+
+    std::vector<ConsoleDrawList> drawLists;
 
     ImGui::BeginChild("##Messages");
     for (const ConsoleMessage msg : m_messages)
@@ -136,28 +146,36 @@ void ConsoleWindow::Update(double a_delta)
             continue;
         }
 
-        ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-        bool display = displayMessage;
+        ImVec4 color;
+        bool display = false;    
+        Texture* tex = nullptr;    
 
-        const Texture* tex = infoTex;
-
-        switch (msg.Type)
+        switch (msg.Type) 
         {
         case LoggerMessageType_Error:
         {
-            color = ImVec4(1.0, 0.0f, 0.0f, 1.0f);
             display = displayError;
 
+            color = ImVec4(1.0, 0.0f, 0.0f, 1.0f);
             tex = errorTex;
 
             break;
         }
         case LoggerMessageType_Warning:
-        {   
-            color = ImVec4(1.0, 1.0f, 0.0f, 1.0f);
+        {
             display = displayWarning;
 
+            color = ImVec4(1.0, 1.0f, 0.0f, 1.0f);
             tex = warningTex;
+
+            break;
+        }
+        case LoggerMessageType_Message:
+        {
+            display = displayMessage;
+
+            color = ImVec4(1.0, 1.0f, 1.0f, 1.0f);
+            tex = infoTex;
 
             break;
         }
@@ -167,37 +185,106 @@ void ConsoleWindow::Update(double a_delta)
         {
             if (collapse)
             {
-                if (msg.Count > 1)
+                const uint32_t count = (uint32_t)drawLists.size();
+
+                if (count <= 0)
                 {
-                    const std::string c = "[" + std::to_string(msg.Count)  + "]";
+                    ConsoleDrawList draw;
+                    draw.Tex = tex;
+                    draw.Count = msg.Count;
+                    draw.Message = msg.Message;
+                    draw.Color = color;
 
-                    ImGui::Text("%s", c.c_str());
+                    drawLists.emplace_back(draw);
 
-                    ImGui::SameLine();
+                    continue;
                 }
 
-                if (tex != nullptr)
+                ConsoleDrawList& draw = drawLists[count - 1];
+                if (draw.Tex == tex && draw.Message == msg.Message)
                 {
-                    ImGui::Image((ImTextureID)tex->GetHandle(), { 16, 16 });
-                    ImGui::SameLine();
+                    draw.Count += msg.Count;
+
+                    continue;
                 }
 
-                ImGui::TextColored(color, "%s", msg.Message.c_str());
+                ConsoleDrawList newDraw;
+                newDraw.Tex = tex;
+                newDraw.Count = msg.Count;
+                newDraw.Message = msg.Message;
+                newDraw.Color = color;
+
+                drawLists.emplace_back(newDraw);
             }
             else
             {
                 for (uint32_t i = 0; i < msg.Count; ++i)
                 {
-                    if (tex != nullptr)
-                    {
-                        ImGui::Image((ImTextureID)tex->GetHandle(), { 16, 16 });
-                        ImGui::SameLine();
-                    }
+                    ConsoleDrawList draw;
+                    draw.Tex = tex;
+                    draw.Count = 1;
+                    draw.Message = msg.Message;
+                    draw.Color = color;
 
-                    ImGui::TextColored(color, "%s", msg.Message.c_str());
+                    drawLists.emplace_back(draw);
                 }
             }
         }
     }
+
+    const uint32_t count = (uint32_t)drawLists.size();
+    if (count > 0)
+    {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImVec2 curPos = ImGui::GetCursorScreenPos();
+        const float spacing = ImGui::GetStyle().ItemSpacing.y;
+        const float lineHeight = 16.0f + spacing;
+
+        const float startYPos = curPos.y - spacing * 0.5f;
+
+        const ImU32 oddColor = ImGui::GetColorU32(ImVec4(0.25f, 0.25f, 0.25f, 0.25f));
+        const ImU32 evenColor = ImGui::GetColorU32(ImVec4(0.0f, 0.0f, 0.0f, 0.1f));
+
+        int rowDisplayStart;
+        int rowDisplayEnd;
+        ImGui::CalcListClipping(count, lineHeight, &rowDisplayStart, &rowDisplayEnd);
+        for (int row = rowDisplayStart; row < rowDisplayEnd; ++row)
+        {
+            ImU32 col;
+            if (row & 0b1)
+            {
+                col = oddColor;
+            }
+            else
+            {
+                col = evenColor;
+            }
+
+            const float startY = startYPos + (row * lineHeight);
+            const float endY = startY + lineHeight;
+
+            drawList->AddRectFilled(ImVec2(curPos.x, startY), ImVec2(curPos.x + ImGui::GetWindowWidth(), endY), col);
+        }
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const ConsoleDrawList& draw = drawLists[i];
+
+            if (draw.Count > 1)
+            {
+                ImGui::Text("[%d]", draw.Count);
+                ImGui::SameLine();
+            }
+            
+            if (draw.Tex != nullptr)
+            {
+                ImGui::Image((ImTextureID)draw.Tex->GetHandle(), ImVec2(16.0f, 16.0f));
+                ImGui::SameLine();
+            }
+
+            ImGui::TextColored(draw.Color, "%s", draw.Message.c_str());
+        }
+    }
+
     ImGui::EndChild();
 }
