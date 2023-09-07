@@ -100,7 +100,7 @@ include_directories("${PROJECT_SOURCE_DIR}/include/"
                     "${PROJECT_SOURCE_DIR}/lib/glad/include/"
                     "${PROJECT_SOURCE_DIR}/lib/imgui/"
                     "${PROJECT_SOURCE_DIR}/lib/imgui/backends/"
-                    "${PROJECT_SOURCE_DIR}/lib/ImGuizmo/"
+                    "${PROJECT_SOURCE_DIR}/lib/flare-ImGuizmo/"
                     "${PROJECT_SOURCE_DIR}/lib/implot/")
 
 file(GLOB SOURCES 
@@ -110,7 +110,7 @@ file(GLOB SOURCES
     "lib/imgui/*.cpp" 
     "lib/imgui/backends/imgui_impl_opengl3.cpp" 
     "lib/imgui/backends/imgui_impl_glfw.cpp" 
-    "lib/ImGuizmo/ImGuizmo.cpp"
+    "lib/flare-ImGuizmo/ImGuizmo.cpp"
     "lib/implot/implot.cpp" 
     "lib/implot/implot_items.cpp")
 

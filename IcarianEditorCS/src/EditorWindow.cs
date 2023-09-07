@@ -21,6 +21,9 @@ namespace IcarianEditor
 
         static List<TransformData>             s_startData;
         static Vector3                         s_startPos;
+        static Vector3                         s_mid;
+        static Quaternion                      s_rotation;
+        static Vector3                         s_scale;
 
         internal static void Init()
         {
@@ -100,6 +103,53 @@ namespace IcarianEditor
             }
         }
 
+        static void BeginSelectGameObjects(GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform, ref Vector3 a_mid, ref uint a_count)
+        {
+            Matrix4 mat = Matrix4.FromTransform(a_gameObjectDef.Translation, a_gameObjectDef.Rotation, a_gameObjectDef.Scale) * a_parentTransform;
+
+            bool selected = false;
+            foreach (SelectionObject obj in Workspace.Selection)
+            {
+                if (obj.GameObject == null)
+                {
+                    continue;
+                }
+
+                if (obj.GameObject.DefName == a_gameObjectDef.DefName)
+                {
+                    selected = true;
+
+                    break;
+                }
+            }
+
+            if (selected)
+            {
+                a_mid += mat[3].XYZ;
+                a_count++;
+            }
+
+            foreach (GameObjectDef c in a_gameObjectDef.Children)
+            {
+                BeginSelectGameObjects(c, mat, ref a_mid, ref a_count);
+            }
+        }
+
+        static void RenderScene(Scene a_scene)
+        {
+            foreach (SceneObject obj in a_scene.SceneObjects)
+            {
+                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
+
+                if (def != null)
+                {
+                    Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
+
+                    RenderGameObjects(def, mat);
+                }
+            }
+        }
+
         static void OnGUI()
         {
             Scene scene = Workspace.GetScene();
@@ -109,70 +159,87 @@ namespace IcarianEditor
                 return;
             }
 
-            if (Workspace.Selection != null)
+            if (Workspace.Selection != null && Workspace.Selection.Count > 0)
             {
-                int selectionSize = Workspace.Selection.Count;
-                if (selectionSize > 0)
+                bool isManipulating = Gizmos.IsManipulating;
+
+                if (!isManipulating)
                 {
                     Vector3 mid = Vector3.Zero;
+                    uint count = 0;
+
+                    foreach (SceneObject obj in scene.SceneObjects)
+                    {
+                        GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
+
+                        foreach (SelectionObject selectionObj in Workspace.Selection)
+                        {
+                            if (selectionObj.SceneObject == obj)
+                            {
+                                mid += obj.Translation;
+                                count++;
+
+                                break;
+                            }
+                        }
+
+                        if (def != null)
+                        {
+                            Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
+
+                            BeginSelectGameObjects(def, mat, ref mid, ref count);
+                            RenderGameObjects(def, mat);
+                        }
+                    }
+
+                    mid /= count;
+
+                    s_startData.Clear();
+
+                    s_startPos = mid;
 
                     foreach (SelectionObject sel in Workspace.Selection)
                     {
-                        mid += sel.Translation;
+                        s_startData.Add(new TransformData()
+                        {
+                            StartPos = sel.Translation,
+                            StartRotation = sel.Rotation,
+                            StartScale = sel.Scale
+                        });
                     }
 
-                    mid /= selectionSize;
+                    s_mid = mid;
+                    s_rotation = Quaternion.Identity;
+                    s_scale = Vector3.One;
+                }
+                else
+                {
+                    RenderScene(scene);
+                }
 
-                    Quaternion rot = Quaternion.Identity;
-                    Vector3 scale = Vector3.One;
+                if (Gizmos.Manipulation(Workspace.ManipulationMode, ref s_mid, ref s_rotation, ref s_scale))
+                {
+                    Vector3 deltaPos = s_mid - s_startPos;
+                    Vector3 deltaScale = s_scale - Vector3.One;
 
-                    if (!Gizmos.IsManipulating)
+                    for (int i = 0; i < Workspace.Selection.Count; ++i)
                     {
-                        s_startData.Clear();
+                        TransformData dat = s_startData[i];
+                        // Vector3 objDeltaPos = dat.StartPos - s_startPos;
 
-                        s_startPos = mid;
+                        SelectionObject sel = Workspace.Selection[i];
 
-                        foreach (SelectionObject sel in Workspace.Selection)
-                        {
-                            s_startData.Add(new TransformData()
-                            {
-                                StartPos = sel.Translation,
-                                StartRotation = sel.Rotation,
-                                StartScale = sel.Scale
-                            });
-                        }
-                    }
+                        sel.Translation = dat.StartPos + deltaPos;
+                        sel.Rotation = dat.StartRotation * s_rotation;
+                        sel.Scale = dat.StartScale + deltaScale;
 
-                    // TODO: Account for world space
-                    if (Gizmos.Manipulation(Workspace.ManipulationMode, ref mid, ref rot, ref scale))
-                    {
-                        Vector3 deltaPos = mid - s_startPos;
-
-                        for (int i = 0; i < selectionSize; ++i)
-                        {
-                            TransformData dat = s_startData[i];
-                            Vector3 objDeltaPos = dat.StartPos - s_startPos;
-
-                            SelectionObject sel = Workspace.Selection[i];
-
-                            sel.Translation = objDeltaPos + deltaPos;
-                            sel.Rotation = dat.StartRotation * rot;
-                            sel.Scale = dat.StartScale * scale;
-
-                            Workspace.Selection[i] = sel;
-                        }
+                        Workspace.Selection[i] = sel;
                     }
                 }
             }
-
-            foreach (SceneObject obj in scene.SceneObjects)
+            else
             {
-                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
-
-                if (def != null)
-                {
-                    RenderGameObjects(def, Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale));
-                }
+                RenderScene(scene);    
             }
         }
     }

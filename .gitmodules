@@ -7,6 +7,6 @@
 [submodule "IcarianEditor/lib/implot"]
 	path = IcarianEditor/lib/implot
 	url = https://github.com/epezent/implot.git
-[submodule "IcarianEditor/lib/ImGuizmo"]
-	path = IcarianEditor/lib/ImGuizmo
-	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "IcarianEditor/lib/flare-ImGuizmo"]
+	path = IcarianEditor/lib/flare-ImGuizmo
+	url = https://github.com/rGovers/flare-ImGuizmo.git

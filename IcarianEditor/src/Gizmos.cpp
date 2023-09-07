@@ -128,7 +128,11 @@ bool Gizmos::Manipulation(e_ManipulationMode a_mode, glm::vec3* a_translation, g
     // Need to flip projection matrix as in screen space instead of buffer space
     p[1][1] *= -1;
 
-    glm::mat4 transform = glm::scale(glm::toMat4(*a_rotation) * glm::translate(glm::identity<glm::mat4>(), *a_translation), *a_scale);
+    const glm::mat4 translationMatrix = glm::translate(glm::identity<glm::mat4>(), *a_translation);
+    const glm::mat4 rotationMatrix = glm::toMat4(*a_rotation);
+    const glm::mat4 scaleMatrix = glm::scale(glm::identity<glm::mat4>(), *a_scale);
+
+    glm::mat4 transform = translationMatrix * rotationMatrix * scaleMatrix;
 
     const bool ret = ImGuizmo::Manipulate((float*)&Instance->m_view, (float*)&p, GetOperation(a_mode), ImGuizmo::MODE::WORLD, (float*)&transform);
     if (ret)
