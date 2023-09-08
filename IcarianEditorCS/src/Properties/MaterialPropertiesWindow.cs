@@ -56,6 +56,18 @@ namespace IcarianEditor.Properties
                     TextureInput input = def.TextureInputs[i];
                     GUI.PushID($"[{i}]");
 
+                    if (GUI.Button("-"))
+                    {
+                        def.TextureInputs.RemoveAt(i);
+                        --i;
+
+                        GUI.PopID();
+
+                        continue;
+                    }
+
+                    GUI.SameLine();
+
                     if (GUI.StructView($"Texture Input[{i}]"))
                     {   
                         GUI.Indent();
@@ -99,6 +111,18 @@ namespace IcarianEditor.Properties
                 {
                     ShaderBufferInput input = def.ShaderBuffers[i];
                     GUI.PushID($"[{i}]");
+
+                    if (GUI.Button("-"))
+                    {
+                        def.ShaderBuffers.RemoveAt(i);
+                        --i;
+
+                        GUI.PopID();
+
+                        continue;
+                    }
+
+                    GUI.SameLine();
 
                     if (GUI.StructView($"Shader Buffer[{i}]"))
                     {
@@ -164,6 +188,18 @@ namespace IcarianEditor.Properties
                 {
                     VertexInputAttribute input = def.VertexAttributes[i];
                     GUI.PushID($"[{i}]");
+
+                    if (GUI.Button("-"))
+                    {
+                        def.VertexAttributes.RemoveAt(i);
+                        --i;
+
+                        GUI.PopID();
+
+                        continue;
+                    }
+
+                    GUI.SameLine();
 
                     if (GUI.StructView($"Vertex Attribute[{i}]"))
                     {
