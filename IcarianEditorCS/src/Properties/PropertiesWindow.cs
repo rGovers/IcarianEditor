@@ -269,8 +269,23 @@ namespace IcarianEditor.Properties
                         foreach (object val in enumerable)
                         {
                             object oVal = val;
+
+                            GUI.PushID($"[{index}]");
+
+                            if (GUI.Button("-"))
+                            {
+                                GUI.PopID();
+
+                                continue;
+                            }
+
+                            GUI.SameLine();
+
                             ShowFields($"[{index++}]", ref oVal, gNVal, gType);
+
                             method.Invoke(nObj, new object[] { oVal });
+
+                            GUI.PopID();
                         }
 
                         a_obj = nObj;

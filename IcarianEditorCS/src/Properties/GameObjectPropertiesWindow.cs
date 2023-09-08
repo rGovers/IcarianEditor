@@ -161,17 +161,28 @@ namespace IcarianEditor.Properties
                 {
                     ComponentDef comp = def.Components[i];
 
+                    GUI.PushID($"[{i}]");
+
+                    if (GUI.Button("-"))
+                    {
+                        def.Components.RemoveAt(i);
+                        --i;
+                        --count;
+
+                        GUI.PopID();
+
+                        continue;
+                    }
+
+                    GUI.SameLine();
+
                     // Allow inline editing for scene defs
                     if (comp.IsSceneDef)
                     {
-                        GUI.PushID($"[{i}]");
-                    
                         if (GUI.StructView($"[{i}] Scene Component"))
                         {
                             BaseGUI(comp);
                         }
-
-                        GUI.PopID();
                     }
                     else
                     {
@@ -180,6 +191,8 @@ namespace IcarianEditor.Properties
                             def.Components[i] = comp;
                         }
                     }
+
+                    GUI.PopID();
                 }
 
                 GUI.PopID();
