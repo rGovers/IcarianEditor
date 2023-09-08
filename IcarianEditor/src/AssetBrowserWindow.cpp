@@ -7,6 +7,7 @@
 #include "AssetLibrary.h"
 #include "Datastore.h"
 #include "FileHandler.h"
+#include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "IO.h"
 #include "Logger.h"
@@ -30,6 +31,8 @@ AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, Asset
 
     m_fileTree.clear();
     m_curIndex = -1;
+
+    m_searchBuffer[0] = 0;
 }
 AssetBrowserWindow::~AssetBrowserWindow()
 {
@@ -244,6 +247,224 @@ void AssetBrowserWindow::AssetMenu(const std::filesystem::path& a_path, const st
     }
 }
 
+bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
+{
+    bool ret = false;
+
+    const DirectoryNode& cNode = m_fileTree[a_index];
+
+    const std::filesystem::path& path = cNode.Path;
+
+    ImGui::BeginGroup();
+
+    const std::string fileName = path.filename().string();
+
+    Texture* tex;
+
+    if (std::filesystem::is_empty(path))
+    {
+        tex = Datastore::GetTexture("Textures/FileIcons/FileIcon_FolderEmpty.png");
+    }
+    else 
+    {
+        tex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
+    }
+
+    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+    {
+        m_curIndex = a_index;
+    }
+
+    if (!a_context && ImGui::BeginPopupContextItem()) 
+    {
+        IDEFER(ImGui::EndPopup());
+
+        BaseMenu(path, "");
+
+        ImGui::Separator();
+
+        AssetMenu(path, "");
+
+        ret = true;
+    }
+
+    ImGui::Text("%s", fileName.c_str());
+
+    ImGui::EndGroup();
+
+    ImGui::NextColumn();
+
+    return ret;
+}
+bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& a_path, const std::filesystem::path& a_workingPath)
+{
+    bool ret = false;
+
+    ImGui::BeginGroup();
+
+    const std::string fileName = a_path.stem().string();
+    const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
+
+    FileHandler::FileCallback* openCallback;
+    FileHandler::FileCallback* dragCallback;
+    Texture* tex;
+    FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
+
+    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+
+    uint32_t size;
+    const char* data;
+    m_assetLibrary->GetAsset(rPath, &size, &data);
+
+    if (size > 0 && data != nullptr)
+    {
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+        {
+            if (openCallback == nullptr)
+            {
+                IO::OpenFile(a_path);
+            }
+            else
+            {
+                (*openCallback)(rPath, size, data);
+            }
+        }
+                
+        if (dragCallback != nullptr)
+        {
+            if (ImGui::BeginDragDropSource())
+            {
+                IDEFER(ImGui::EndDragDropSource());
+
+                (*dragCallback)(rPath, size, data);
+            }
+        }
+
+        if (!a_context && ImGui::BeginPopupContextItem())
+        {
+            IDEFER(ImGui::EndPopup());
+
+            const std::filesystem::path dirPath = a_path.parent_path();
+
+            BaseMenu(dirPath, a_path);
+
+            ImGui::Separator();
+
+            AssetMenu(dirPath, a_path);
+
+            ret = true;
+        }
+    }
+            
+    ImGui::Text("%s", fileName.c_str());
+
+    ImGui::EndGroup();
+
+    ImGui::NextColumn();
+
+    return ret;
+}
+
+bool AssetBrowserWindow::ShowBaseAssetList(const DirectoryNode& a_node)
+{
+    bool contextCaptured = false;
+
+    for (uint32_t index : a_node.Children)
+    {
+        const DirectoryNode& cNode = m_fileTree[index];
+
+        const std::filesystem::path& p = cNode.Path;
+
+        // Failsafe for when a folder is deleted
+        if (!std::filesystem::exists(p))
+        {
+            continue;
+        }
+
+        if (ShowFolder(contextCaptured, index))
+        {
+            contextCaptured = true;
+        }
+    }
+
+    const std::filesystem::path workingPath = m_project->GetProjectPath();
+
+    for (const std::filesystem::path& path : a_node.Files)
+    {
+        // Failsafe for when a file is deleted
+        if (!std::filesystem::exists(path))
+        {
+            continue;
+        }
+
+        if (ShowAsset(contextCaptured, path, workingPath))
+        {
+            contextCaptured = true;
+        }
+    }
+
+    return contextCaptured;
+}
+bool AssetBrowserWindow::ShowSearchAssetList(const DirectoryNode& a_node, const std::string_view& a_filter)
+{
+    bool contextCaptured = false;
+
+    Texture* folderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
+    Texture* emptyFolderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_FolderEmpty.png");
+
+    for (uint32_t index : a_node.Children)
+    {
+        const DirectoryNode& cNode = m_fileTree[index];
+
+        const std::filesystem::path& p = cNode.Path;
+
+        // Failsafe for when a folder is deleted
+        if (!std::filesystem::exists(p))
+        {
+            continue;
+        }
+
+        if (ShowSearchAssetList(cNode, a_filter))
+        {
+            contextCaptured = true;
+        }
+
+        const std::string pString = p.string();
+        if (pString.find(a_filter) == std::string::npos)
+        {
+            continue;
+        }
+
+        if (ShowFolder(contextCaptured, index))
+        {
+            contextCaptured = true;
+        }
+    }
+
+    for (const std::filesystem::path& path : a_node.Files)
+    {
+        // Failsafe for when a file is deleted
+        if (!std::filesystem::exists(path))
+        {
+            continue;
+        }
+
+        const std::string pString = path.string();
+        if (pString.find(a_filter) == std::string::npos)
+        {
+            continue;
+        }
+
+        if (ShowAsset(contextCaptured, path, m_project->GetProjectPath()))
+        {
+            contextCaptured = true;
+        }
+    }
+
+    return contextCaptured;
+}
+
 void AssetBrowserWindow::Update(double a_delta)
 {
     if (m_curIndex == -1)
@@ -283,6 +504,11 @@ void AssetBrowserWindow::Update(double a_delta)
 
     ImGui::SameLine();
 
+    ImGui::SetNextItemWidth(128.0f);
+    ImGui::InputText("Search", m_searchBuffer, SearchBufferSize);
+
+    ImGui::SameLine();
+
     for (const uint32_t index : breadcrumbs)
     {
         const DirectoryNode& node = m_fileTree[index];
@@ -313,130 +539,14 @@ void AssetBrowserWindow::Update(double a_delta)
 
         ImGui::Columns(glm::max(1, (int)(width / (ItemWidth + 8.0f))));
 
-        Texture* folderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
-        Texture* emptyFolderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_FolderEmpty.png");
-
-        for (uint32_t index : node.Children)
+        if (m_searchBuffer[0] == 0)
         {
-            const DirectoryNode& cNode = m_fileTree[index];
-
-            const std::filesystem::path p = std::filesystem::path(cNode.Path);
-
-            // Failsafe for when a folder is deleted
-            if (!std::filesystem::exists(p))
-            {
-                continue;
-            }
-
-            ImGui::BeginGroup();
-
-            const std::string fileName = p.filename().string();
-
-            Texture* tex = folderTex;
-
-            if (std::filesystem::is_empty(p))
-            {
-                tex = emptyFolderTex;
-            }
-
-            FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-            {
-                m_curIndex = index;
-            }
-
-            if (!contextCaptured && ImGui::BeginPopupContextItem()) 
-            {
-                BaseMenu(cNode.Path, "");
-
-                ImGui::Separator();
-
-                AssetMenu(cNode.Path, "");
-
-                ImGui::EndPopup();
-
-                contextCaptured = true;
-            }
-
-            ImGui::Text("%s", fileName.c_str());
-
-            ImGui::EndGroup();
-
-            ImGui::NextColumn();
+            contextCaptured = ShowBaseAssetList(node);
         }
-
-        const std::filesystem::path workingPath = m_project->GetProjectPath();
-
-        for (const std::filesystem::path& path : node.Files)
+        else 
         {
-            // Failsafe for when a file is deleted
-            if (!std::filesystem::exists(path))
-            {
-                continue;
-            }
-
-            ImGui::BeginGroup();
-
-            const std::string fileName = path.stem().string();
-            const std::filesystem::path rPath = IO::GetRelativePath(workingPath, path);
-
-            FileHandler::FileCallback* openCallback;
-            FileHandler::FileCallback* dragCallback;
-            Texture* tex;
-            FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
-
-            FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
-
-            uint32_t size;
-            const char* data;
-            m_assetLibrary->GetAsset(workingPath, path, &size, &data);
-
-            if (size > 0 && data != nullptr)
-            {
-                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
-                {
-                    if (openCallback == nullptr)
-                    {
-                        IO::OpenFile(path);
-                    }
-                    else
-                    {
-                        (*openCallback)(rPath, size, data);
-                    }
-                }
-                
-                if (dragCallback != nullptr)
-                {
-                    if (ImGui::BeginDragDropSource())
-                    {
-                        (*dragCallback)(rPath, size, data);
-
-                        ImGui::EndDragDropSource();
-                    }
-                }
-
-                if (!contextCaptured && ImGui::BeginPopupContextItem())
-                {
-                    const std::filesystem::path dirPath = path.parent_path();
-
-                    BaseMenu(dirPath, path);
-
-                    ImGui::Separator();
-
-                    AssetMenu(dirPath, path);
-
-                    ImGui::EndPopup();
-
-                    contextCaptured = true;
-                }
-            }
-            
-            ImGui::Text("%s", fileName.c_str());
-
-            ImGui::EndGroup();
-
-            ImGui::NextColumn();
-        }
+            contextCaptured = ShowSearchAssetList(node, m_searchBuffer);
+        }     
 
         ImGui::Columns();
     }
