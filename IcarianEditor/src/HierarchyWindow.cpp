@@ -13,5 +13,5 @@ HierarchyWindow::~HierarchyWindow()
 
 void HierarchyWindow::Update(double a_delta)
 {
-    m_runtime->ExecFunction("IcarianEditor", "HierarchyWindow", ":OnGUI()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor.Windows", "HierarchyWindow", ":OnGUI()", nullptr);
 }

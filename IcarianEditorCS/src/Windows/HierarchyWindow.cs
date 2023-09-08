@@ -3,7 +3,7 @@ using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 
-namespace IcarianEditor
+namespace IcarianEditor.Windows
 {
     public static class HierarchyWindow
     {

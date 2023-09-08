@@ -3,7 +3,7 @@ using IcarianEditor.Modals;
 using IcarianEngine;
 using IcarianEngine.Definitions;
 
-namespace IcarianEditor
+namespace IcarianEditor.Windows
 {
     public static class SceneDefsWindow
     {

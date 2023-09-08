@@ -18,5 +18,5 @@ void SceneDefsWindow::Update(double a_delta)
 {
     GUI::SetWidth(ImGui::GetWindowSize().x);
 
-    m_runtime->ExecFunction("IcarianEditor", "SceneDefsWindow", ":OnGUI()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor.Windows", "SceneDefsWindow", ":OnGUI()", nullptr);
 }

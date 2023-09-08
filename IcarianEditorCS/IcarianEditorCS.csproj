@@ -12,6 +12,7 @@
         <Compile Include="src/Editor/*.cs" />
         <Compile Include="src/Modals/*.cs" />
         <Compile Include="src/Properties/*.cs" />
+        <Compile Include="src/Windows/*.cs" />
     </ItemGroup>
     <ItemGroup>
         <Reference Include="System" />
