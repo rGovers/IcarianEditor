@@ -159,7 +159,7 @@ namespace IcarianEditor
                 return;
             }
 
-            if (Workspace.Selection != null && Workspace.Selection.Count > 0)
+            if (!Workspace.IsSelectionEmpty)
             {
                 bool isManipulating = Gizmos.IsManipulating;
 
@@ -222,18 +222,20 @@ namespace IcarianEditor
                     Vector3 deltaPos = s_mid - s_startPos;
                     Vector3 deltaScale = s_scale - Vector3.One;
 
-                    for (int i = 0; i < Workspace.Selection.Count; ++i)
+                    IEnumerable<SelectionObject> selection = Workspace.Selection;
+                    Workspace.ClearSelection();
+
+                    foreach (SelectionObject sel in selection)
                     {
-                        TransformData dat = s_startData[i];
-                        // Vector3 objDeltaPos = dat.StartPos - s_startPos;
+                        SelectionObject newSel = sel;
 
-                        SelectionObject sel = Workspace.Selection[i];
+                        TransformData dat = s_startData[0];
 
-                        sel.Translation = dat.StartPos + deltaPos;
-                        sel.Rotation = dat.StartRotation * s_rotation;
-                        sel.Scale = dat.StartScale + deltaScale;
+                        newSel.Translation = dat.StartPos + deltaPos;
+                        newSel.Rotation = dat.StartRotation * s_rotation;
+                        newSel.Scale = dat.StartScale + deltaScale;
 
-                        Workspace.Selection[i] = sel;
+                        Workspace.AddSelection(newSel);
                     }
                 }
             }

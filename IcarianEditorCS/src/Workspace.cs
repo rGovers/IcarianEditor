@@ -159,11 +159,64 @@ namespace IcarianEditor
         static Scene                 s_LastScene = null;
 
         public static List<Def> SceneDefs = new List<Def>();
+        static List<SelectionObject> s_Selection = new List<SelectionObject>();
+        static List<Def> s_SelectedDefs = new List<Def>();
         public static List<SceneObjectData> SceneObjectList = new List<SceneObjectData>();
         public static List<GameObjectData>  SceneGameObjectList = new List<GameObjectData>();
 
-        public static List<SelectionObject> Selection;
-        
+        public static IEnumerable<SelectionObject> Selection
+        {
+            get
+            {
+                return s_Selection;
+            }
+        }
+        public static IEnumerable<Def> SelectedDefs
+        {
+            get
+            {
+                return s_SelectedDefs;
+            }
+        }
+
+        public static bool IsSelectionEmpty
+        {
+            get
+            {
+                return s_Selection.Count == 0;
+            }
+        }
+        public static bool IsDefSelectionEmpty
+        {
+            get
+            {
+                return s_SelectedDefs.Count == 0;
+            }
+        }
+
+        public static void AddSelection(SelectionObject a_object)
+        {
+            s_Selection.Add(a_object);
+        }
+        public static void AddSelection(IEnumerable<SelectionObject> a_objects)
+        {
+            s_Selection.AddRange(a_objects);
+        }
+        public static void AddDefSelection(Def a_object)
+        {
+            s_SelectedDefs.Add(a_object);
+        }
+        public static void AddDefSelection(IEnumerable<Def> a_objects)
+        {
+            s_SelectedDefs.AddRange(a_objects);
+        }
+
+        public static void ClearSelection()
+        {
+            s_Selection.Clear();
+            s_SelectedDefs.Clear();
+        }
+
         public static ulong NewID()
         {
             return s_ID++;
@@ -251,7 +304,8 @@ namespace IcarianEditor
 
             if (s != s_LastScene)
             {
-                Selection = new List<SelectionObject>();
+                s_Selection.Clear();
+                s_SelectedDefs.Clear();
 
                 SceneDefs.Clear();
                 SceneObjectList.Clear();

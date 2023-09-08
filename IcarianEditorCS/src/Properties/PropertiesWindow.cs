@@ -346,12 +346,17 @@ namespace IcarianEditor.Properties
             FieldInfo[] fields = objType.GetFields();
             foreach (FieldInfo field in fields)
             {
-                string fName = field.Name;
+                if (field.IsStatic || field.IsLiteral)
+                {
+                    continue;
+                }
 
                 if ((field.IsPrivate && field.GetCustomAttributes<SerializableAttribute>() == null) || field.GetCustomAttribute<HideInEditorAttribute>() != null)
                 {
                     continue;
                 }
+
+                string fName = field.Name;
 
                 object val = field.GetValue(a_object);
 

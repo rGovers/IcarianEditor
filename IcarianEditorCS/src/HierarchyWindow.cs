@@ -15,7 +15,7 @@ namespace IcarianEditor
 
             if (GUI.CtrlModifier)
             {
-                selection = Workspace.Selection;
+                selection.AddRange(Workspace.Selection);
             }
 
             int index = 0;
@@ -77,7 +77,8 @@ namespace IcarianEditor
                 }
             }
 
-            Workspace.Selection = selection;
+            Workspace.ClearSelection();
+            Workspace.AddSelection(selection);
 
             s_startID = a_id;
         }

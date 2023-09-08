@@ -1,9 +1,7 @@
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
-using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace IcarianEditor.Modals
 {
@@ -12,11 +10,11 @@ namespace IcarianEditor.Modals
         struct ComponentData
         {
             public string Name;
-            public Type Type;
+            public ComponentDef Def;
         }
 
         int                  m_selection;
-        List<ComponentData>  m_componentNames;
+        List<ComponentData>  m_components;
         GameObjectDef        m_def;
 
         public AddComponentModal(GameObjectDef a_def) : base("Add Component", new Vector2(250, 80))
@@ -24,74 +22,42 @@ namespace IcarianEditor.Modals
             m_def = a_def;
 
             m_selection = 0;
-            m_componentNames = new List<ComponentData>();
+            m_components = new List<ComponentData>();
 
-            Type baseType = typeof(ComponentDef);
-
-            m_componentNames.Add(new ComponentData()
+            IEnumerable<ComponentDef> defs = DefLibrary.GetDefs<ComponentDef>();
+            foreach (ComponentDef def in defs)
             {
-                Name = "ComponentDef",
-                Type = baseType
-            });
-
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (Assembly asm in assemblies)
-            {
-                Type[] types = asm.GetTypes();
-                foreach (Type type in types)
+                m_components.Add(new ComponentData()
                 {
-                    if (type.IsAbstract)
-                    {
-                        continue;
-                    }
-
-                    if (type.IsSubclassOf(baseType))
-                    {
-                        string name = type.FullName;
-                        if (name.StartsWith("IcarianEngine"))
-                        {
-                            m_componentNames.Add(new ComponentData()
-                            {
-                                Name = type.Name,
-                                Type = type
-                            });
-                        }
-                        else
-                        {
-                            m_componentNames.Add(new ComponentData()
-                            {
-                                Name = name,
-                                Type = type
-                            });
-                        }
-                    }
-                }
+                    Name = def.DefName,
+                    Def = def
+                });
             }
         }
 
         public override bool Update()
         {
-            string[] names = new string[m_componentNames.Count];
-            for (int i = 0; i < m_componentNames.Count; ++i)
+            int count = m_components.Count;
+            string[] names = new string[count];
+            for (int i = 0; i < count; ++i)
             {
-                names[i] = m_componentNames[i].Name;
+                names[i] = m_components[i].Name;
             }
             
-            GUI.StringSelector("Component Type", names, ref m_selection);
+            GUI.StringSelector("ComponentDef", names, ref m_selection);
 
             if (GUI.Button("Ok"))
             {
-                if (m_selection < 0)
+                if (m_selection < 0 || m_selection >= count)
                 {
                     Logger.Error("Invalid component selection");
 
                     return true;
                 }
 
-                ComponentData data = m_componentNames[m_selection];
+                ComponentData data = m_components[m_selection];
 
-                ComponentDef comp = (ComponentDef)Activator.CreateInstance(data.Type);
-                m_def.Components.Add(comp);
+                m_def.Components.Add(data.Def);
 
                 return false;
             }

@@ -33,6 +33,7 @@
 #include "Windows/HierarchyWindow.h"
 #include "Windows/ProfilerWindow.h"
 #include "Windows/PropertiesWindow.h"
+#include "Windows/SceneDefsWindow.h"
 #include "Workspace.h"
 
 #include "Modals/ErrorModal.h"
@@ -187,6 +188,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
+    m_windows.emplace_back(new SceneDefsWindow(m_runtime));
 
     glGenVertexArrays(1, &m_vao);
 
@@ -371,6 +373,11 @@ void AppMain::Update(double a_delta, double a_time)
                 if (ImGui::MenuItem("Hierarchy"))
                 {
                     m_windows.emplace_back(new HierarchyWindow(m_runtime));
+                }
+
+                if (ImGui::MenuItem("Scene Definitions"))
+                {
+                    m_windows.emplace_back(new SceneDefsWindow(m_runtime));
                 }
 
                 ImGui::Separator();

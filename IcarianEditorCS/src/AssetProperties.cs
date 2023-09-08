@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -20,8 +21,6 @@ namespace IcarianEditor
         static PropertiesWindow                   s_defaultWindow;
 
         static Dictionary<Type, PropertiesWindow> s_windows;
-
-        static string                             s_defName;
 
         const string DefintionNamespace = "IcarianEngine.Definitions.";
 
@@ -387,7 +386,7 @@ namespace IcarianEditor
 
         static void PushDef(string a_path)
         {
-            Workspace.Selection = new List<SelectionObject>();
+            Workspace.ClearSelection();
 
             IEnumerable<Def> defs = DefLibrary.GetDefs();
 
@@ -395,13 +394,9 @@ namespace IcarianEditor
             {
                 if (def.DefPath == a_path)
                 {
-                    s_defName = def.DefName;
-
-                    return;
+                    Workspace.AddDefSelection(def);
                 }
             }
-
-            s_defName = null;
         }
 
         static void DisplayGUI(object a_object)
@@ -419,19 +414,14 @@ namespace IcarianEditor
 
         static void OnGUI()
         {
-            if (Workspace.Selection != null && Workspace.Selection.Count > 0)
+            // TODO: Implement multi selection at some point
+            if (!Workspace.IsSelectionEmpty)
             {
-                // TODO: Implement multi selection at some point
-                DisplayGUI(Workspace.Selection[0]);
+                DisplayGUI(Workspace.Selection.First());
             }
-
-            if (!string.IsNullOrWhiteSpace(s_defName))
+            else if (!Workspace.IsDefSelectionEmpty)
             {
-                Def def = DefLibrary.GetDef(s_defName);
-                if (def != null)
-                {
-                    DisplayGUI(def);
-                }
+                DisplayGUI(Workspace.SelectedDefs.First());
             }
         }
     }
