@@ -1,3 +1,4 @@
+using IcarianEditor.Modals;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using System.Collections.Generic;
@@ -148,7 +149,7 @@ namespace IcarianEditor.Properties
                     def.Components = new List<ComponentDef>();
                 }
 
-                def.Components.Add(null);
+                new AddComponentModal(def);
             }
 
             if (show && def.Components != null)
