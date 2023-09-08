@@ -1,9 +1,8 @@
 #include "MonoProjectGenerator.h"
 
-#include "AssetLibrary.h"
-
 #include <tinyxml2.h>
 
+#include "IO.h"
 #include "Logger.h"
 
 void MonoProjectGenerator::GetScripts(std::vector<std::filesystem::path>* a_scripts, const std::filesystem::path& a_dir, const std::filesystem::path& a_workingDir)
@@ -17,7 +16,7 @@ void MonoProjectGenerator::GetScripts(std::vector<std::filesystem::path>* a_scri
 	{
 		if (iter.is_directory())
 		{
-			const std::filesystem::path r = AssetLibrary::GetRelativePath(a_workingDir, iter);
+			const std::filesystem::path r = IO::GetRelativePath(a_workingDir, iter);
 			if (r != "Editor")
 			{
 				GetScripts(a_scripts, iter, a_workingDir);
@@ -27,7 +26,7 @@ void MonoProjectGenerator::GetScripts(std::vector<std::filesystem::path>* a_scri
 		{
 			if (iter.path().extension() == ".cs")
 			{
-				a_scripts->emplace_back(AssetLibrary::GetRelativePath(a_workingDir, iter));
+				a_scripts->emplace_back(IO::GetRelativePath(a_workingDir, iter));
 			}
 		}
 	}

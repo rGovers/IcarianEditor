@@ -378,19 +378,18 @@ void AssetBrowserWindow::Update(double a_delta)
             ImGui::BeginGroup();
 
             const std::string fileName = path.stem().string();
+            const std::filesystem::path rPath = IO::GetRelativePath(workingPath, path);
 
             FileHandler::FileCallback* openCallback;
             FileHandler::FileCallback* dragCallback;
             Texture* tex;
-            FileHandler::GetFileData(path, &openCallback, &dragCallback, &tex);
+            FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
 
             FlareImGui::ImageButton(tex, glm::vec2(ItemWidth), false);
 
             uint32_t size;
             const char* data;
             m_assetLibrary->GetAsset(workingPath, path, &size, &data);
-
-            const std::filesystem::path rPath = AssetLibrary::GetRelativePath(workingPath, path);
 
             if (size > 0 && data != nullptr)
             {

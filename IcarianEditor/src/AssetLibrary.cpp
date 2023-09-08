@@ -6,6 +6,7 @@
 
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
+#include "IO.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
 #include "mono/metadata/appdomain.h"
@@ -68,29 +69,6 @@ AssetLibrary::~AssetLibrary()
     }
 }
 
-std::filesystem::path AssetLibrary::GetRelativePath(const std::filesystem::path& a_relative, const std::filesystem::path& a_path)
-{
-    std::filesystem::path tempPath = a_path;
-    std::filesystem::path path;
-
-    while (tempPath != a_relative)
-    {
-        if (path.empty())
-        {
-            path = tempPath.stem();
-            path.replace_extension(tempPath.extension());
-        }
-        else
-        {
-            path = tempPath.stem() / path;
-        }
-        
-        tempPath = tempPath.parent_path();
-    }
-
-    return path;
-}
-
 void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
 {
     for (const auto& iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
@@ -99,7 +77,7 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
         {
             Asset asset;
 
-            asset.Path = GetRelativePath(a_workingDir, iter.path());
+            asset.Path = IO::GetRelativePath(a_workingDir, iter.path());
 
             const std::filesystem::path ext = asset.Path.extension();
             const std::filesystem::path name = asset.Path.filename();
@@ -471,7 +449,7 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
 }
 void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data)
 {
-    const std::filesystem::path rPath = GetRelativePath(a_workingDir, a_path);
+    const std::filesystem::path rPath = IO::GetRelativePath(a_workingDir, a_path);
 
     GetAsset(rPath, a_size, a_data);
 }

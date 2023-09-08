@@ -178,7 +178,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     Gizmos::Init(m_runtime);
     GUI::Init(m_runtime);
 
-    FileHandler::Init(m_workspace);
+    FileHandler::Init(m_assets, m_workspace);
     
     m_windows.emplace_back(new ConsoleWindow());
     m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));

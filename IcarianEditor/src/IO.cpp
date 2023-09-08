@@ -69,6 +69,29 @@ bool IO::ValidatePathName(const std::string_view& a_name)
     return true;
 }
 
+std::filesystem::path IO::GetRelativePath(const std::filesystem::path& a_relative, const std::filesystem::path& a_path)
+{
+    std::filesystem::path tempPath = a_path;
+    std::filesystem::path path;
+
+    while (tempPath != a_relative)
+    {
+        if (path.empty())
+        {
+            path = tempPath.stem();
+            path.replace_extension(tempPath.extension());
+        }
+        else
+        {
+            path = tempPath.stem() / path;
+        }
+        
+        tempPath = tempPath.parent_path();
+    }
+
+    return path;
+}
+
 void IO::OpenFileExplorer(const std::filesystem::path& a_path)
 {
 #if WIN32
