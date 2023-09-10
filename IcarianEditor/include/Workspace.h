@@ -53,8 +53,8 @@ public:
     void AddEditorWindow(EditorWindow* a_window);
     void RemoveEditorWindow(EditorWindow* a_window);
 
-    void SetScene(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data);
+    void SetScene(const std::filesystem::path& a_path);
 
-    void OpenDef(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data);
+    void OpenDef(const std::filesystem::path& a_path);
     void PushDef(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data);
 };

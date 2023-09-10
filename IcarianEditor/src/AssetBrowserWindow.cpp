@@ -327,7 +327,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
             }
             else
             {
-                (*openCallback)(rPath, size, data);
+                (*openCallback)(a_path, rPath, size, data);
             }
         }
                 
@@ -337,7 +337,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
             {
                 IDEFER(ImGui::EndDragDropSource());
 
-                (*dragCallback)(rPath, size, data);
+                (*dragCallback)(a_path, rPath, size, data);
             }
         }
 

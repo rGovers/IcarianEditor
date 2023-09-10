@@ -140,3 +140,51 @@ void IO::OpenFile(const std::filesystem::path& a_path)
     }
 #endif
 }
+void IO::OpenFile(const std::string_view& a_application, const std::filesystem::path& a_path)
+{
+#if WIN32
+    const std::string path = a_path.string();
+
+    const std::string command = a_application.data() + std::string(" ") + path;
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#else
+    const std::string path = a_path.string();
+
+    const std::string command = a_application.data() + std::string(" \"") + path + "\"";
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#endif
+}
+void IO::StartOpenFile(const std::string_view& a_application, const std::filesystem::path& a_path)
+{
+#if WIN32
+    const std::string path = a_path.string();
+
+    const std::string command = std::string("start ") + a_application.data() + " " + path;
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#else
+    const std::string path = a_path.string();
+
+    const std::string command = a_application.data() + std::string(" \"") + path + "\"";
+
+    const int ret = system(command.c_str());
+    if (ret != 0)
+    {
+        Logger::Error("Failed to open file!");
+    }
+#endif
+}

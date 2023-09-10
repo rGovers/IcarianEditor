@@ -11,7 +11,7 @@ class Workspace;
 class FileHandler
 {
 public:
-    using FileCallback = std::function<void(const std::filesystem::path&, uint32_t, const char*)>;
+    using FileCallback = std::function<void(const std::filesystem::path&, const std::filesystem::path&, uint32_t, const char*)>;
 
 private:
     static FileHandler* Instance;

@@ -49,7 +49,7 @@ void Workspace::RemoveEditorWindow(EditorWindow* a_window)
     }
 }
 
-void Workspace::SetScene(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data)
+void Workspace::SetScene(const std::filesystem::path& a_path)
 {
     m_currentScene = a_path;
 
@@ -59,7 +59,7 @@ void Workspace::SetScene(const std::filesystem::path& a_path, uint32_t a_size, c
     }
 }
 
-void Workspace::OpenDef(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data)
+void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
     MonoDomain* editorDomain = m_runtime->GetEditorDomain();
 

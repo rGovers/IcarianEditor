@@ -39,6 +39,22 @@ void EditorConfig::Deserialize()
                     {
                         Instance->m_useDegrees = element->BoolText();
                     }
+                    else if (strcmp(element->Name(), "CodeEditor") == 0)
+                    {
+                        const char* codeEditor = element->GetText();
+                        if (strcmp(codeEditor, "Default") == 0)
+                        {
+                            Instance->m_codeEditor = CodeEditor_Default;
+                        }
+                        else if (strcmp(codeEditor, "VisualStudioCode") == 0)
+                        {
+                            Instance->m_codeEditor = CodeEditor_VisualStudioCode;
+                        }
+                        else if (strcmp(codeEditor, "VisualStudio") == 0)
+                        {
+                            Instance->m_codeEditor = CodeEditor_VisualStudio;
+                        }
+                    }
                 }
             }
         }
@@ -56,6 +72,29 @@ void EditorConfig::Serialize()
     tinyxml2::XMLElement* useDegrees = doc.NewElement("UseDegrees");
     useDegrees->SetText(Instance->m_useDegrees);
     root->InsertEndChild(useDegrees);
+
+    tinyxml2::XMLElement* codeEditor = doc.NewElement("CodeEditor");
+    switch (Instance->m_codeEditor)
+    {
+    case CodeEditor_VisualStudio:
+    {
+        codeEditor->SetText("VisualStudio");
+
+        break;
+    }
+    case CodeEditor_VisualStudioCode:
+    {
+        codeEditor->SetText("VisualStudioCode");
+
+        break;
+    }
+    default:
+    {
+        codeEditor->SetText("Default");
+
+        break;
+    }
+    }
 
     doc.SaveFile(ConfigFile);
 }
@@ -86,4 +125,13 @@ bool EditorConfig::GetUseDegrees()
 void EditorConfig::SetUseDegrees(bool useDegrees)
 {
     Instance->m_useDegrees = useDegrees;
+}
+
+e_CodeEditor EditorConfig::GetCodeEditor()
+{
+    return Instance->m_codeEditor;
+}
+void EditorConfig::SetCodeEditor(e_CodeEditor codeEditor)
+{
+    Instance->m_codeEditor = codeEditor;
 }

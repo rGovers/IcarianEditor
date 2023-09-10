@@ -5,6 +5,7 @@
 enum e_EditorConfigTab
 {
     EditorConfigTab_General,
+    EditorConfigTab_ExternalTools,
     EditorConfigTab_End
 };
 
@@ -14,7 +15,8 @@ private:
     e_EditorConfigTab m_currentTab = EditorConfigTab_General;
 
     static void GeneralTab();
-    
+    static void ExternalToolsTab();
+
 protected:
 
 public:

@@ -4,11 +4,54 @@
 
 #include "AssetLibrary.h"
 #include "Datastore.h"
+#include "EditorConfig.h"
 #include "Flare/IcarianDefer.h"
+#include "IO.h"
 #include "Texture.h"
 #include "Workspace.h"
 
 FileHandler* FileHandler::Instance = nullptr;
+
+static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+{
+    const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
+
+    switch (codeEditor)
+    {
+    case CodeEditor_VisualStudio:
+    {
+        IO::StartOpenFile("devenv", a_path);
+
+        break;
+    }
+    case CodeEditor_VisualStudioCode:
+    {
+        IO::OpenFile("code", a_path);
+
+        break;
+    }
+    default:
+    {
+        IO::OpenFile(a_path);
+
+        break;
+    }
+    }
+}
+
+static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+{
+    a_workspace->OpenDef(a_relativePath);
+}
+static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+{
+    a_workspace->SetScene(a_relativePath);
+}
+
+static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+{
+    a_workspace->PushDef(a_relativePath, a_size, a_data);
+}
 
 FileHandler::FileHandler(AssetLibrary* a_assets, Workspace* a_workspace)
 {
@@ -25,10 +68,11 @@ FileHandler::FileHandler(AssetLibrary* a_assets, Workspace* a_workspace)
     m_extTex.emplace(".ui", Datastore::GetTexture("Textures/FileIcons/FileIcon_Canvas.png"));
     m_extTex.emplace(".ttf", Datastore::GetTexture("Textures/FileIcons/FileIcon_Font.png"));
 
-    m_extOpenCallback.emplace(".def", FileCallback(std::bind(&Workspace::OpenDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
-    m_extOpenCallback.emplace(".iscene", FileCallback(std::bind(&Workspace::SetScene, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+    m_extOpenCallback.emplace(".def", FileCallback(std::bind(OpenDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".iscene", FileCallback(std::bind(SetScene, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".cs", FileCallback(std::bind(OpenCSScript, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-    m_extDragCallback.emplace(".def", FileCallback(std::bind(&Workspace::PushDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+    m_extDragCallback.emplace(".def", FileCallback(std::bind(PushDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 }
 FileHandler::~FileHandler()
 {
@@ -114,7 +158,10 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     const auto tIter = Instance->m_extTex.find(ext);
     if (tIter != Instance->m_extTex.end())
     {
-        *a_texture = tIter->second;
+        if (tIter->second != nullptr)
+        {
+            *a_texture = tIter->second;
+        }
     }
 
     const auto oIter = Instance->m_extOpenCallback.find(ext);

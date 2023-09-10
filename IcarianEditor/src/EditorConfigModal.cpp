@@ -8,8 +8,31 @@
 
 static constexpr char* EditorConfigTabNames[] =
 {
-    "General"
+    "General",
+    "External Tools"
 };
+static constexpr char* CodeEditorNames[] =
+{
+    "Default",
+    "Visual Studio",
+    "Visual Studio Code"
+};
+
+#if WIN32
+static contexpr bool CodeEditorEnabled[] =
+{
+    true,
+    true,
+    true
+};
+#else
+static constexpr bool CodeEditorEnabled[] =
+{
+    true,
+    false,
+    true
+};
+#endif
 
 EditorConfigModal::EditorConfigModal() : Modal("Config", glm::vec2(400.0f, 300.0f))
 {
@@ -27,6 +50,37 @@ void EditorConfigModal::GeneralTab()
     if (ImGui::Checkbox("Use Degrees", &useDegrees))
     {
         EditorConfig::SetUseDegrees(useDegrees);
+    }
+}
+void EditorConfigModal::ExternalToolsTab()
+{
+    const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
+
+    ImGui::SetNextItemWidth(200.0f);
+    if (ImGui::BeginCombo("Code Editor", CodeEditorNames[codeEditor]))
+    {
+        IDEFER(ImGui::EndCombo());
+
+        for (uint32_t i = 0; i < CodeEditor_End; ++i)
+        {
+            const bool enabled = CodeEditorEnabled[i];
+            if (!enabled)
+            {
+                continue;
+            }
+
+            const bool selected = codeEditor == i;
+
+            if (ImGui::Selectable(CodeEditorNames[i], selected))
+            {
+                EditorConfig::SetCodeEditor((e_CodeEditor)i);
+            }
+
+            if (selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
     }
 }
 
@@ -56,6 +110,12 @@ bool EditorConfigModal::Update()
         case EditorConfigTab_General:
         {
             GeneralTab();   
+
+            break;
+        }
+        case EditorConfigTab_ExternalTools:
+        {
+            ExternalToolsTab();
 
             break;
         }
