@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace IcarianEditor
+namespace IcarianEditor.Windows
 {
     struct TransformData
     {

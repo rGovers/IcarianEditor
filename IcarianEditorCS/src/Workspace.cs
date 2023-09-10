@@ -350,6 +350,8 @@ namespace IcarianEditor
             GetObjects(obj, a_def);
         }
 
+        // TODO: Redo this function as requirement have changed since it was first written
+        // A refactor is needed and was not done well the first time
         public static Scene GetScene()
         {
             string curScene = GetCurrentScene();

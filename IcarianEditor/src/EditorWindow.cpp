@@ -131,7 +131,7 @@ void EditorWindow::Draw()
     RenderCommand::PushCameraBuffer(camBuffer);
     Gizmos::SetMatrices(view, proj);
 
-    m_runtime->ExecFunction("IcarianEditor", "EditorWindow", ":OnGUI()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI()", nullptr);
 
     const GLuint handle = GridShader->GetHandle();
 
