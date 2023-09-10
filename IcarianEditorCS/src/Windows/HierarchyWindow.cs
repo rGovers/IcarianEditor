@@ -91,6 +91,14 @@ namespace IcarianEditor.Windows
                 new NewSceneObjectModal();
             }
         }
+        static void ObjectOptionsMenu(ulong a_id)
+        {
+            if (GUI.MenuItem("Delete"))
+            {
+                new DeleteSceneObjectModal(a_id);
+            }
+        }
+
         static void DisplayObject(SceneObject a_obj, GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList, bool a_scene)
         {
             if (a_def == null)
@@ -217,7 +225,7 @@ namespace IcarianEditor.Windows
                     continue;
                 }
 
-                ulong id = Workspace.GetID(obj);
+                ulong id = objectData.ID;
                 string idStr = $"##[{id}]{obj.DefName}";
 
                 bool show = false;
@@ -246,6 +254,8 @@ namespace IcarianEditor.Windows
                 {
                     context = true;
 
+                    ObjectOptionsMenu(id);
+
                     GUI.EndPopup();
                 }
 
@@ -266,9 +276,9 @@ namespace IcarianEditor.Windows
 
             if (!context && GUI.BeginContextPopupWindow())
             {
-                CreateMenuItem();
-
                 context = true;
+                
+                CreateMenuItem();
 
                 GUI.EndPopup();
             }

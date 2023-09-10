@@ -95,8 +95,11 @@ namespace IcarianEditor
         extern static uint NodeI(string a_str);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void PopNode();
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void SameLine();
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void Separator();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetShiftModifier();

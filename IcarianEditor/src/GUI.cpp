@@ -463,14 +463,18 @@ RUNTIME_FUNCTION(uint32_t, GUI, NodeI,
     STACK_G_ID(str);
     return (uint32_t)ImGui::TreeNode(str);
 }, MonoString* a_str)
-
 RUNTIME_FUNCTION(void, GUI, PopNode,
 {
     ImGui::TreePop();
 })
+
 RUNTIME_FUNCTION(void, GUI, SameLine, 
 {
     ImGui::SameLine();
+})
+RUNTIME_FUNCTION(void, GUI, Separator, 
+{
+    ImGui::Separator();
 })
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetShiftModifier, 
@@ -549,7 +553,9 @@ void GUI::Init(RuntimeManager* a_runtime)
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, NodeI);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PopNode);
+
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, SameLine);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Separator);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetShiftModifier);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCtrlModifier);

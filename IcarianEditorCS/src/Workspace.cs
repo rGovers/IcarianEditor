@@ -260,6 +260,19 @@ namespace IcarianEditor
             return false;
         }
 
+        public static SceneObject GetSceneObject(ulong a_id)
+        {
+            foreach (SceneObjectData obj in s_sceneObjectList)
+            {
+                if (obj.ID == a_id)
+                {
+                    return obj.Object;
+                }
+            }
+
+            return null;
+        }
+
         public static ulong NewID()
         {
             return s_id++;
@@ -348,6 +361,33 @@ namespace IcarianEditor
             s_sceneObjectList.Add(data);
 
             GetObjects(obj, a_def);
+        }
+        public static void DeleteSceneObject(SceneObject a_object)
+        {
+            List<GameObjectData> toRemove = new List<GameObjectData>();
+
+            foreach (GameObjectData obj in s_sceneGameObjectList)
+            {
+                if (obj.Object == a_object)
+                {
+                    toRemove.Add(obj);
+                }
+            }
+
+            foreach (GameObjectData obj in toRemove)
+            {
+                s_sceneGameObjectList.Remove(obj);
+            }
+
+            foreach (SceneObjectData obj in s_sceneObjectList)
+            {
+                if (obj.Object == a_object)
+                {
+                    s_sceneObjectList.Remove(obj);
+
+                    break;
+                }
+            }
         }
 
         // TODO: Redo this function as requirement have changed since it was first written

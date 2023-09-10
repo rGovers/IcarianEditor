@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Reflection;
 using IcarianEditor.Modals;
 using IcarianEngine;
 using IcarianEngine.Definitions;
@@ -30,7 +33,22 @@ namespace IcarianEditor.Windows
 
                 if (GUI.Button("-"))
                 {
-                    Workspace.SceneDefs.Remove(def);
+                    new ConfirmModal("Delete " + defName + "?", () =>
+                    {
+                        Workspace.SceneDefs.Remove(def);
+
+                        Type defLibraryType = typeof(DefLibrary);
+                        
+                        FieldInfo sceneDefsField = defLibraryType.GetField("s_sceneDefs", BindingFlags.NonPublic | BindingFlags.Static);
+
+                        List<Def> sceneDefs = sceneDefsField.GetValue(null) as List<Def>;
+                        sceneDefs.Remove(def);
+
+                        FieldInfo sceneLookupField = defLibraryType.GetField("s_sceneLookup", BindingFlags.NonPublic | BindingFlags.Static);
+
+                        ConcurrentDictionary<string, Def> sceneLookup = sceneLookupField.GetValue(null) as ConcurrentDictionary<string, Def>;
+                        sceneLookup.TryRemove(defName, out Def _);
+                    });
 
                     GUI.PopID();
 
