@@ -9,6 +9,7 @@ namespace IcarianEditor
     public struct GameObjectData
     {
         public ulong ID;
+        public SceneObject Object;
         public GameObjectDef Def;
     }
     public struct SceneObjectData
@@ -154,28 +155,45 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetManipulationMode();
 
-        static ulong                 s_ID = 0;
-
-        static Scene                 s_LastScene = null;
-
         public static List<Def> SceneDefs = new List<Def>();
-        static List<SelectionObject> s_Selection = new List<SelectionObject>();
-        static List<Def> s_SelectedDefs = new List<Def>();
-        public static List<SceneObjectData> SceneObjectList = new List<SceneObjectData>();
-        public static List<GameObjectData>  SceneGameObjectList = new List<GameObjectData>();
 
+        static ulong                 s_id = 0;
+
+        static Scene                 s_lastScene = null;
+
+        static List<SelectionObject> s_selection = new List<SelectionObject>();
+        static List<Def>             s_selectedDefs = new List<Def>();
+
+        static List<SceneObjectData> s_sceneObjectList = new List<SceneObjectData>();
+        static List<GameObjectData>  s_sceneGameObjectList = new List<GameObjectData>();
+        
         public static IEnumerable<SelectionObject> Selection
         {
             get
             {
-                return s_Selection;
+                return s_selection;
             }
         }
         public static IEnumerable<Def> SelectedDefs
         {
             get
             {
-                return s_SelectedDefs;
+                return s_selectedDefs;
+            }
+        }
+
+        public static IEnumerable<SceneObjectData> SceneObjectList
+        {
+            get
+            {
+                return s_sceneObjectList;
+            }
+        }
+        public static IEnumerable<GameObjectData> SceneGameObjectList
+        {
+            get
+            {
+                return s_sceneGameObjectList;
             }
         }
 
@@ -183,43 +201,68 @@ namespace IcarianEditor
         {
             get
             {
-                return s_Selection.Count == 0;
+                return s_selection.Count == 0;
             }
         }
         public static bool IsDefSelectionEmpty
         {
             get
             {
-                return s_SelectedDefs.Count == 0;
+                return s_selectedDefs.Count == 0;
             }
         }
 
         public static void AddSelection(SelectionObject a_object)
         {
-            s_Selection.Add(a_object);
+            s_selection.Add(a_object);
         }
         public static void AddSelection(IEnumerable<SelectionObject> a_objects)
         {
-            s_Selection.AddRange(a_objects);
+            s_selection.AddRange(a_objects);
         }
         public static void AddDefSelection(Def a_object)
         {
-            s_SelectedDefs.Add(a_object);
+            s_selectedDefs.Add(a_object);
         }
         public static void AddDefSelection(IEnumerable<Def> a_objects)
         {
-            s_SelectedDefs.AddRange(a_objects);
+            s_selectedDefs.AddRange(a_objects);
         }
 
         public static void ClearSelection()
         {
-            s_Selection.Clear();
-            s_SelectedDefs.Clear();
+            s_selection.Clear();
+            s_selectedDefs.Clear();
+        }
+
+        public static bool SelectionContains(SceneObject a_obj)
+        {
+            foreach (SelectionObject obj in s_selection)
+            {
+                if (obj.SceneObject == a_obj)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        public static bool SelectionContains(SceneObject a_obj, GameObjectDef a_def)
+        {
+            foreach (SelectionObject obj in s_selection)
+            {
+                if (obj.SceneObject == a_obj && obj.GameObject == a_def)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static ulong NewID()
         {
-            return s_ID++;
+            return s_id++;
         }
 
         public static string CurrentScenePath
@@ -242,11 +285,11 @@ namespace IcarianEditor
             }
         }
 
-        public static ulong GetID(GameObjectDef a_object)
+        public static ulong GetID(SceneObject a_sceneObject, GameObjectDef a_object)
         {
-            foreach (GameObjectData dat in SceneGameObjectList)
+            foreach (GameObjectData dat in s_sceneGameObjectList)
             {
-                if (dat.Def == a_object)
+                if (dat.Object == a_sceneObject && dat.Def == a_object)
                 {
                     return dat.ID;
                 }
@@ -256,7 +299,7 @@ namespace IcarianEditor
         }
         public static ulong GetID(SceneObject a_object)
         {
-            foreach (SceneObjectData dat in SceneObjectList)
+            foreach (SceneObjectData dat in s_sceneObjectList)
             {
                 if (dat.Object == a_object)
                 {
@@ -267,23 +310,44 @@ namespace IcarianEditor
             return ulong.MaxValue;
         }
 
-        static void GetObjects(GameObjectDef a_def)
+        static void GetObjects(SceneObject a_object, GameObjectDef a_def)
         {
             if (a_def == null)
             {
                 return;
             }
 
-            SceneGameObjectList.Add(new GameObjectData()
+            s_sceneGameObjectList.Add(new GameObjectData()
             {
                 ID = NewID(),
+                Object = a_object,
                 Def = a_def
             });
 
             foreach (GameObjectDef child in a_def.Children)
             {
-                GetObjects(child);
+                GetObjects(a_object, child);
             }
+        }
+
+        public static void CreateSceneObject(GameObjectDef a_def)
+        {
+            SceneObject obj = new SceneObject()
+            {
+                DefName = a_def.DefName,
+                Translation = Vector3.Zero,
+                Rotation = Quaternion.Identity,
+                Scale = Vector3.One
+            };
+            SceneObjectData data = new SceneObjectData()
+            {
+                ID = NewID(),
+                Object = obj
+            };
+
+            s_sceneObjectList.Add(data);
+
+            GetObjects(obj, a_def);
         }
 
         public static Scene GetScene()
@@ -302,14 +366,14 @@ namespace IcarianEditor
                 return null;
             }
 
-            if (s != s_LastScene)
+            if (s != s_lastScene)
             {
-                s_Selection.Clear();
-                s_SelectedDefs.Clear();
+                s_selection.Clear();
+                s_selectedDefs.Clear();
 
                 SceneDefs.Clear();
-                SceneObjectList.Clear();
-                SceneGameObjectList.Clear();
+                s_sceneObjectList.Clear();
+                s_sceneGameObjectList.Clear();
 
                 foreach (Def def in s.Defs)
                 {
@@ -318,16 +382,18 @@ namespace IcarianEditor
 
                 foreach (SceneObject obj in s.SceneObjects)
                 {
-                    SceneObjectList.Add(new SceneObjectData()
+                    s_sceneObjectList.Add(new SceneObjectData()
                     {
                         ID = NewID(),
                         Object = obj
                     });
 
-                    GetObjects(DefLibrary.GetDef<GameObjectDef>(obj.DefName));
+                    GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
+
+                    GetObjects(obj, def);
                 }
 
-                s_LastScene = s;
+                s_lastScene = s;
             }
 
             return s;

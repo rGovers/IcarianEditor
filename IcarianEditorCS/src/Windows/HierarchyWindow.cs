@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using IcarianEditor.Modals;
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
@@ -83,7 +84,14 @@ namespace IcarianEditor.Windows
             s_startID = a_id;
         }
 
-        static void DisplayObject(GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList, bool a_scene)
+        static void CreateMenuItem()
+        {
+            if (GUI.MenuItem("New Scene Object"))
+            {
+                new NewSceneObjectModal();
+            }
+        }
+        static void DisplayObject(SceneObject a_obj, GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList, bool a_scene)
         {
             if (a_def == null)
             {
@@ -118,12 +126,13 @@ namespace IcarianEditor.Windows
         
             uint childCount = (uint)sChildren.Count;
 
-            ulong id = Workspace.GetID(a_def);
+            ulong id = Workspace.GetID(a_obj, a_def);
 
             a_selectionList.Add(new SelectionObject()
             {
                 ID = id,
                 SelectionMode = SelectionObjectMode.GameObjectDef,
+                SceneObject = a_obj,
                 GameObject = a_def
             });
 
@@ -136,19 +145,9 @@ namespace IcarianEditor.Windows
 
                 GUI.SameLine();
 
-                if (a_def.IsSceneDef)
+                if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
                 {
-                    if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
-                    {
-                        GUI.SameLine();
-                    }
-                }
-                else
-                {
-                    if (GUI.Texture("Textures/Icons/Icon_GameObject.png", new Vector2(16.0f, 16.0f)))
-                    {
-                        GUI.SameLine();
-                    }
+                    GUI.SameLine();
                 }
 
                 GUI.SameLine();
@@ -162,7 +161,10 @@ namespace IcarianEditor.Windows
                 {   
                     foreach (GameObjectDef def in sChildren)
                     {
-                        DisplayObject(def, ref a_selectionID, ref a_selectionList, a_scene);
+                        if (def.IsSceneDef)
+                        {
+                            DisplayObject(a_obj, def, ref a_selectionID, ref a_selectionList, a_scene);
+                        }
                     }
 
                     GUI.PopNode();
@@ -172,19 +174,9 @@ namespace IcarianEditor.Windows
             {
                 GUI.NIndent();
 
-                if (a_def.IsSceneDef)
+                if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
                 {
-                    if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
-                    {
-                        GUI.SameLine();
-                    }
-                }
-                else
-                {
-                    if (GUI.Texture("Textures/Icons/Icon_GameObject.png", new Vector2(16.0f, 16.0f)))
-                    {
-                        GUI.SameLine();
-                    }
+                    GUI.SameLine();
                 }
 
                 if (GUI.Selectable(name))
@@ -210,8 +202,13 @@ namespace IcarianEditor.Windows
             List<SelectionObject> selectionList = new List<SelectionObject>();
             ulong selectionID = ulong.MaxValue;
 
-            foreach (SceneObject obj in scene.SceneObjects)
+            bool context = false;
+
+            IEnumerable<SceneObjectData> sceneObjects = Workspace.SceneObjectList;
+            foreach (SceneObjectData objectData in sceneObjects)
             {
+                SceneObject obj = objectData.Object;
+
                 string name = obj.DefName;
 
                 GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(name);
@@ -245,9 +242,16 @@ namespace IcarianEditor.Windows
                     selectionID = id;
                 }
 
+                if (!context && GUI.BeginContextPopup())
+                {
+                    context = true;
+
+                    GUI.EndPopup();
+                }
+
                 if (show)
                 {
-                    DisplayObject(def, ref selectionID, ref selectionList, true);
+                    DisplayObject(obj, def, ref selectionID, ref selectionList, true);
 
                     GUI.PopNode();
                 }
@@ -258,6 +262,15 @@ namespace IcarianEditor.Windows
             if (selectionID != ulong.MaxValue)
             {
                 Select(selectionID, selectionList);
+            }
+
+            if (!context && GUI.BeginContextPopupWindow())
+            {
+                CreateMenuItem();
+
+                context = true;
+
+                GUI.EndPopup();
             }
         }
     }

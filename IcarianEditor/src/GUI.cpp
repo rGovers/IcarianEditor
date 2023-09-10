@@ -422,6 +422,39 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetSelectable,
     return (uint32_t)ImGui::Selectable(str);
 }, MonoString* a_str)
 
+RUNTIME_FUNCTION(uint32_t, GUI, GetContextPopup, 
+{
+    return (uint32_t)ImGui::BeginPopupContextItem();
+})
+RUNTIME_FUNCTION(uint32_t, GUI, GetContextPopupWindow, 
+{
+    return (uint32_t)ImGui::BeginPopupContextWindow();
+})
+RUNTIME_FUNCTION(void, GUI, EndPopup,
+{
+    ImGui::EndPopup();
+})
+
+RUNTIME_FUNCTION(uint32_t, GUI, GetMenu, 
+{
+    char* str = mono_string_to_utf8(a_label);
+    IDEFER(mono_free(str));
+
+    return (uint32_t)ImGui::BeginMenu(str);
+}, MonoString* a_label)
+RUNTIME_FUNCTION(void, GUI, EndMenu,
+{
+    ImGui::EndMenu();
+})
+
+RUNTIME_FUNCTION(uint32_t, GUI, GetMenuItem, 
+{
+    char* str = mono_string_to_utf8(a_label);
+    IDEFER(mono_free(str));
+
+    return (uint32_t)ImGui::MenuItem(str);
+}, MonoString* a_label)
+
 RUNTIME_FUNCTION(uint32_t, GUI, NodeI,
 {
     char* str = mono_string_to_utf8(a_str);
@@ -504,6 +537,15 @@ void GUI::Init(RuntimeManager* a_runtime)
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Label);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetSelectable);
+
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetContextPopup);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetContextPopupWindow);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndPopup);
+
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetMenu);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndMenu);
+
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetMenuItem);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, NodeI);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PopNode);

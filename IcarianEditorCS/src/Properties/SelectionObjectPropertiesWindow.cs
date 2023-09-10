@@ -133,7 +133,7 @@ namespace IcarianEditor.Properties
 
                 GUI.RVec3Field("Scale", ref selectionObject.SceneObject.Scale, Vector3.One);
 
-                GUI.StringField("DefName", ref selectionObject.SceneObject.DefName);
+                // GUI.StringField("DefName", ref selectionObject.SceneObject.DefName);
 
                 break;
             }

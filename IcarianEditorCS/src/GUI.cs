@@ -77,6 +77,21 @@ namespace IcarianEditor
         extern static uint GetSelectable(string a_str);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetContextPopup();
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetContextPopupWindow();
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void EndPopup();
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetMenu(string a_label);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void EndMenu();
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetMenuItem(string a_label);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint NodeI(string a_str);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void PopNode();
@@ -751,6 +766,25 @@ namespace IcarianEditor
             } 
 
             return false;
+        }
+
+        public static bool BeginContextPopup()
+        {
+            return GetContextPopup() != 0;
+        }
+        public static bool BeginContextPopupWindow()
+        {
+            return GetContextPopupWindow() != 0;
+        }
+
+        public static bool BeginMenu(string a_label)
+        {
+            return GetMenu(a_label) != 0;
+        }
+
+        public static bool MenuItem(string a_label)
+        {
+            return GetMenuItem(a_label) != 0;
         }
 
         public static bool StructView(string a_label)
