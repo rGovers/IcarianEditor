@@ -97,6 +97,8 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
     ProfilerData::Clear();
 
+    m_captureInput = true;
+
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
 #if WIN32
     const FlareBase::IPCPipe* serverPipe = FlareBase::IPCPipe::Create(GetAddr(PipeName).string());
@@ -243,7 +245,6 @@ void ProcessManager::PollMessage(bool a_blockError)
     while (!messages.empty())
     {
         const FlareBase::PipeMessage msg = messages.front();
-        // ICARIAN_DEFER(msg, if (msg.Data != nullptr) { delete[] msg.Data; });
         IDEFER(
         if (msg.Data != nullptr)
         {
@@ -277,6 +278,12 @@ void ProcessManager::PollMessage(bool a_blockError)
                 m_frameTime += 0.5;
                 m_frames = 0;
             }
+
+            break;
+        }
+        case FlareBase::PipeMessageType_SetCursorState:
+        {
+            m_cursorState = *(FlareBase::e_CursorState*)msg.Data;
 
             break;
         }
@@ -459,7 +466,7 @@ void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
 }
 void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 {
-    if (IsRunning())
+    if (m_captureInput && IsRunning())
     {
         if (!m_pipe->Send({ FlareBase::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
         {
@@ -473,7 +480,7 @@ void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 }
 void ProcessManager::PushMouseState(unsigned char a_state)
 {
-    if (IsRunning())
+    if (m_captureInput && IsRunning())
     {
         if (!m_pipe->Send({ FlareBase::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state }))
         {
@@ -487,7 +494,7 @@ void ProcessManager::PushMouseState(unsigned char a_state)
 }
 void ProcessManager::PushKeyboardState(FlareBase::KeyboardState& a_state)
 {
-    if (IsRunning())
+    if (m_captureInput && IsRunning())
     {
         if (!m_pipe->Send({ FlareBase::PipeMessageType_KeyboardState, FlareBase::KeyboardState::ElementCount, (char*)a_state.ToData() }))
         {

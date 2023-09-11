@@ -23,25 +23,28 @@ private:
 
     void DestroyProc();
 #else
-    int                 m_process;
-#endif
+    int                      m_process;
+#endif      
 
-    FlareBase::IPCPipe* m_pipe;
+    FlareBase::IPCPipe*      m_pipe;
 
-    bool                m_resize;
-                        
-    uint32_t            m_width;
-    uint32_t            m_height;
-                        
-    int                 m_updates;
-    double              m_updateTime;
-    double              m_ups;
+    bool                     m_resize;
 
-    int                 m_frames;                    
-    double              m_frameTime;
-    double              m_fps;
+    uint32_t                 m_width;
+    uint32_t                 m_height;
                         
-    GLuint              m_tex;
+    bool                     m_captureInput;
+    FlareBase::e_CursorState m_cursorState;
+
+    int                      m_updates;
+    double                   m_updateTime;
+    double                   m_ups;
+
+    int                      m_frames;                    
+    double                   m_frameTime;
+    double                   m_fps;
+                        
+    GLuint                   m_tex;
     
     void PollMessage(bool a_blockError = false);
 
@@ -83,6 +86,19 @@ public:
     inline double GetUPS() const
     {
         return m_ups;
+    }
+
+    inline bool GetCaptureInput() const
+    {
+        return m_captureInput;
+    }
+    inline void SetCaptureInput(bool a_capture)
+    {
+        m_captureInput = a_capture;
+    }
+    inline FlareBase::e_CursorState GetCursorState() const
+    {
+        return m_cursorState;
     }
 
     void SetSize(uint32_t a_width, uint32_t a_height);

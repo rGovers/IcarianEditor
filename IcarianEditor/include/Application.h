@@ -1,11 +1,15 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#define GLM_FORCE_SWIZZLE 
+#include <glm/glm.hpp>
 
 #include <cstdint>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <string>
 #include <string_view>
+
+#include "Flare/InputBindings.h"
 
 class Application
 {
@@ -31,6 +35,10 @@ public:
     {
         return m_height;
     }
+
+    void SetCursorState(FlareBase::e_CursorState a_state);
+
+    glm::vec2 GetCursorPos() const;
 
     virtual void Update(double a_delta, double a_time) = 0;
 

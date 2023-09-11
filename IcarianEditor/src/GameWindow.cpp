@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "Application.h"
 #include "Flare/InputBindings.h"
 #include "ProcessManager.h"
 
@@ -136,8 +137,9 @@ static constexpr ImGuiKey GameKeyTable[] =
     ImGuiKey_Menu
 };
 
-GameWindow::GameWindow(ProcessManager* a_processManager) : Window("Game")
+GameWindow::GameWindow(Application* a_app, ProcessManager* a_processManager) : Window("Game")
 {
+    m_app = a_app;
     m_processManager = a_processManager;
 }
 GameWindow::~GameWindow()
@@ -153,17 +155,54 @@ void GameWindow::Update(double a_delta)
 
     m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
 
-    if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
+    const bool locked = m_processManager->GetCursorState() == FlareBase::CursorState_Locked;
+    
+    // The oh fuck the app has taken input away button stop giving control
+    if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
     {
-        const ImVec2 mousePosIm = ImGui::GetMousePos();
-        const ImVec2 winPosIm = ImGui::GetWindowPos();
+        const bool captureInput = !m_processManager->GetCaptureInput();
+
+        m_processManager->SetCaptureInput(captureInput);
+
+        if (captureInput && locked)
+        {
+            m_app->SetCursorState(FlareBase::CursorState_Locked);
+        }
+        else
+        {
+            m_app->SetCursorState(FlareBase::CursorState_Normal);
+        }
+    }
+
+    const bool focused = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
+    const bool captureInput = m_processManager->GetCaptureInput();
+
+    if (captureInput && (focused || locked))
+    {
         const ImGuiStyle& style = ImGui::GetStyle();
 
         const float titleBarSize = ImGui::GetFontSize() + style.FramePadding.y * 2;
 
-        const glm::vec2 cPos = glm::vec2(mousePosIm.x - winPosIm.x, mousePosIm.y - (winPosIm.y + titleBarSize));
+        if (locked)
+        {
+            m_app->SetCursorState(FlareBase::CursorState_Locked);
 
-        m_processManager->PushCursorPos(cPos);
+            const glm::vec2 cursorPos = m_app->GetCursorPos();
+
+            const glm::vec2 delta = cursorPos - m_lastCursorPos;
+            m_processManager->PushCursorPos(delta);
+
+            m_lastCursorPos = cursorPos;
+        }
+        else 
+        {
+            const ImVec2 mousePosIm = ImGui::GetMousePos();
+            const ImVec2 winPosIm = ImGui::GetWindowPos();
+
+            const glm::vec2 cPos = glm::vec2(mousePosIm.x - winPosIm.x, mousePosIm.y - (winPosIm.y + titleBarSize));
+
+            m_processManager->PushCursorPos(cPos);
+        }
 
         unsigned char mouseState = 0;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
@@ -193,7 +232,7 @@ void GameWindow::Update(double a_delta)
                 }
             }
         }
-        
+
         m_processManager->PushKeyboardState(state);
     }
 

@@ -1,7 +1,6 @@
 #include "Application.h"
 
-#include <assert.h>
-
+#include "Flare/IcarianAssert.h"
 #include "Logger.h"
 
 static void ErrorCallback(int a_error, const char* a_description)
@@ -14,10 +13,7 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     m_width = a_width;
     m_height = a_height;
 
-    if (!glfwInit())
-    {
-        assert(0);
-    }
+    ICARIAN_ASSERT_R(glfwInit());
 
     glfwSetErrorCallback(ErrorCallback);
     
@@ -32,14 +28,11 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     {
         glfwTerminate();
         
-        assert(0);
+        ICARIAN_ASSERT(0);
     }
     glfwMakeContextCurrent(m_window);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        assert(0);
-    }
+    ICARIAN_ASSERT_R(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
 
     glfwSwapInterval(1);
 }
@@ -48,6 +41,44 @@ Application::~Application()
     glfwDestroyWindow(m_window);
 
     glfwTerminate();
+}
+
+void Application::SetCursorState(FlareBase::e_CursorState a_state)
+{
+    switch (a_state) 
+    {
+    case FlareBase::CursorState_Normal:
+    {
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+        break;
+    }
+    case FlareBase::CursorState_Hidden:
+    {
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
+        break;
+    }
+    case FlareBase::CursorState_Locked:
+    {
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        if (glfwRawMouseMotionSupported())
+        {
+            glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+        }
+
+        break;
+    }
+    }   
+}
+
+glm::vec2 Application::GetCursorPos() const
+{
+    double x, y;
+    glfwGetCursorPos(m_window, &x, &y);
+
+    return glm::vec2(x, y);
 }
 
 void Application::Run()
