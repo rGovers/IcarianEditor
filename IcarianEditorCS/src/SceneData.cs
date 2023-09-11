@@ -20,6 +20,15 @@ namespace IcarianEditor
         {
             m_scenes = new Dictionary<string, Scene>();
         }
+        internal static void Destroy()
+        {
+            foreach (KeyValuePair<string, Scene> pair in m_scenes)
+            {
+                pair.Value.Dispose();
+            }
+
+            m_scenes.Clear();
+        }
 
         public static Scene GetScene(string a_path)
         {

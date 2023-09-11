@@ -22,6 +22,9 @@ static RenderCommand* Instance = nullptr;
     \
     F(uint32_t, IcarianEditor, AnimationMaster, GenerateSkeletonBuffer, { return RenderCommand::GenerateSkeletonBuffer(); }) \
     F(void, IcarianEditor, AnimationMaster, BindSkeletonBuffer, { RenderCommand::BindSkeletonBuffer(a_addr); }, uint32_t a_addr) \
+    \
+    \
+    F(void, IcarianEngine.Rendering.Animation, Animator, DestroyBuffer, { }, uint32_t a_addr) \
 
 RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 

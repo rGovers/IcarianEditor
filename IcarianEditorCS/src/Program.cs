@@ -32,6 +32,8 @@ namespace IcarianEditor
         {
             AssetLibrary.ClearAssets();
             DefLibrary.Clear();
+            SceneData.Destroy();
+            AnimationMaster.Destroy();
         }
         
         // On Windows seems to need a main function and be executable to work

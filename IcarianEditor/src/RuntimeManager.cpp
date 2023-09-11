@@ -99,7 +99,6 @@ RuntimeManager::RuntimeManager()
 }
 RuntimeManager::~RuntimeManager()
 {
-    // Aware of crash refer to TODO in Start
     mono_jit_cleanup(m_mainDomain);
 }
 
@@ -142,14 +141,6 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     const std::filesystem::path assemblyPath = std::filesystem::path("Core") / "Assemblies";
 
     const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
-    // ICARIAN_DEFER(startTime, 
-    // {
-    //     const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
-
-    //     const double time = std::chrono::duration<double>(endTime - startTime).count();
-
-    //     Logger::Message("Project Built in " + std::to_string(time) + "s");
-    // });
     IDEFER(
     {
         const std::chrono::high_resolution_clock::time_point endTime = std::chrono::high_resolution_clock::now();
@@ -220,42 +211,39 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     return m_built;
 }
 
+static constexpr char EditorDomainName[] = "IcarianEditor";
+static constexpr uint32_t EditorDomainNameLength = sizeof(EditorDomainName);
+
 void RuntimeManager::Start(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
     if (m_editorDomain != nullptr && m_editorDomain != mono_get_root_domain())
     {
-        // TODO:
-        // CRITICAL:
-        // I have no idea what is going on I have tried alot of methods and it seems I cannot get the AppDomain to unload 
-        // It crashes everytime
-        // This needs to be fixed but I am not sure what needs to be done and I do not want to spin up another process
-        // UPDATE:
-        // Still need to be resolved but seem to be able to get hot reloading working in a janky way
-        // Not the correct way to do as there is no gurantee on deloading assemblies until AppDomain is finalised
-        // Seems to be a long standing bug in mono on some platforms
-
         mono_domain_set(m_editorDomain, 1);
 
         mono_runtime_invoke(m_editorUnloadMethod, NULL, NULL, NULL);
         
         mono_domain_set(m_mainDomain, 1);
 
-        mono_assembly_close(m_engineAssembly);
-        mono_assembly_close(m_editorAssembly);
-        if (m_projectEditorAssembly != nullptr)
-        {
-            mono_assembly_close(m_projectEditorAssembly);
-        }
+        // Updated mono and magically fixed the crash related to unloading the domain
+        // not going to question it
+        mono_domain_unload(m_editorDomain);
 
         mono_gc_collect(mono_gc_max_generation());
     }
 
-    m_editorDomain = mono_domain_create_appdomain("IcarianEditor", NULL);
-    ICARIAN_ASSERT(m_editorDomain != nullptr);
+    // Copying the string to shut up the warning about C++11
+    char editorDomainName[EditorDomainNameLength];
+    for (uint32_t i = 0; i < EditorDomainNameLength; ++i)
+    {
+        editorDomainName[i] = EditorDomainName[i];
+    }
+
+    m_editorDomain = mono_domain_create_appdomain(editorDomainName, NULL);
+    ICARIAN_ASSERT(m_editorDomain != NULL);
     mono_domain_set(m_editorDomain, 1);    
 
     m_editorAssembly = mono_domain_assembly_open(m_editorDomain, "./IcarianEditorCS.dll");
-    ICARIAN_ASSERT(m_editorAssembly != nullptr);
+    ICARIAN_ASSERT(m_editorAssembly != NULL);
 
     if (m_built)
     {
@@ -268,13 +256,10 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     MonoClass* editorProgramClass = mono_class_from_name(m_editorImage, "IcarianEditor", "Program");
 
     MonoMethodDesc* loadDesc = mono_method_desc_new(":Load()", 0);
-    // ICARIAN_DEFER(loadDesc, mono_method_desc_free(loadDesc));
     IDEFER(mono_method_desc_free(loadDesc));
     MonoMethodDesc* updateDesc = mono_method_desc_new(":Update(double)", 0);
-    // ICARIAN_DEFER(updateDesc, mono_method_desc_free(updateDesc));
     IDEFER(mono_method_desc_free(updateDesc));
     MonoMethodDesc* unloadDesc = mono_method_desc_new(":Unload()", 0);
-    // ICARIAN_DEFER(unloadDesc, mono_method_desc_free(unloadDesc));
     IDEFER(mono_method_desc_free(unloadDesc));
 
     MonoMethod* loadMethod = mono_method_desc_search_in_class(loadDesc, editorProgramClass);
@@ -287,7 +272,7 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     ATTACH_FUNCTION(IcarianEngine, Application, GetEditorState);
 
     m_engineAssembly = mono_domain_assembly_open(m_editorDomain, "IcarianCS.dll");
-    ICARIAN_ASSERT(m_engineAssembly != nullptr);
+    ICARIAN_ASSERT(m_engineAssembly != NULL);
     m_engineImage = mono_assembly_get_image(m_engineAssembly);
 
     mono_runtime_invoke(loadMethod, NULL, NULL, NULL);

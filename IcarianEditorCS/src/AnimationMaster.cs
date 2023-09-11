@@ -33,6 +33,18 @@ namespace IcarianEditor
 
         static double s_deltaTime;
 
+        internal static void Destroy()
+        {
+            foreach (KeyValuePair<Skeleton, SkeletonData> pair in s_skeletonData)
+            {
+                SkeletonData data = pair.Value;
+
+                data.Animator.Dispose();
+            }
+
+            s_skeletonData.Clear();
+        }
+
         internal static void Update(double a_delta)
         {
             s_deltaTime = a_delta;
