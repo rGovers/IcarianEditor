@@ -156,7 +156,13 @@ void GameWindow::Update(double a_delta)
     m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
 
     const bool locked = m_processManager->GetCursorState() == FlareBase::CursorState_Locked;
-    
+    const bool running = m_processManager->IsRunning();
+
+    if (!running)
+    {
+        m_app->SetCursorState(FlareBase::CursorState_Normal);
+    }
+
     // The oh fuck the app has taken input away button stop giving control
     if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
     {

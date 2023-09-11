@@ -98,6 +98,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     ProfilerData::Clear();
 
     m_captureInput = true;
+    m_cursorState = FlareBase::CursorState_Normal;
 
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
 #if WIN32
@@ -426,7 +427,7 @@ void ProcessManager::Update()
 void ProcessManager::Stop()
 {
     Logger::Message("Stopping IcarianEngine Instance");
-    
+
     if (!m_pipe->Send({ FlareBase::PipeMessageType_Close }))
     {
         Logger::Error("Failed to send close message to IcarianEngine");
