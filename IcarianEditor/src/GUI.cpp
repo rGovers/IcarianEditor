@@ -58,7 +58,9 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox,
 
     return 0;
 }, MonoString* a_str, uint32_t* a_value)
-RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
+
+// Work around for MSVC formating macro arguments
+static MonoString* M_GUI_GetDef(MonoString* a_str, MonoString* a_preview, uint32_t* a_dispatchModal)
 {
     *a_dispatchModal = 0;
 
@@ -71,14 +73,14 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
     const std::string str = mStr;
 
     STACK_G_ID(str);
-    
+
     FlareImGui::Label(str);
 
     if (ImGui::Button(preview, { Instance->GetFieldWidth(), 0 }))
     {
         *a_dispatchModal = 1;
     }
-    
+
     if (ImGui::BeginDragDropTarget())
     {
         IDEFER(ImGui::EndDragDropTarget());
@@ -87,10 +89,14 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
         if (payload != nullptr)
         {
             return mono_string_from_utf32((mono_unichar4*)payload->Data);
-        } 
+        }
     }
 
     return NULL;
+}
+RUNTIME_FUNCTION(MonoString*, GUI, GetDef,
+{
+    return M_GUI_GetDef(a_str, a_preview, a_dispatchModal);
 }, MonoString* a_str, MonoString* a_preview, uint32_t* a_dispatchModal)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetInt,
@@ -224,7 +230,8 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetColor,
     return (uint32_t)ImGui::ColorEdit4(("##V_" + str).c_str(), (float*)a_value);
 }, MonoString* a_str, glm::vec4* a_value)
 
-RUNTIME_FUNCTION(MonoString*, GUI, GetString, 
+// Workaround for MSVC
+static MonoString* M_GUI_GetString(MonoString* a_str, MonoString* a_value)
 {
     char buffer[BufferSize];
 
@@ -245,9 +252,14 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetString,
     }
 
     return NULL;
+}
+RUNTIME_FUNCTION(MonoString*, GUI, GetString,
+{
+    return M_GUI_GetString(a_str, a_value);
 }, MonoString* a_str, MonoString* a_value)
 
-RUNTIME_FUNCTION(uint32_t, GUI, GetStringList,
+// MSVC workaround
+static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
 {
     char* mStr = mono_string_to_utf8(a_str);
     IDEFER(mono_free(mStr));
@@ -293,9 +305,14 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetStringList,
     }
 
     return 0;
+}
+RUNTIME_FUNCTION(uint32_t, GUI, GetStringList,
+{
+    return M_GUI_GetStringList(a_str, a_list, a_selected);
 }, MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
 
-RUNTIME_FUNCTION(uint32_t, GUI, ResetButton,
+// MSVC workaround
+static uint32_t M_GUI_ResetButton(MonoString* a_str)
 {
     char* str = mono_string_to_utf8(a_str);
     IDEFER(mono_free(str));
@@ -305,6 +322,10 @@ RUNTIME_FUNCTION(uint32_t, GUI, ResetButton,
     STACK_G_ID(str);
 
     return (uint32_t)FlareImGui::ImageButton(str, "Textures/Icons/Icon_Reset.png", glm::vec2(16.0f));
+}
+RUNTIME_FUNCTION(uint32_t, GUI, ResetButton,
+{
+    return M_GUI_ResetButton(a_str);
 }, MonoString* a_str)
 
 RUNTIME_FUNCTION(void, GUI, NIndent,
@@ -320,7 +341,8 @@ RUNTIME_FUNCTION(void, GUI, Unindent,
     ImGui::Unindent();
 })
 
-RUNTIME_FUNCTION(void, GUI, Tooltip, 
+// MSVC workaround
+static void M_GUI_Tooltip(MonoString* a_title, MonoString* a_str)
 {
     char* title = mono_string_to_utf8(a_title);
     IDEFER(mono_free(title));
@@ -347,6 +369,10 @@ RUNTIME_FUNCTION(void, GUI, Tooltip,
             ImGui::Text("%s", str);
         }
     }
+}
+RUNTIME_FUNCTION(void, GUI, Tooltip,
+{
+    MRF_GUI_Tooltip(a_title, a_str);
 }, MonoString* a_title, MonoString* a_str)
 
 RUNTIME_FUNCTION(uint32_t, GUI, ShowStructView,

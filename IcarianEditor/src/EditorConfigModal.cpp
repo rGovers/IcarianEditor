@@ -19,14 +19,14 @@ static constexpr char* CodeEditorNames[] =
 };
 
 #if WIN32
-static contexpr bool CodeEditorEnabled[] =
+constexpr static bool CodeEditorEnabled[] =
 {
     true,
     true,
     true
 };
 #else
-static constexpr bool CodeEditorEnabled[] =
+constexpr static bool CodeEditorEnabled[] =
 {
     true,
     false,
