@@ -6,12 +6,12 @@
 #include "Flare/IcarianDefer.h"
 #include "Logger.h"
 
-static constexpr char* EditorConfigTabNames[] =
+static constexpr const char* EditorConfigTabNames[] =
 {
     "General",
     "External Tools"
 };
-static constexpr char* CodeEditorNames[] =
+static constexpr const char* CodeEditorNames[] =
 {
     "Default",
     "Visual Studio",

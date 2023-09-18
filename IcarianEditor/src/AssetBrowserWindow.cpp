@@ -20,7 +20,7 @@
 #include "Modals/CreateTriggerBodyScriptModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
-#include "Templates/Scene.h"
+#include "Templates.h"
 #include "Texture.h"
 
 AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser")
@@ -194,9 +194,9 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
 
         if (ImGui::MenuItem("Scene"))
         {
-            const uint32_t len = (uint32_t)strlen(SCENETEMPLATE);
+            constexpr uint32_t Length = sizeof(SceneTemplate) / sizeof(*SceneTemplate);
 
-            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SCENETEMPLATE, len, "New Scene", ".iscene"));
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length, "New Scene", ".iscene"));
         }
 
         ImGui::EndMenu();

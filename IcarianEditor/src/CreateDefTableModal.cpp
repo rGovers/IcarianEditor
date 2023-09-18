@@ -8,7 +8,7 @@
 #include "Modals/ErrorModal.h"
 #include "Project.h"
 #include "TemplateBuilder.h"
-#include "Templates/DefTableCS.h"
+#include "Templates.h"
 
 CreateDefTableModal::CreateDefTableModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path) : Modal("Create Def Table")
 {
@@ -67,12 +67,11 @@ bool CreateDefTableModal::Update()
 
         const std::string projectName = m_project->GetName();
 
-        const std::string str = TemplateBuilder::GenerateFromTemplate(DEFTABLETEMPLATECS, projectName, m_name);
+        const std::string str = TemplateBuilder::GenerateFromTemplate(DefTableTemplate, projectName, m_name);
 
         std::ofstream file = std::ofstream(path, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            // ICARIAN_DEFER_closeOFile(file);
             IDEFER(file.close());
             file.write(str.c_str(), str.length()); 
 

@@ -9,8 +9,7 @@
 #include "PixelShader.h"
 #include "Runtime/RuntimeManager.h"
 #include "ShaderProgram.h"
-#include "Shaders/GizmoPixel.h"
-#include "Shaders/GizmoVertex.h"
+#include "Shaders.h"
 #include "VertexShader.h"
 
 static Gizmos* Instance = nullptr;
@@ -70,8 +69,8 @@ static constexpr ImGuizmo::OPERATION GetOperation(e_ManipulationMode a_mode)
 
 Gizmos::Gizmos()
 {
-    VertexShader* vShader = VertexShader::GenerateShader(GIZMOVERTEX);
-    PixelShader* pShader = PixelShader::GenerateShader(GIZMOPIXEL);
+    VertexShader* vShader = VertexShader::GenerateShader(GizmoVertexShader);
+    PixelShader* pShader = PixelShader::GenerateShader(GizmoPixelShader);
 
     m_shader = ShaderProgram::GenerateProgram(vShader, pShader);
 

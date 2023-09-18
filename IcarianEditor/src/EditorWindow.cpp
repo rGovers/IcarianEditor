@@ -9,8 +9,7 @@
 #include "RenderCommand.h"
 #include "Runtime/RuntimeManager.h"
 #include "ShaderProgram.h"
-#include "Shaders/GridPixel.h"
-#include "Shaders/GridVertex.h"
+#include "Shaders.h"
 #include "VertexShader.h"
 #include "Workspace.h"
 
@@ -21,8 +20,8 @@ EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : 
 {
     if (GridShader == nullptr)
     {
-        const VertexShader* v = VertexShader::GenerateShader(GRIDVERTEX);
-        const PixelShader* p = PixelShader::GenerateShader(GRIDPIXEL);
+        const VertexShader* v = VertexShader::GenerateShader(GridVertexShader);
+        const PixelShader* p = PixelShader::GenerateShader(GridPixelShader);
 
         GridShader = ShaderProgram::GenerateProgram(v, p);
 

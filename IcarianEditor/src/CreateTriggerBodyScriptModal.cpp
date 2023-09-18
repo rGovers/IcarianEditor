@@ -8,7 +8,7 @@
 #include "Modals/ErrorModal.h"
 #include "Project.h"
 #include "TemplateBuilder.h"
-#include "Templates/TriggerBodyCS.h"
+#include "Templates.h"
 
 CreateTriggerBodyScriptModal::CreateTriggerBodyScriptModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path) : Modal("Create Trigger Body Script")
 {
@@ -67,12 +67,11 @@ bool CreateTriggerBodyScriptModal::Update()
 
         const std::string projectName = m_project->GetName();
 
-        const std::string str = TemplateBuilder::GenerateFromTemplate(TRIGGERBODYTEMPLATECS, projectName, m_name);
+        const std::string str = TemplateBuilder::GenerateFromTemplate(TriggerBodyTemplate, projectName, m_name);
 
         std::ofstream file = std::ofstream(path, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            // ICARIAN_DEFER_closeOFile(file);
             IDEFER(file.close());
             file.write(str.c_str(), str.length()); 
 

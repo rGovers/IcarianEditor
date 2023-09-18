@@ -1,9 +1,11 @@
 #include "Runtime/RuntimeManager.h"
 
 #include <chrono>
+#include <cstring>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/mono-config.h>
+#include <mono/utils/mono-dl-fallback.h>
 #include <string>
 
 #include "ConsoleCommand.h"
@@ -42,6 +44,37 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Application, GetEditorState))
 }
 
 #define ATTACH_FUNCTION(namespace, klass, function) mono_add_internal_call(RUNTIME_FUNCTION_STRING(namespace, klass, function), (void*)RUNTIME_FUNCTION_NAME(klass, function));
+
+#ifndef WIN32
+#include "Flare/MonoNativeImpl.h"
+
+static constexpr char MonoNativeLibName[] = "libmono-native.so";
+static constexpr uint32_t MonoNativeLibNameLength = sizeof(MonoNativeLibName) - 1;
+
+#define MonoThisLibHandle ((void*)-1)
+
+static void* RuntimeDLOpen(const char* a_name, int a_flags, char** a_error, void* a_userData)
+{
+    const uint32_t len = (uint32_t)strlen(a_name);
+    const char* ptr = a_name + len - MonoNativeLibNameLength;
+
+    if (len > MonoNativeLibNameLength && strcmp(ptr, MonoNativeLibName) == 0)
+    {
+        return MonoThisLibHandle;
+    }
+
+    return NULL;
+}
+static void* RuntimeDLSymbol(void* a_handle, const char* a_name, char** a_error, void* a_userData)
+{
+    if (a_handle == MonoThisLibHandle)
+    {
+        return FlareBase::MonoNativeImpl::GetFunction(a_name);
+    }
+
+    return NULL;
+}
+#endif
 
 static std::vector<std::string> SplitString(const std::string_view& a_string)
 {
@@ -89,7 +122,22 @@ RuntimeManager::RuntimeManager()
 {
     mono_config_parse(NULL);
 
-    mono_set_dirs("./lib", "./etc");
+    const std::filesystem::path currentDir = std::filesystem::current_path();
+
+    const std::filesystem::path libDir = currentDir / "lib";
+    const std::filesystem::path etcDir = currentDir / "etc";
+
+    const std::filesystem::path assemblyPath = libDir / "mono" / "4.5";
+
+    mono_set_assemblies_path(assemblyPath.string().c_str());
+
+    mono_set_dirs(libDir.string().c_str(), etcDir.string().c_str());
+
+#ifndef WIN32
+    FlareBase::MonoNativeImpl::Init();
+
+    mono_dl_fallback_register(RuntimeDLOpen, RuntimeDLSymbol, NULL, NULL);
+#endif
 
     m_mainDomain = mono_jit_init("IcarianCS");
 
@@ -99,6 +147,12 @@ RuntimeManager::RuntimeManager()
 }
 RuntimeManager::~RuntimeManager()
 {
+#ifndef WIN32
+    mono_dl_fallback_unregister(NULL);
+
+    FlareBase::MonoNativeImpl::Destroy();
+#endif
+
     mono_jit_cleanup(m_mainDomain);
 }
 

@@ -6,15 +6,13 @@
 
 #include "AppMain.h"
 #include "AssetLibrary.h"
-#include "IcarianEditorConfig.h"
 #include "Logger.h"
 #include "Modals/BuildProjectModal.h"
 #include "Modals/CreateProjectModal.h"
 #include "Modals/ErrorModal.h"
 #include "Modals/OpenProjectModal.h"
 #include "TemplateBuilder.h"
-#include "Templates/About.h"
-#include "Templates/AssemblyControlCS.h"
+#include "Templates.h"
 
 static void GenerateDirs(const std::filesystem::path& a_path)
 {
@@ -88,7 +86,7 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
     std::ofstream assemblyControlStream = std::ofstream(m_path / "Project" / (assemblyControlName + ".cs"));
     if (assemblyControlStream.good() && assemblyControlStream.is_open())
     {
-        assemblyControlStream << TemplateBuilder::GenerateFromTemplate(ASSEMBLYCONTROLTEMPLATECS, a_name, assemblyControlName);
+        assemblyControlStream << TemplateBuilder::GenerateFromTemplate(AssemblyControlTemplate, a_name, assemblyControlName);
         assemblyControlStream.close();
     }
     else
@@ -99,7 +97,7 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
     std::ofstream aboutStream = std::ofstream(m_path / "Project" / "about.xml");
     if (aboutStream.good() && aboutStream.is_open())
     {
-        aboutStream << TemplateBuilder::GenerateFromTemplate(ABOUTTEMPLATE, a_name, "about");
+        aboutStream << TemplateBuilder::GenerateFromTemplate(AboutTemplate, a_name, "about");
         aboutStream.close();
     }
     else

@@ -4,7 +4,6 @@
 #include <string>
 
 #include "AppMain.h"
-#include "IcarianEditorConfig.h"
 #include "Logger.h"
 
 int main(int a_argc, char* a_argv[])
