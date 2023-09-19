@@ -166,40 +166,40 @@ int main(int a_argc, char** a_argv)
 
     icarianEnginePath = CUBE_Path_CreateC("IcarianEngine");
 
-    // PrintHeader("Building Dependencies");
+    PrintHeader("Building Dependencies");
 
-    // printf("Creating Dependencies projects...\n");
+    printf("Creating Dependencies projects...\n");
 
-    // dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
+    dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
 
-    // printf("Compiling Dependencies...\n");
-    // for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
-    // {
-    //     printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
+    printf("Compiling Dependencies...\n");
+    for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
+    {
+        printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
 
-    //     CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
-    //     CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
+        CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
+        CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-    //     ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
+        ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
 
-    //     CUBE_String_Destroy(&workingDirectoryStr);
-    //     CUBE_Path_Destroy(&workingDirectory);
+        CUBE_String_Destroy(&workingDirectoryStr);
+        CUBE_Path_Destroy(&workingDirectory);
 
-    //     FlushLines(&lines, &lineCount);
+        FlushLines(&lines, &lineCount);
 
-    //     if (!ret)
-    //     {
-    //         printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
+        if (!ret)
+        {
+            printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
 
-    //         return 1;
-    //     }
+            return 1;
+        }
 
-    //     printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
+        printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
 
-    //     CUBE_CProject_Destroy(&dependencyProjects[i].Project);
-    // }
+        CUBE_CProject_Destroy(&dependencyProjects[i].Project);
+    }
 
-    // free(dependencyProjects);
+    free(dependencyProjects);
 
     PrintHeader("Building FlareBase");
 
@@ -286,7 +286,7 @@ int main(int a_argc, char** a_argv)
     free(dependencyProjects);
 
     printf("Creating IcarianNative project...\n");
-    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration);
+    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
 
     printf("Compiling IcarianNative...\n");
     ret = CUBE_CProject_Compile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, &lines, &lineCount);
