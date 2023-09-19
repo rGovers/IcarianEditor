@@ -370,6 +370,20 @@ int main(int a_argc, char** a_argv)
 
     switch (targetPlatform)
     {
+    case TargetPlatform_Windows:
+    {
+        CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor.exe", "build/IcarianEditor.exe");
+        CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative.exe", "build/IcarianNative.exe");
+
+        CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/mono-2.0-sgen.dll", "build/mono-2.0-sgen.dll");
+        CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/MonoPosixHelper.dll", "build/MonoPosixHelper.dll");
+
+        CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Windows/lib", "build/lib", CBTRUE);
+        CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Windows/etc", "build/etc", CBTRUE);
+        CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Windows/bin", "build/bin", CBTRUE);
+
+        break;
+    }
     case TargetPlatform_Linux:
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor", "build/IcarianEditor");

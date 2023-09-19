@@ -227,7 +227,22 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     {
     case TargetPlatform_Windows:
     {
+        CUBE_CProject_AppendDefine(&project, "WIN32");
 
+        CUBE_CProject_AppendSystemIncludePath(&project, "../IcarianEngine/deps/Mono/Windows/include");
+
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/FlareBase/build/FlareBase.lib");
+
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/flare-glfw/build/GLFW.lib");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib");
+
+        CUBE_CProject_AppendReference(&project, "gdi32");
+        CUBE_CProject_AppendReference(&project, "wsock32");
+        CUBE_CProject_AppendReference(&project, "ws2_32");
+
+        // Magic string to get std library to link with MinGW
+        CUBE_CProject_AppendCFlag(&project, "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic");
 
         break;
     }
@@ -239,14 +254,11 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
 
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/flare-glfw/build/libGLFW.a");
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a");
-        // CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Linux/lib/libmono-native.a");
 
         CUBE_CProject_AppendReference(&project, "z");
 
         CUBE_CProject_AppendReference(&project, "stdc++");
         CUBE_CProject_AppendReference(&project, "m");
-
-        // CUBE_CProject_AppendCFlag(&project, "../IcarianEngine/deps/Mono/Linux/lib/libmono-native.a");
 
         break;
     }
