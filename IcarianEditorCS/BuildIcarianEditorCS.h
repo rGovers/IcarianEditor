@@ -56,7 +56,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
     CUBE_CSProject_AppendSource(&project, "src/Windows/HierarchyWindow.cs");
     CUBE_CSProject_AppendSource(&project, "src/Windows/SceneDefsWindow.cs");
 
-    CUBE_CSProject_Append_Reference(&project, "../IcarianEngine/IcarianCS/build/IcarianCS.dll");
+    CUBE_CSProject_AppendReference(&project, "../IcarianEngine/IcarianCS/build/IcarianCS.dll");
 
     return project;
 }

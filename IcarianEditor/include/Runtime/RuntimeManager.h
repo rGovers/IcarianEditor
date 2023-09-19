@@ -31,6 +31,7 @@ private:
     MonoMethod*   m_editorUpdateMethod;
     MonoMethod*   m_editorUnloadMethod;
 
+    MonoAssembly* m_projectAssembly;
     MonoAssembly* m_projectEditorAssembly;
 
     MonoAssembly* m_engineAssembly;

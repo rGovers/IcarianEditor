@@ -113,6 +113,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
 
     CUBE_CProject_AppendIncludePath(&project, "include");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/FlareBase/include");
+    CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/CUBE/include");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/flare-glfw/include");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/flare-glm");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/flare-stb");
@@ -142,7 +143,6 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendSource(&project, "src/BuildLoadingTask.cpp");
     CUBE_CProject_AppendSource(&project, "src/BuildProjectModal.cpp");
     CUBE_CProject_AppendSource(&project, "src/ConfirmModal.cpp");
-    CUBE_CProject_AppendSource(&project, "src/ConsoleCommand.cpp");
     CUBE_CProject_AppendSource(&project, "src/ConsoleWindow.cpp");
     CUBE_CProject_AppendSource(&project, "src/ControlWindow.cpp");
     CUBE_CProject_AppendSource(&project, "src/CopyBuildLibraryLoadingTask.cpp");

@@ -92,6 +92,15 @@ std::filesystem::path IO::GetRelativePath(const std::filesystem::path& a_relativ
     return path;
 }
 
+std::filesystem::path IO::GetCSCPath()
+{
+#ifdef WIN32
+    return std::filesystem::current_path() / "bin" / "csc.bat";
+#else
+    return std::filesystem::current_path() / "bin" / "csc";
+#endif
+}
+
 void IO::OpenFileExplorer(const std::filesystem::path& a_path)
 {
 #if WIN32

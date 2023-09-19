@@ -2,7 +2,10 @@
 
 #include <vector>
 
-#include "ConsoleCommand.h"
+#include "CUBE/CUBE.h"
+#include "Flare/IcarianDefer.h"
+#include "IO.h"
+#include "Logger.h"
 #include "MonoProjectGenerator.h"
 #include "Project.h"
 
@@ -27,45 +30,68 @@ void BuildLoadingTask::Run()
     const std::filesystem::path cachePath = projectPath / ".cache";
     const std::filesystem::path buildPath = cachePath / "build";
 
-    std::filesystem::create_directories(buildPath);
+    const std::filesystem::path cwd = std::filesystem::current_path();
+    const std::filesystem::path buildFilesPath = cwd / "BuildFiles" / m_platform;
 
-    const std::filesystem::path projectFile = cachePath / (projectName + "ReleaseBuild.csproj");
+    const std::filesystem::path cscPath = IO::GetCSCPath();
+
+    const std::filesystem::path icarianCSPath = buildFilesPath / "lib" / "IcarianCS.dll";
+
+    std::filesystem::create_directories(buildPath);
 
     std::vector<std::filesystem::path> projectScripts;
     MonoProjectGenerator::GetScripts(&projectScripts, projectFilesPath, projectFilesPath);
 
-    const std::string projectDependencies[] =
+    CUBE_CSProject project = { 0 };
+    IDEFER(CUBE_CSProject_Destroy(&project));
+
+    project.Name = CUBE_StackString_CreateC(projectName.c_str());
+    project.Target = CUBE_CSProjectTarget_Library;
+    project.OutputPath = CUBE_Path_CreateC("build");
+    project.Optimise = CBTRUE;
+
+    for (const std::filesystem::path& p : projectScripts)
     {
-        "System",
-        "System.Xml"
-    };
+        const std::filesystem::path absPath = projectFilesPath / p;
 
-    // Want to use the pre built engine assemblies as dependencies incase they have been updated or platform specific
-    const MonoExternalReference externalProjects[] = 
+        CUBE_CSProject_AppendSource(&project, absPath.string().c_str());
+    }
+
+    CUBE_CSProject_AppendReference(&project, icarianCSPath.string().c_str());
+
+    CBUINT32 lineCount = 0;
+    CUBE_String* lines = CBNULL;
+    
+    const bool error = !CUBE_CSProject_Compile(&project, cachePath.string().c_str(), cscPath.string().c_str(), &lines, &lineCount);
+    IDEFER(
     {
-        { "IcarianCS", std::filesystem::current_path() / "BuildFiles" / m_platform / "lib" / "IcarianCS.dll" }
-    };
+        if (lines != CBNULL)
+        {
+            for (CBUINT32 i = 0; i < lineCount; ++i)
+            {
+                CUBE_String_Destroy(&lines[i]);
+            }
 
-    const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
-    project.Serialize(projectName, projectFile, std::filesystem::path("build") / "Assemblies", externalProjects, sizeof(externalProjects) / sizeof(*externalProjects));
-
-    ConsoleCommand cmd = ConsoleCommand("xbuild");
-
-    const std::string cmdArgs[] =
-    {
-        projectFile.string(),
-        "/p:Configuration=Release",
-    };
+            free(lines);
+        }
+        
+        lineCount = 0;
+    });
 
     // TODO: Down the line add error states for loading tasks to allow for error early outs
-    cmd.Run(cmdArgs, sizeof(cmdArgs) / sizeof(*cmdArgs));
+    if (error)
+    {
+        for (CBUINT32 i = 0; i < lineCount; ++i)
+        {
+            Logger::Error(lines[i].Data);
+        }
+    }
 
     const std::filesystem::path finalPath = m_path / "Core" / "Assemblies";
-    const std::filesystem::path outPath = buildPath / "Assemblies";
 
     std::filesystem::create_directories(finalPath);
 
-    for (const auto& iter : std::filesystem::directory_iterator(outPath))
+    for (const auto& iter : std::filesystem::directory_iterator(buildPath))
     {
         const std::filesystem::path filename = iter.path().filename();
 

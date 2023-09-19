@@ -1,6 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define CUBE_IMPLEMENTATION
+#include "CUBE/CUBE.h"
+
 #include <string>
 
 #include "AppMain.h"

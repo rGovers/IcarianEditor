@@ -8,9 +8,11 @@
 #include <mono/utils/mono-dl-fallback.h>
 #include <string>
 
-#include "ConsoleCommand.h"
+#include "CUBE/CUBE.h"
+#include "EditorConfig.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
+#include "IO.h"
 #include "Logger.h"
 #include "MonoProjectGenerator.h"
 
@@ -76,48 +78,6 @@ static void* RuntimeDLSymbol(void* a_handle, const char* a_name, char** a_error,
 }
 #endif
 
-static std::vector<std::string> SplitString(const std::string_view& a_string)
-{
-    std::vector<std::string> v;
-
-    const char* s = a_string.data();
-    const char* l = s;
-    while (*s != 0)
-    {
-        if (*s == '\n')
-        {
-            const std::string str = std::string(l, s - l);
-
-            if (!str.empty())
-            {
-                v.emplace_back(str);
-            }
-
-            ++s;
-
-            while (*s == ' ')
-            {
-                ++s;
-            }
-
-            l = s;
-
-            continue;
-        }
-
-        ++s;
-    }
-
-    const std::string str = std::string(l, s - l);
-
-    if (!str.empty())
-    {
-        v.emplace_back(str);
-    }
-
-    return v;
-}
-
 RuntimeManager::RuntimeManager()
 {
     mono_config_parse(NULL);
@@ -156,31 +116,47 @@ RuntimeManager::~RuntimeManager()
     mono_jit_cleanup(m_mainDomain);
 }
 
-static bool ParseCommandOutput(const std::string_view& a_output)
+static bool FlushOutput(CUBE_String** a_line, CBUINT32* a_lineCount)
 {
-    const std::vector<std::string> outLines = SplitString(a_output);
+    IDEFER(
+    {
+        if (*a_line != NULL)
+        {
+            for (CBUINT32 i = 0; i < *a_lineCount; ++i)
+            {
+                CUBE_String_Destroy(&(*a_line)[i]);
+            }
+
+            free(*a_line);
+            *a_line = NULL;
+        }
+
+        *a_lineCount = 0;
+    });
 
     bool error = false;
 
-    for (const std::string& s : outLines)
+    for (CBUINT32 i = 0; i < *a_lineCount; ++i)
     {
-        if (s.find("Build FAILED") != std::string::npos)
+        const std::string str = std::string((*a_line)[i].Data);
+
+        if (str.find("Build FAILED") != std::string::npos)
         {
             return false;
         }
-        else if (s.find("Build succeeded") != std::string::npos)
+        else if (str.find("Build succeeded") != std::string::npos)
         {
             return true;
         }
-        else if (s.find("error") != std::string::npos)
+        else if (str.find("error") != std::string::npos)
         {
             error = true;
 
-            Logger::Error(s);
+            Logger::Error(str);
         }
-        else if (s.find("warning") != std::string::npos)
+        else if (str.find("warning") != std::string::npos)
         {
-            Logger::Warning(s);
+            Logger::Warning(str);
         }
     }
 
@@ -189,10 +165,18 @@ static bool ParseCommandOutput(const std::string_view& a_output)
 
 bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
+    const std::filesystem::path cwd = std::filesystem::current_path();
+    const std::filesystem::path icarianCSPath = cwd / "IcarianCS.dll";
+    const std::filesystem::path icarianEditorCSPath = cwd / "IcarianEditorCS.dll";
+
+    const std::filesystem::path cscPath = IO::GetCSCPath();
+
     const std::filesystem::path cachePath = a_path / ".cache";
     const std::filesystem::path projectPath = a_path / "Project";
     const std::filesystem::path projectFile = cachePath / (std::string(a_name) + ".csproj");
     const std::filesystem::path assemblyPath = std::filesystem::path("Core") / "Assemblies";
+
+    std::filesystem::create_directories(cachePath / assemblyPath);
 
     const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
     IDEFER(
@@ -207,59 +191,101 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     std::vector<std::filesystem::path> projectScripts;
     MonoProjectGenerator::GetScripts(&projectScripts, projectPath, projectPath);
 
-    const std::string projectDependencies[] =
+    const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
+    const bool generateProjectFiles = codeEditor == CodeEditor_VisualStudio || codeEditor == CodeEditor_VisualStudioCode;
+
+    if (generateProjectFiles)
     {
-        "System",
-        "System.Xml",
-        "IcarianEngine"
-    };
+        const std::string projectDependencies[] =
+        {
+            "System",
+            "System.Xml",
+            "IcarianEngine"
+        };
 
-    const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
-    project.Serialize(a_name, projectFile, assemblyPath);
-
-    ConsoleCommand cmd = ConsoleCommand("xbuild");
-
-    const std::string projectArgs[] =
-    {
-        projectFile.string()
-    };
+        // TODO: Need to port over to new build system
+        const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
+        project.Serialize(a_name, projectFile, assemblyPath);
+    }
     
-    const std::string out = cmd.Run(projectArgs, sizeof(projectArgs) / sizeof(*projectArgs));
+    CUBE_String* lines = CBNULL;
+    CBUINT32 lineCount = 0;
+    CUBE_CSProject project = { 0 };
+    IDEFER(CUBE_CSProject_Destroy(&project));
 
-    m_built = ParseCommandOutput(out);
+    project.Name = CUBE_StackString_CreateC(a_name.data());
+    project.Target = CUBE_CSProjectTarget_Library;
+    project.OutputPath = CUBE_Path_CreateC(assemblyPath.string().c_str());
+
+    for (const std::filesystem::path& p : projectScripts)
+    {
+        const std::filesystem::path absPath = projectPath / p;
+
+        CUBE_CSProject_AppendSource(&project, absPath.string().c_str());
+    }
+
+    CUBE_CSProject_AppendReference(&project, icarianCSPath.string().c_str());
+
+    m_built = CUBE_CSProject_Compile(&project, cachePath.string().c_str(), cscPath.string().c_str(), &lines, &lineCount);
+
+    if (!FlushOutput(&lines, &lineCount))
+    {
+        m_built = false;
+    }
 
     if (m_built)
     {
         const std::filesystem::path editorPath = projectPath / "Editor";
         const std::filesystem::path editorProjectFile = cachePath / (std::string(a_name) + "Editor.csproj");
+        const std::filesystem::path projectOutputFile = cachePath / assemblyPath / (std::string(a_name) + ".dll");
 
         std::vector<std::filesystem::path> editorScripts;
         MonoProjectGenerator::GetScripts(&editorScripts, editorPath, projectPath);
 
-        const std::string editorDependencies[] = 
+        if (generateProjectFiles)
         {
-            "System",
-            "System.Xml",
-            "IcarianEngine",
-            "IcarianEditor"
-        };
+            const std::string editorDependencies[] = 
+            {
+                "System",
+                "System.Xml",
+                "IcarianEngine",
+                "IcarianEditor"
+            };
 
-        const MonoExternalReference externalDependencies[] =
+            const MonoExternalReference externalDependencies[] =
+            {
+                { std::string(a_name), cachePath / assemblyPath / (std::string(a_name) + ".dll") },
+            };
+
+            const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
+            editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", externalDependencies, sizeof(externalDependencies) / sizeof(*externalDependencies));
+        }
+
+        CUBE_CSProject editorProject = { 0 };
+        IDEFER(CUBE_CSProject_Destroy(&editorProject));
+
+        editorProject.Name = CUBE_StackString_CreateC((std::string(a_name) + "Editor").data());
+        editorProject.Target = CUBE_CSProjectTarget_Library;
+        editorProject.OutputPath = CUBE_Path_CreateC("Editor");
+
+        for (const std::filesystem::path& p : editorScripts)
         {
-            { std::string(a_name), cachePath / assemblyPath / (std::string(a_name) + ".dll") },
-        };
+            const std::filesystem::path absPath = projectPath / p;
 
-        const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
-        editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", externalDependencies, sizeof(externalDependencies) / sizeof(*externalDependencies));
+            CUBE_CSProject_AppendSource(&editorProject, absPath.string().c_str());
+        }
 
-        const std::string projectEditorArgs[] =
+        CUBE_CSProject_AppendReference(&editorProject, icarianCSPath.string().c_str());
+        CUBE_CSProject_AppendReference(&editorProject, icarianEditorCSPath.string().c_str());
+
+        CUBE_CSProject_AppendReference(&editorProject, projectOutputFile.string().c_str());
+
+        m_built = CUBE_CSProject_Compile(&editorProject, cachePath.string().c_str(), cscPath.string().c_str(), &lines, &lineCount);
+
+        if (!FlushOutput(&lines, &lineCount))
         {
-            editorProjectFile.string()
-        };
-
-        const std::string output = cmd.Run(projectEditorArgs, sizeof(projectEditorArgs) / sizeof(*projectEditorArgs));
-
-        m_built = ParseCommandOutput(output);
+            m_built = false;
+        }
     }
 
     return m_built;
@@ -301,9 +327,11 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
 
     if (m_built)
     {
-        const std::filesystem::path assemblyPath = a_path / ".cache" / "Editor" / (std::string(a_name) + "Editor.dll");
+        const std::filesystem::path assemblyPath = a_path / ".cache" / "Core" / "Assemblies" / (std::string(a_name) + ".dll");
+        const std::filesystem::path editorAssemblyPath = a_path / ".cache" / "Editor" / (std::string(a_name) + "Editor.dll");
 
-        m_projectEditorAssembly = mono_domain_assembly_open(m_editorDomain, assemblyPath.string().c_str());
+        m_projectAssembly = mono_domain_assembly_open(m_editorDomain, assemblyPath.string().c_str());
+        m_projectEditorAssembly = mono_domain_assembly_open(m_editorDomain, editorAssemblyPath.string().c_str());
     }
 
     m_editorImage = mono_assembly_get_image(m_editorAssembly);

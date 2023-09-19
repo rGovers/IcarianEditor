@@ -36,7 +36,19 @@ namespace IcarianEditor.Windows
                 Type[] types = asm.GetTypes();
                 foreach (Type t in types)
                 {
-                    EDisplayAttribute att = t.GetCustomAttribute<EDisplayAttribute>();
+                    EDisplayAttribute att = null;
+
+                    foreach (CustomAttributeData a in t.CustomAttributes)
+                    {
+                        if (a.AttributeType == typeof(EDisplayAttribute))
+                        {
+                            att = a.Constructor.Invoke(new object[] { a.ConstructorArguments[0].Value }) as EDisplayAttribute;
+                        }
+                    }
+                    // Crashes on Windows so we'll use the above method
+                    // C# is portable btw
+                    // EDisplayAttribute att = t.GetCustomAttribute<EDisplayAttribute>();
+                    
                     if (att != null)
                     {
                         if (s_componentLookup.ContainsKey(att.OverrideType))
