@@ -241,6 +241,8 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "IcarianEngine/IcarianCS/build/IcarianCS.dll");
+
     printf("IcarianCS Compiled!\n");
 
     PrintHeader("Building IcarianNative");
@@ -368,6 +370,11 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CreateDirectoryC("build/etc");
     CUBE_IO_CreateDirectoryC("build/bin");
 
+    CUBE_IO_CopyFileC("IcarianEditorCS/build/IcarianEditorCS.dll", "build/IcarianEditorCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/IcarianCS.dll");
+
+    CUBE_IO_CopyDirectoryC("bin", "build", CBTRUE);
+
     switch (targetPlatform)
     {
     case TargetPlatform_Windows:
@@ -393,14 +400,15 @@ int main(int a_argc, char** a_argv)
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/etc", "build/etc", CBTRUE);
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/bin", "build/bin", CBTRUE);
 
+        CUBE_IO_CHMODC("build/IcarianEditor", 0755);
+        CUBE_IO_CHMODC("build/IcarianNative", 0755);
+
+        CUBE_IO_CHMODC("build/bin/mono", 0755);
+        CUBE_IO_CHMODC("build/bin/csc", 0755);
+
         break;
     }
     }
-
-    CUBE_IO_CopyFileC("IcarianEditorCS/build/IcarianEditorCS.dll", "build/IcarianEditorCS.dll");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/IcarianCS.dll");
-
-    CUBE_IO_CopyDirectoryC("bin", "build", CBTRUE);
 
     printf("Done!\n");
 
