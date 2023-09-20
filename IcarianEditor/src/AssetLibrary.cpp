@@ -210,7 +210,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 
     TraverseTree(p, p);
 
-    if (!m_runtime->IsBuilt())
+    if (!m_runtime->IsBuilt() || !m_runtime->IsRunning())
     {
         return;
     }

@@ -39,6 +39,8 @@ private:
 
     bool          m_built;
     
+    void UnloadEditorDomain();
+
 protected:
 
 public:
@@ -48,6 +50,10 @@ public:
     inline bool IsBuilt() const
     {
         return m_built;
+    }
+    inline bool IsRunning() const
+    {
+        return m_editorDomain != NULL;
     }
 
     inline MonoDomain* GetEditorDomain() const

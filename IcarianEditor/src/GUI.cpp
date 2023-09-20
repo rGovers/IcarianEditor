@@ -372,7 +372,7 @@ static void M_GUI_Tooltip(MonoString* a_title, MonoString* a_str)
 }
 RUNTIME_FUNCTION(void, GUI, Tooltip,
 {
-    MRF_GUI_Tooltip(a_title, a_str);
+    M_GUI_Tooltip(a_title, a_str);
 }, MonoString* a_title, MonoString* a_str)
 
 RUNTIME_FUNCTION(uint32_t, GUI, ShowStructView,

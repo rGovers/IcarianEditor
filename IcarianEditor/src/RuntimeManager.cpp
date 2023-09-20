@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <mono/metadata/exception.h>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/mono-config.h>
@@ -101,7 +102,7 @@ RuntimeManager::RuntimeManager()
 
     m_mainDomain = mono_jit_init("IcarianCS");
 
-    m_editorDomain = nullptr;
+    m_editorDomain = NULL;
 
     m_built = false;
 }
@@ -163,8 +164,33 @@ static bool FlushOutput(CUBE_String** a_line, CBUINT32* a_lineCount)
     return !error;
 }
 
+void RuntimeManager::UnloadEditorDomain()
+{
+    if (m_editorDomain != NULL && m_editorDomain != mono_get_root_domain())
+    {
+        mono_domain_set(m_editorDomain, 1);
+
+        mono_runtime_invoke(m_editorUnloadMethod, NULL, NULL, NULL);
+        
+        mono_domain_set(m_mainDomain, 1);
+
+        mono_domain_unload(m_editorDomain);
+        m_editorDomain = NULL;
+
+        mono_gc_collect(mono_gc_max_generation());
+    }
+}
+
 bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
+    // Thank you random person on Unity forums for post about the obscure WIN32 error code
+    // Windows has a fit if you dare to attempt to compile a project while it's loaded
+    // This is held together with duct tape and glue
+    // I guess it is not just loaded into memory on Windows?
+    UnloadEditorDomain();
+
+    m_built = false;
+
     const std::filesystem::path cwd = std::filesystem::current_path();
     const std::filesystem::path icarianCSPath = cwd / "IcarianCS.dll";
     const std::filesystem::path icarianEditorCSPath = cwd / "IcarianEditorCS.dll";
@@ -296,20 +322,7 @@ static constexpr uint32_t EditorDomainNameLength = sizeof(EditorDomainName);
 
 void RuntimeManager::Start(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
-    if (m_editorDomain != nullptr && m_editorDomain != mono_get_root_domain())
-    {
-        mono_domain_set(m_editorDomain, 1);
-
-        mono_runtime_invoke(m_editorUnloadMethod, NULL, NULL, NULL);
-        
-        mono_domain_set(m_mainDomain, 1);
-
-        // Updated mono and magically fixed the crash related to unloading the domain
-        // not going to question it
-        mono_domain_unload(m_editorDomain);
-
-        mono_gc_collect(mono_gc_max_generation());
-    }
+    UnloadEditorDomain();
 
     // Copying the string to shut up the warning about C++11
     char editorDomainName[EditorDomainNameLength];
@@ -357,19 +370,56 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     ICARIAN_ASSERT(m_engineAssembly != NULL);
     m_engineImage = mono_assembly_get_image(m_engineAssembly);
 
-    mono_runtime_invoke(loadMethod, NULL, NULL, NULL);
+    MonoObject* exception = NULL;
+    mono_runtime_invoke(loadMethod, NULL, NULL, &exception);
+
+    if (exception != NULL)
+    {
+        // On load failure, cannot trust the domain
+        IDEFER(UnloadEditorDomain());
+
+        MonoString* str = mono_object_to_string(exception, NULL);
+        char* cstr = mono_string_to_utf8(str);
+        if (cstr == NULL)
+        {
+            Logger::Error("Unknown Mono Exception");
+
+            return;
+        }
+        IDEFER(mono_free(cstr));
+
+        Logger::Error(cstr);
+    }   
 }
 
 void RuntimeManager::Update(double a_delta)
 {
-    if (m_built && m_editorDomain != nullptr)
+    if (m_built && m_editorDomain != NULL)
     {
         void* args[] =
         {
             &a_delta
         };
 
-        mono_runtime_invoke(m_editorUpdateMethod, NULL, args, NULL);
+        MonoObject* exception = NULL;
+        mono_runtime_invoke(m_editorUpdateMethod, NULL, args, &exception);
+
+        if (exception != NULL)
+        {
+            MonoString* str = mono_object_to_string(exception, NULL);
+            char* cstr = mono_string_to_utf8(str);
+            if (cstr == NULL)
+            {
+                Logger::Error("Unknown Mono Exception");
+
+                return;
+            }
+            IDEFER(mono_free(cstr));
+
+            Logger::Error(cstr);
+
+            mono_gc_collect(mono_gc_max_generation());
+        }
     }
 }
 
@@ -396,7 +446,7 @@ void RuntimeManager::BindFunction(const std::string_view& a_location, void* a_fu
 }
 void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args) const
 {
-    if (m_editorDomain != nullptr)
+    if (m_editorDomain != NULL)
     {
         MonoClass* cls = GetClass(a_namespace, a_class);
         ICARIAN_ASSERT(cls != nullptr);
@@ -407,6 +457,24 @@ void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std
 
         mono_method_desc_free(desc);
 
-        mono_runtime_invoke(method, NULL, a_args, NULL);
+        MonoObject* exception = NULL;
+        mono_runtime_invoke(method, NULL, a_args, &exception);
+
+        if (exception != NULL)
+        {
+            MonoString* str = mono_object_to_string(exception, NULL);
+            char* cstr = mono_string_to_utf8(str);
+            if (cstr == NULL)
+            {
+                Logger::Error("Unknown Mono Exception");
+
+                return;
+            }
+            IDEFER(mono_free(cstr));
+
+            Logger::Error(cstr);
+
+            mono_gc_collect(mono_gc_max_generation());
+        }
     }
 }
