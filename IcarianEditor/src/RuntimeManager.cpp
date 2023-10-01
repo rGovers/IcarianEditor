@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/mono-gc.h>
 #include <mono/metadata/debug-helpers.h>
@@ -293,6 +294,8 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         editorProject.Name = CUBE_StackString_CreateC((std::string(a_name) + "Editor").data());
         editorProject.Target = CUBE_CSProjectTarget_Library;
         editorProject.OutputPath = CUBE_Path_CreateC("Editor");
+
+        std::filesystem::create_directories(cachePath / "Editor");
 
         for (const std::filesystem::path& p : editorScripts)
         {
