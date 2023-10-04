@@ -51,6 +51,12 @@ void EditorConfigModal::GeneralTab()
     {
         EditorConfig::SetUseDegrees(useDegrees);
     }
+
+    glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
+    if (ImGui::ColorEdit4("Background Color", (float*)&backgroundColor))
+    {
+        EditorConfig::SetBackgroundColor(backgroundColor);
+    }
 }
 void EditorConfigModal::ExternalToolsTab()
 {

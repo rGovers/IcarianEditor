@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
+#include "EditorConfig.h"
 #include "Gizmos.h"
 #include "PixelShader.h"
 #include "RenderCommand.h"
@@ -106,7 +107,9 @@ void EditorWindow::Draw()
     const ImVec2 min = ImGui::GetWindowContentRegionMin();
     ImGuizmo::SetRect(wPos.x + min.x, wPos.y + min.y, m_width, m_height);
 
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    const glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
+
+    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
