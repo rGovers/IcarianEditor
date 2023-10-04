@@ -13,6 +13,7 @@ using System.Xml;
 
 namespace IcarianEditor
 {
+    // TODO: Likely gonna have to redo this whole thing at some point
     public static class AssetProperties
     {
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -304,7 +305,11 @@ namespace IcarianEditor
             Def parentDef = (Def)Activator.CreateInstance(type);
             if (!string.IsNullOrWhiteSpace(a_def.DefParentName))
             {
-                parentDef = DefLibrary.GetDef(a_def.DefParentName);
+                Def def = DefLibrary.GetDef(a_def.DefParentName);
+                if (def != null)
+                {
+                    parentDef = def;
+                }
                 root.SetAttribute("Parent", a_def.DefParentName);
             }
 
