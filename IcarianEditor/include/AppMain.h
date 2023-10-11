@@ -20,9 +20,27 @@ private:
     static constexpr int SaveBit = 0;
     static constexpr int LoadBit = 1;
 
+    static constexpr uint32_t MoveBit = 0;
+    static constexpr uint32_t TopResizeBit = 1;
+    static constexpr uint32_t BottomResizeBit = 2;
+    static constexpr uint32_t LeftResizeBit = 3;
+    static constexpr uint32_t RightResizeBit = 4;
+
+    static constexpr float ResizeThreshold = 2.5f;
+    static constexpr float MenuBarSize = 32.5f;
+
+    static constexpr float DoubleClickThreshold = 0.25f;
+
+
     double               m_titleSet;
 
+    double               m_lastClick;
+
     bool                 m_refresh;
+
+    std::string          m_fpsText;
+    std::string          m_engineFpsText;
+    std::string          m_engineUpsText;   
 
     std::vector<Window*> m_windows;
     std::vector<Modal*>  m_modals;
@@ -34,9 +52,15 @@ private:
     RuntimeStorage*      m_rStorage;
     Workspace*           m_workspace;
 
+    glm::vec2            m_startWindowPos;
+    glm::vec2            m_startWindowSize;
+    glm::vec2            m_startMousePos;
+
     GLuint               m_vao;
 
     bool                 m_focused;
+
+    unsigned char        m_windowActions;
 
     unsigned char        m_inputByte;
 

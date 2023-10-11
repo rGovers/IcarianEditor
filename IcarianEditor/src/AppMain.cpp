@@ -14,6 +14,7 @@
 #include "FileHandler.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
+#include "FlareImGui.h"
 #include "Gizmos.h"
 #include "GUI.h"
 #include "Modals/CreateProjectModal.h"
@@ -244,6 +245,11 @@ AppMain::~AppMain()
     EditorConfig::Destroy();
 }
 
+static bool InBounds(const glm::vec2& a_point, const glm::vec2& a_min, const glm::vec2& a_max)
+{
+    return a_point.x > a_min.x && a_point.x < a_max.x && a_point.y > a_min.y && a_point.y < a_max.y;
+}
+
 void AppMain::Update(double a_delta, double a_time)
 {    
     ImGui_ImplOpenGL3_NewFrame();
@@ -254,8 +260,16 @@ void AppMain::Update(double a_delta, double a_time)
     GLFWwindow* window = GetWindow();
 
     const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiStyle& style = ImGui::GetStyle();
 
-    std::string title = "IcarianEditor";
+    const glm::vec2 cursorPos = GetCursorPos();
+
+    const uint32_t width = GetWidth();
+    const uint32_t height = GetHeight();
+
+    const float dpi = GetDPI();
+
+    const bool leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
 
     // ImGui::ShowStyleEditor();
 
@@ -269,16 +283,11 @@ void AppMain::Update(double a_delta, double a_time)
 
     const bool validProject = m_project->IsValidProject();
 
-    if (validProject)
+    if (validProject && m_project->ShouldRefresh())
     {
-        title += " [" + std::string(m_project->GetName()) + "]";
+        m_refresh = true;
 
-        if (m_project->ShouldRefresh())
-        {
-            m_refresh = true;
-
-            m_project->SetRefresh(false);
-        }
+        m_project->SetRefresh(false);
     }
 
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
@@ -288,112 +297,257 @@ void AppMain::Update(double a_delta, double a_time)
 
     m_process->Update();
 
-    if (ImGui::BeginMainMenuBar())
+    const int fps = (int)(1.0 / a_delta);
+
     {
-        if (ImGui::BeginMenu("File"))
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 10.0f));
+        IDEFER(ImGui::PopStyleVar());
+        const bool open = ImGui::BeginMainMenuBar();
+        IDEFER(ImGui::EndMainMenuBar());
+        if (open)
         {
-            const bool validProject = m_project->IsValidProject();
+            // TODO: Insert icon here when we have one
+            FlareImGui::Image("Textures/Icons/Window_Close.png", { 32.0f, 32.0f });
 
-            if (ImGui::MenuItem("New Project"))
+            if (ImGui::BeginMenu("File"))
             {
-                m_project->New();
-            }
+                IDEFER(ImGui::EndMenu());
 
-            if (ImGui::MenuItem("Open Project", "Ctrl+O"))
-            {
-                m_project->Open();
-            }
-
-            if (ImGui::MenuItem("Save Project", "Ctrl+S", nullptr, validProject))
-            {
-                m_project->Save();
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Build Project", nullptr, nullptr, validProject))
-            {
-                m_project->Build();
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Exit"))
-            {
-                Close();
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Edit"))
-        {
-            IDEFER(ImGui::EndMenu());
-
-            if (ImGui::MenuItem("Config"))
-            {
-                m_modals.emplace_back(new EditorConfigModal());
-            }
-        }
-
-        if (ImGui::BeginMenu("Windows"))
-        {
-            if (ImGui::BeginMenu("Add"))
-            {
-                if (ImGui::MenuItem("Control"))
+                if (ImGui::MenuItem("New Project"))
                 {
-                    m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));
+                    m_project->New();
                 }
 
-                if (ImGui::MenuItem("Editor"))
+                if (ImGui::MenuItem("Open Project", "Ctrl+O"))
                 {
-                    m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
+                    m_project->Open();
                 }
 
-                if (ImGui::MenuItem("Game"))
+                if (ImGui::MenuItem("Save Project", "Ctrl+S", nullptr, validProject))
                 {
-                    m_windows.emplace_back(new GameWindow(this, m_process));
-                }
-
-                if (ImGui::MenuItem("Asset Browser"))
-                {
-                    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
-                }                
-
-                if (ImGui::MenuItem("Console"))
-                {
-                    m_windows.emplace_back(new ConsoleWindow());
-                }
-
-                if (ImGui::MenuItem("Properties"))
-                {
-                    m_windows.emplace_back(new PropertiesWindow(m_runtime));
-                }
-
-                if (ImGui::MenuItem("Hierarchy"))
-                {
-                    m_windows.emplace_back(new HierarchyWindow(m_runtime));
-                }
-
-                if (ImGui::MenuItem("Scene Definitions"))
-                {
-                    m_windows.emplace_back(new SceneDefsWindow(m_runtime));
+                    m_project->Save();
                 }
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Profiler"))
+                if (ImGui::MenuItem("Build Project", nullptr, nullptr, validProject))
                 {
-                    m_windows.emplace_back(new ProfilerWindow());
+                    m_project->Build();
                 }
 
-                ImGui::EndMenu();
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Exit"))
+                {
+                    Close();
+                }
             }
 
-            ImGui::EndMenu();
+            if (ImGui::BeginMenu("Edit"))
+            {
+                IDEFER(ImGui::EndMenu());
+
+                if (ImGui::MenuItem("Config"))
+                {
+                    m_modals.emplace_back(new EditorConfigModal());
+                }
+            }
+
+            if (ImGui::BeginMenu("Windows"))
+            {
+                IDEFER(ImGui::EndMenu());
+
+                if (ImGui::BeginMenu("Add"))
+                {
+                    IDEFER(ImGui::EndMenu());
+
+                    if (ImGui::MenuItem("Control"))
+                    {
+                        m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));
+                    }
+
+                    if (ImGui::MenuItem("Editor"))
+                    {
+                        m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
+                    }
+
+                    if (ImGui::MenuItem("Game"))
+                    {
+                        m_windows.emplace_back(new GameWindow(this, m_process));
+                    }
+
+                    if (ImGui::MenuItem("Asset Browser"))
+                    {
+                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+                    }                
+
+                    if (ImGui::MenuItem("Console"))
+                    {
+                        m_windows.emplace_back(new ConsoleWindow());
+                    }
+
+                    if (ImGui::MenuItem("Properties"))
+                    {
+                        m_windows.emplace_back(new PropertiesWindow(m_runtime));
+                    }
+
+                    if (ImGui::MenuItem("Hierarchy"))
+                    {
+                        m_windows.emplace_back(new HierarchyWindow(m_runtime));
+                    }
+
+                    if (ImGui::MenuItem("Scene Definitions"))
+                    {
+                        m_windows.emplace_back(new SceneDefsWindow(m_runtime));
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Profiler"))
+                    {
+                        m_windows.emplace_back(new ProfilerWindow());
+                    }
+                }
+            }
+
+            float offset = 0.0f;
+
+            const float width = ImGui::GetWindowWidth();
+
+            offset += 24;
+            ImGui::SetCursorPosX(width - offset);
+
+            if (FlareImGui::ImageButton("X", "Textures/Icons/Window_Close.png", { 16.0f, 16.0f }, false))
+            {
+                Close();
+            }
+
+            offset += 24;
+            ImGui::SetCursorPosX(width - offset);
+
+            bool maximized = IsMaximized();
+
+            if (FlareImGui::ImageSwitchButton("O", "Textures/Icons/Window_Restore.png", "Textures/Icons/Window_Maximize.png", &maximized, { 16.0f, 16.0f }))
+            {
+                Maximize(maximized);
+            }
+
+            offset += 24;
+            ImGui::SetCursorPosX(width - offset);
+
+            if (FlareImGui::ImageButton("_", "Textures/Icons/Window_Minimize.png", { 16.0f, 16.0f }, false))
+            {
+                Minimize();
+            }
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImU32 headerColor = ImGui::GetColorU32(ImGuiCol_Header);
+
+            if (!m_fpsText.empty())
+            {
+                const ImVec2 size = ImGui::CalcTextSize(m_fpsText.c_str());
+
+                offset += size.x + 20.0f;
+
+                const float xPos = width - offset;
+
+                ImGui::SetCursorPosX(xPos);
+
+                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+
+                ImGui::Text("%s", m_fpsText.c_str());
+            }
+
+            if (!m_engineFpsText.empty())
+            {
+                const ImVec2 size = ImGui::CalcTextSize(m_engineFpsText.c_str());
+
+                offset += size.x + 20.0f;
+
+                const float xPos = width - offset;
+
+                ImGui::SetCursorPosX(xPos);
+
+                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+
+                ImGui::Text("%s", m_engineFpsText.c_str());
+            }
+
+            if (!m_engineUpsText.empty())
+            {
+                const ImVec2 size = ImGui::CalcTextSize(m_engineUpsText.c_str());
+
+                offset += size.x + 20.0f;
+
+                const float xPos = width - offset;
+
+                ImGui::SetCursorPosX(xPos);
+
+                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+
+                ImGui::Text("%s", m_engineUpsText.c_str());
+            }
+
+            if (validProject)
+            {
+                const std::string name = m_project->GetName();
+
+                const ImVec2 size = ImGui::CalcTextSize(name.c_str());
+
+                offset += size.x + 20.0f;
+
+                const float xPos = width - offset;
+
+                ImGui::SetCursorPosX(xPos);
+
+                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+
+                ImGui::Text("%s", name.c_str());
+            }
         }
     }
-    ImGui::EndMainMenuBar();
+
+    if (leftDown && !m_windowActions)
+    {
+        const float resizeSize = ResizeThreshold / dpi;
+
+        if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(width, resizeSize)))
+        {
+            m_windowActions |= 0b1 << TopResizeBit;
+        }
+        else if (InBounds(cursorPos, glm::vec2(0.0f, height - resizeSize), glm::vec2(width, height + resizeSize)))
+        {
+            m_windowActions |= 0b1 << BottomResizeBit;
+        }
+        else if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, height)))
+        {
+            m_windowActions |= 0b1 << LeftResizeBit;
+        }
+        else if (InBounds(cursorPos, glm::vec2(width - resizeSize, 0.0f), glm::vec2(width + resizeSize, height)))
+        {
+            m_windowActions |= 0b1 << RightResizeBit;
+        }
+        else if (InBounds(cursorPos, glm::vec2(0.0f), glm::vec2(width, MenuBarSize)))
+        {
+            if (a_time - m_lastClick < DoubleClickThreshold)
+            {
+                Maximize(!IsMaximized());
+            }
+            else
+            {
+                m_windowActions |= 0b1 << MoveBit;
+            }
+
+            m_lastClick = a_time;
+        }
+
+        if (m_windowActions)
+        {
+            m_startWindowPos = GetWindowPos();
+            m_startWindowSize = glm::vec2(width, height);
+            m_startMousePos = GetMousePos();
+        }
+    }
 
     if (validProject)
     {
@@ -411,9 +565,82 @@ void AppMain::Update(double a_delta, double a_time)
             }
         }
     }
-    
+
+    switch (m_windowActions) 
+    {
+    case 0b1 << MoveBit:
+    {
+        const glm::vec2 mousePos = GetMousePos();
+        const glm::vec2 windowPos = GetWindowPos();
+
+        const glm::vec2 wDelta = m_startMousePos - m_startWindowPos;
+        const glm::vec2 cDelta = mousePos - m_startMousePos;
+
+        SetWindowPos(m_startMousePos + cDelta - wDelta);
+
+        break;
+    }
+    case 0b1 << TopResizeBit:
+    {
+        const glm::vec2 mousePos = GetMousePos();
+
+        const glm::vec2 cDelta = mousePos - m_startMousePos;
+        
+        const float newHeight = m_startWindowSize.y - cDelta.y;
+        const float newYPos = m_startWindowPos.y + cDelta.y;
+        
+        SetWindowSize((uint32_t)m_startWindowSize.x, (uint32_t)newHeight);
+        SetWindowPos(glm::vec2(m_startWindowPos.x, newYPos));
+
+        break;
+    }
+    case 0b1 << BottomResizeBit:
+    {
+        const glm::vec2 mousePos = GetMousePos();
+
+        const glm::vec2 cDelta = mousePos - m_startMousePos;
+
+        const float newHeight = m_startWindowSize.y + cDelta.y;
+
+        SetWindowSize((uint32_t)m_startWindowSize.x, (uint32_t)newHeight);
+
+        break;
+    }
+    case 0b1 << LeftResizeBit:
+    {
+        const glm::vec2 mousePos = GetMousePos();
+
+        const glm::vec2 cDelta = mousePos - m_startMousePos;
+
+        const float newWidth = m_startWindowSize.x - cDelta.x;
+        const float newXPos = m_startWindowPos.x + cDelta.x;
+
+        SetWindowSize((uint32_t)newWidth, (uint32_t)m_startWindowSize.y);
+        SetWindowPos(glm::vec2(newXPos, m_startWindowPos.y));
+
+        break;
+    }
+    case 0b1 << RightResizeBit:
+    {
+        const glm::vec2 mousePos = GetMousePos();
+
+        const glm::vec2 cDelta = mousePos - m_startMousePos;
+
+        const float newWidth = m_startWindowSize.x + cDelta.x;
+
+        SetWindowSize((uint32_t)newWidth, (uint32_t)m_startWindowSize.y);
+
+        break;
+    }
+    }
+
+    if (m_windowActions && !leftDown)
+    {
+        m_windowActions = 0;
+    }
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, (GLsizei)GetWidth(), (GLsizei)GetHeight());
+    glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
     if (!m_modals.empty())
     {
@@ -494,26 +721,29 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    const int fps = (int)(1.0 / a_delta);
+    m_titleSet += a_delta;
 
-    title += " EditorFPS: " + std::to_string(fps);
-
-    if (m_process->IsRunning())
+    if (m_titleSet >= 0.5f)
     {
-        const int engineFPS = (int)m_process->GetFPS();
-        const int engineUPS = (int)m_process->GetUPS();
+        m_titleSet -= 0.5f;
 
-        title += " EngineUPS: " + std::to_string(engineUPS);
-        title += " EngineFPS: " + std::to_string(engineFPS);
-    }
+        const double fps = 1.0 / a_delta;
 
-    m_titleSet -= a_delta;
+        m_fpsText = "FPS " + std::to_string((uint32_t)fps);
 
-    if (m_titleSet <= 0.0)
-    {
-        SetTitle(title);
+        if (m_process->IsRunning())
+        {
+            const int ups = m_process->GetUPS();
+            const int fps = m_process->GetFPS();
 
-        m_titleSet += 0.1;
+            m_engineFpsText = "Engine FPS " + std::to_string(fps);
+            m_engineUpsText = "Engine UPS " + std::to_string(ups);
+        }
+        else
+        {
+            m_engineFpsText.clear();
+            m_engineUpsText.clear();
+        }
     }
 }
 

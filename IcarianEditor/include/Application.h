@@ -27,6 +27,11 @@ public:
 
     void Run();
 
+    bool IsMaximized() const;
+    void Maximize(bool a_state);
+
+    void Minimize() const;
+
     inline uint32_t GetWidth() const
     {
         return m_width;
@@ -35,10 +40,17 @@ public:
     {
         return m_height;
     }
+    void SetWindowSize(uint32_t a_width, uint32_t a_height);
 
     void SetCursorState(FlareBase::e_CursorState a_state);
 
     glm::vec2 GetCursorPos() const;
+    glm::vec2 GetMousePos() const;
+
+    float GetDPI() const;
+
+    glm::vec2 GetWindowPos() const;
+    void SetWindowPos(const glm::vec2& a_pos);
 
     virtual void Update(double a_delta, double a_time) = 0;
 

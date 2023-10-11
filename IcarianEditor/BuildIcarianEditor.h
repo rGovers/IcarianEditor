@@ -136,6 +136,8 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendSource(&project, "lib/implot/implot.cpp");
     CUBE_CProject_AppendSource(&project, "lib/implot/implot_items.cpp");
 
+    // CUBE_CProject_AppendSource(&project, "lib/imgui/imgui_demo.cpp");
+    
     CUBE_CProject_AppendSource(&project, "src/Application.cpp");
     CUBE_CProject_AppendSource(&project, "src/AppMain.cpp");
     CUBE_CProject_AppendSource(&project, "src/AssetBrowserWindow.cpp");

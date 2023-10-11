@@ -117,6 +117,23 @@ namespace FlareImGui
         ImGui::SetNextItemWidth(-1);
     }
 
+    bool Image(const char* a_path, const ImVec2& a_size)
+    {
+        const Texture* tex = Datastore::GetTexture(a_path);
+        if (tex != nullptr)
+        {
+            ImGui::Image((ImTextureID)tex->GetHandle(), a_size);
+
+            return true;
+        }
+
+        return false;
+    }
+    bool Image(const std::string_view& a_path, const glm::vec2& a_size)
+    {
+        return Image(a_path.data(), { a_size.x, a_size.y });
+    }
+
     bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background)
     {
         ImGuiStyle& style = ImGui::GetStyle();

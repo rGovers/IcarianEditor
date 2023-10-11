@@ -21,8 +21,11 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     m_window = glfwCreateWindow((int)m_width, (int)m_height, a_title.data(), NULL, NULL);
+
+    glfwSetWindowUserPointer(m_window, this);
 
     if (!m_window)
     {
@@ -73,12 +76,70 @@ void Application::SetCursorState(FlareBase::e_CursorState a_state)
     }   
 }
 
+bool Application::IsMaximized() const
+{
+    return glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) != GLFW_FALSE;
+}
+void Application::Maximize(bool a_state)
+{
+    if (a_state)
+    {
+        glfwMaximizeWindow(m_window);
+    }
+    else
+    {
+        glfwRestoreWindow(m_window);
+    }
+}
+
+void Application::Minimize() const
+{
+    glfwIconifyWindow(m_window);
+}
+
+void Application::SetWindowSize(uint32_t a_width, uint32_t a_height)
+{
+    m_width = a_width;
+    m_height = a_height;
+
+    glfwSetWindowSize(m_window, (int)m_width, (int)m_height);
+}
+
 glm::vec2 Application::GetCursorPos() const
 {
     double x, y;
     glfwGetCursorPos(m_window, &x, &y);
 
     return glm::vec2(x, y);
+}
+
+float Application::GetDPI() const
+{
+    int x, y;
+
+    glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &x, &y);
+
+    return (float)x / (float)m_width;
+}
+
+glm::vec2 Application::GetMousePos() const
+{
+    const glm::vec2 windowPos = GetWindowPos();
+    const glm::vec2 cursorPos = GetCursorPos();
+
+    return windowPos + cursorPos;
+}
+
+glm::vec2 Application::GetWindowPos() const
+{
+    int x, y;
+    glfwGetWindowPos(m_window, &x, &y);
+
+    return glm::vec2((float)x, (float)y);
+}
+void Application::SetWindowPos(const glm::vec2& a_pos)
+{
+    glfwSetWindowPos(m_window, (int)a_pos.x, (int)a_pos.y);
 }
 
 void Application::Run()
