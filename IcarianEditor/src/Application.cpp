@@ -35,12 +35,23 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     }
     glfwMakeContextCurrent(m_window);
 
+    m_cursors[Cursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    m_cursors[Cursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    m_cursors[Cursor_HResize] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+    m_cursors[Cursor_VResize] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+    m_cursors[Cursor_Move] = glfwCreateStandardCursor(GLFW_RESIZE_ALL_CURSOR);
+
     ICARIAN_ASSERT_R(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
 
     glfwSwapInterval(1);
 }
 Application::~Application()
 {
+    for (uint32_t i = 0; i < Cursor_Last; ++i)
+    {
+        glfwDestroyCursor(m_cursors[i]);
+    }
+
     glfwDestroyWindow(m_window);
 
     glfwTerminate();
@@ -74,6 +85,10 @@ void Application::SetCursorState(FlareBase::e_CursorState a_state)
         break;
     }
     }   
+}
+void Application::SetCursor(e_Cursors a_cursor)
+{
+    glfwSetCursor(m_window, m_cursors[a_cursor]);
 }
 
 bool Application::IsMaximized() const

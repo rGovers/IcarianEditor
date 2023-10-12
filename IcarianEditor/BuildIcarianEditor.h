@@ -136,6 +136,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendSource(&project, "lib/implot/implot.cpp");
     CUBE_CProject_AppendSource(&project, "lib/implot/implot_items.cpp");
 
+    // Used for style editor window
     // CUBE_CProject_AppendSource(&project, "lib/imgui/imgui_demo.cpp");
     
     CUBE_CProject_AppendSource(&project, "src/Application.cpp");

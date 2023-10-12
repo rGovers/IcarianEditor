@@ -11,6 +11,16 @@
 
 #include "Flare/InputBindings.h"
 
+enum e_Cursors
+{
+    Cursor_Arrow,
+    Cursor_Hand,
+    Cursor_HResize,
+    Cursor_VResize,
+    Cursor_Move,
+    Cursor_Last
+};
+
 class Application
 {
 private:
@@ -18,6 +28,8 @@ private:
             
     uint32_t    m_width;
     uint32_t    m_height;
+
+    GLFWcursor* m_cursors[Cursor_Last];
 
 protected:
 
@@ -43,6 +55,7 @@ public:
     void SetWindowSize(uint32_t a_width, uint32_t a_height);
 
     void SetCursorState(FlareBase::e_CursorState a_state);
+    void SetCursor(e_Cursors a_cursor);
 
     glm::vec2 GetCursorPos() const;
     glm::vec2 GetMousePos() const;

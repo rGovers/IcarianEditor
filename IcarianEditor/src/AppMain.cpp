@@ -114,16 +114,48 @@ static void SetImguiStyle()
 
     ImGuiStyle& style = ImGui::GetStyle();
 
-    style.FrameRounding = 4.0f;
-    style.WindowRounding = 6.0f;
-    style.ChildRounding = 8.0f;
+    style.FrameRounding = 2.0f;
+    style.WindowRounding = 2.0f;
+    style.ChildRounding = 2.0f;
     style.WindowBorderSize = 0.0f;
     style.ChildBorderSize = 0.0f;
     style.PopupBorderSize = 0.0f;
     style.WindowMenuButtonPosition = ImGuiDir_Right;
 
-    ImVec4* colors = style.Colors;
+    // ImVec4* colors = style.Colors;
+    // colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
+
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_WindowBg]               = ImVec4(0.10f, 0.10f, 0.10f, 0.94f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
+    colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.90f);
+    colors[ImGuiCol_FrameBg]                = ImVec4(0.78f, 0.53f, 0.17f, 0.69f);
+    colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.86f, 0.42f, 0.18f, 0.88f);
+    colors[ImGuiCol_FrameBgActive]          = ImVec4(0.82f, 0.33f, 0.18f, 1.00f);
+    colors[ImGuiCol_TitleBg]                = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]          = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_MenuBarBg]              = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_CheckMark]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]             = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive]       = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_Button]                 = ImVec4(0.78f, 0.53f, 0.17f, 0.69f);
+    colors[ImGuiCol_ButtonHovered]          = ImVec4(0.86f, 0.42f, 0.18f, 0.88f);
+    colors[ImGuiCol_ButtonActive]           = ImVec4(0.82f, 0.33f, 0.18f, 1.00f);
+    colors[ImGuiCol_Header]                 = ImVec4(0.78f, 0.53f, 0.17f, 0.59f);
+    colors[ImGuiCol_HeaderHovered]          = ImVec4(0.86f, 0.42f, 0.18f, 0.78f);
+    colors[ImGuiCol_HeaderActive]           = ImVec4(0.82f, 0.33f, 0.18f, 1.00f);
+    colors[ImGuiCol_Separator]              = ImVec4(0.12f, 0.12f, 0.14f, 0.78f);
+    colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.86f, 0.42f, 0.18f, 0.78f);
+    colors[ImGuiCol_SeparatorActive]        = ImVec4(0.82f, 0.33f, 0.18f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]             = ImVec4(0.78f, 0.53f, 0.17f, 0.20f);
+    colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.86f, 0.42f, 0.18f, 0.67f);
+    colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.82f, 0.33f, 0.18f, 0.94f);
+    colors[ImGuiCol_Tab]                    = ImVec4(0.78f, 0.53f, 0.17f, 0.86f);
+    colors[ImGuiCol_TabHovered]             = ImVec4(0.86f, 0.42f, 0.18f, 0.80f);
+    colors[ImGuiCol_TabActive]              = ImVec4(0.82f, 0.33f, 0.18f, 1.00f);
+    colors[ImGuiCol_TabUnfocused]           = ImVec4(0.78f, 0.53f, 0.17f, 0.39f);
+    colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.82f, 0.33f, 0.18f, 0.39f);
+    colors[ImGuiCol_DockingPreview]         = ImVec4(0.78f, 0.53f, 0.17f, 0.59f);
 }
 
 RUNTIME_FUNCTION(void, Modal, PushModal,
@@ -262,12 +294,14 @@ void AppMain::Update(double a_delta, double a_time)
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiStyle& style = ImGui::GetStyle();
 
+    e_Cursors cursor = Cursor_Arrow;
     const glm::vec2 cursorPos = GetCursorPos();
 
     const uint32_t width = GetWidth();
     const uint32_t height = GetHeight();
 
     const float dpi = GetDPI();
+    const float resizeSize = ResizeThreshold / dpi;
 
     const bool leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
 
@@ -509,8 +543,6 @@ void AppMain::Update(double a_delta, double a_time)
 
     if (leftDown && !m_windowActions)
     {
-        const float resizeSize = ResizeThreshold / dpi;
-
         if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(width, resizeSize)))
         {
             m_windowActions |= 0b1 << TopResizeBit;
@@ -744,6 +776,27 @@ void AppMain::Update(double a_delta, double a_time)
             m_engineFpsText.clear();
             m_engineUpsText.clear();
         }
+    }
+
+    if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, height)) || 
+        InBounds(cursorPos, glm::vec2(width - resizeSize, 0.0f), glm::vec2(width + resizeSize, height)))
+    {
+        cursor = Cursor_HResize;
+    }
+    else if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(width, resizeSize)) ||
+             InBounds(cursorPos, glm::vec2(0.0f, height - resizeSize), glm::vec2(width, height + resizeSize)))
+    {
+        cursor = Cursor_VResize;
+    }
+    
+    if (m_windowActions & 0b1 << MoveBit)
+    {
+        cursor = Cursor_Move;
+    }
+
+    if (cursor != Cursor_Arrow)
+    {
+        SetCursor(cursor);
     }
 }
 
