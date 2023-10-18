@@ -21,9 +21,10 @@ namespace IcarianEditor.Modals
             m_sceneDef = false;
             m_deleteDef = false;
 
-            SceneObject obj = Workspace.GetSceneObject(m_id);
-            GameObjectDef def = DefLibrary.GetDef(obj.DefName) as GameObjectDef;
-            m_sceneDef = def.IsSceneDef;
+            EditorScene scene = Workspace.GetScene();
+
+            SceneObject obj = scene.GetSceneObject(m_id);
+            m_sceneDef = EditorDefLibrary.IsSceneDef(obj.DefName);
         }
 
         public override bool Update()
@@ -39,27 +40,16 @@ namespace IcarianEditor.Modals
 
             if (GUI.Button("Ok"))
             {
-                SceneObject obj = Workspace.GetSceneObject(m_id);
-                Workspace.DeleteSceneObject(obj);
-
+                EditorScene scene = Workspace.GetScene();
+                
                 if (m_deleteDef)
                 {
-                    GameObjectDef def = DefLibrary.GetDef(obj.DefName) as GameObjectDef;
+                    SceneObject obj = scene.GetSceneObject(m_id);
 
-                    Workspace.SceneDefs.Remove(def);
-
-                    Type defLibraryType = typeof(DefLibrary);
-                        
-                    FieldInfo sceneDefsField = defLibraryType.GetField("s_sceneDefs", BindingFlags.NonPublic | BindingFlags.Static);
-
-                    List<Def> sceneDefs = sceneDefsField.GetValue(null) as List<Def>;
-                    sceneDefs.Remove(def);
-
-                    FieldInfo sceneLookupField = defLibraryType.GetField("s_sceneLookup", BindingFlags.NonPublic | BindingFlags.Static);
-
-                    ConcurrentDictionary<string, Def> sceneLookup = sceneLookupField.GetValue(null) as ConcurrentDictionary<string, Def>;
-                    sceneLookup.TryRemove(def.DefName, out Def _);
+                    scene.RemoveDef(obj.DefName);
                 }
+
+                scene.RemoveSceneObject(m_id);
 
                 return false;
             }

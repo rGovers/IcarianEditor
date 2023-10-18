@@ -4,7 +4,7 @@ using IcarianEngine.Maths;
 namespace IcarianEditor.Properties
 {
     [PWindow(typeof(CameraDef))]
-    public class CameraPropertiesWindow : PropertiesWindow
+    public class CameraPropertiesWindow : PropertiesEditorWindow
     {
         public override void OnGUI(object a_object)
         {

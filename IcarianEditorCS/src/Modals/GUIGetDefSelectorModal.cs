@@ -17,7 +17,7 @@ namespace IcarianEditor.Modals
 
             m_defNames = new List<string>();
 
-            IEnumerable<T> defs = DefLibrary.GetDefs<T>();
+            IEnumerable<T> defs = EditorDefLibrary.GenerateDefs<T>();
 
             m_defNames.Add("Null");
 
@@ -64,7 +64,7 @@ namespace IcarianEditor.Modals
                 }
                 else
                 {
-                    GUI.PushDef(m_input, DefLibrary.GetDef(m_defNames[m_seletedIndex]));
+                    GUI.PushDef(m_input, EditorDefLibrary.GenerateDef(m_defNames[m_seletedIndex]));
                 }
 
                 return false;

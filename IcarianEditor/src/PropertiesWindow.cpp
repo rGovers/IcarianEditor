@@ -18,5 +18,5 @@ void PropertiesWindow::Update(double a_delta)
 {
     GUI::SetWidth(ImGui::GetWindowSize().x);
 
-    m_runtime->ExecFunction("IcarianEditor", "AssetProperties", ":OnGUI", NULL);
+    m_runtime->ExecFunction("IcarianEditor.Windows", "PropertiesWindow", ":OnGUI", NULL);
 }

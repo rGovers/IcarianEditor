@@ -17,12 +17,6 @@ namespace IcarianEditor.Editor
                 return;
             }
 
-            Material mat = AssetLibrary.GetMaterial(def.MaterialDef);
-            if (mat == null)
-            {
-                return;
-            }
-
             Model model = AssetLibrary.LoadSkinnedModel(def.ModelPath);
             if (model == null)
             {
@@ -35,11 +29,21 @@ namespace IcarianEditor.Editor
                 return;
             }
 
+            MaterialDef matDef = EditorDefLibrary.GenerateDef<MaterialDef>(def.MaterialDef.DefName);
+            if (matDef == null)
+            {
+                return;
+            }
+
+            Material mat = AssetLibrary.GetMaterial(matDef);
+            if (mat == null)
+            {
+                return;
+            }
+
             RenderCommand.BindMaterial(mat);
 
             AnimationMaster.DrawSkeleton(skeleton, model, a_transform);
-
-            // Gizmos.DrawIcoSphere(a_transform[3].XYZ, 0.5f, 2, 0.01f, Color.Red);
         }
     }
 }

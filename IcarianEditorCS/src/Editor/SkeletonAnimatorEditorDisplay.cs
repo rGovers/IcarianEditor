@@ -16,11 +16,18 @@ namespace IcarianEditor.Editor
                 return;
             }
 
-            AnimationMaster.UpdateSkeleton(def);
+            // Engine need full def to work properly cannot do partial generation
+            SkeletonAnimatorDef skeletonAnimatorDef = EditorDefLibrary.GenerateDef<SkeletonAnimatorDef>(def.DefName, true);
+            if (skeletonAnimatorDef == null)
+            {
+                return;
+            }
+
+            AnimationMaster.UpdateSkeleton(skeletonAnimatorDef);
             
             if (a_selected)
             {
-                AnimationMaster.DrawBones(a_transform, AssetLibrary.LoadSkeleton(def.SkeletonPath));
+                AnimationMaster.DrawBones(a_transform, AssetLibrary.LoadSkeleton(skeletonAnimatorDef.SkeletonPath));
             }
         }
     }

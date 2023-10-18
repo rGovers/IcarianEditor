@@ -111,8 +111,18 @@ namespace IcarianEditor
 
                 s_skeletonData.Add(skeleton, data);
             }
+            
+            SkeletonAnimator anim = data.Animator;
 
-            data.Animator.Update(s_deltaTime);
+            if (anim != null)
+            {
+                Type type = a_def.ComponentType;
+
+                PropertyInfo propertyInfo = type.GetProperty("Def");
+                propertyInfo.SetValue(anim, a_def);
+
+                anim.Update(s_deltaTime);
+            }
 
             s_updatedSkeletons.Add(skeleton);
         }

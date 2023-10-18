@@ -48,7 +48,7 @@ namespace IcarianEditor.Modals
                     if (type.IsSubclassOf(baseType))
                     {
                         string name = type.FullName;
-                        if (name.StartsWith("IcarianEngine"))
+                        if (name.StartsWith(EditorDefLibrary.DefintionNamespace))
                         {
                             m_defData.Add(new DefData()
                             {
@@ -98,7 +98,7 @@ namespace IcarianEditor.Modals
                     return true;
                 }
 
-                if (DefLibrary.GetDef(m_defName) != null)
+                if (EditorDefLibrary.Exists(m_defName))
                 {
                     Logger.Error("Def already exists");
 
@@ -107,23 +107,19 @@ namespace IcarianEditor.Modals
 
                 DefData data = m_defData[m_selection];
 
-                Def def = (Def)Activator.CreateInstance(data.Type);
+                Def def = Activator.CreateInstance(data.Type) as Def;
+                if (def == null)
+                {
+                    Logger.Error("Failed to create def");
+
+                    return true;
+                }
+                
                 def.DefName = m_defName;
                 def.DefPath = Def.SceneDefPath;
 
-                Type defLibraryType = typeof(DefLibrary);
-
-                FieldInfo sceneDefsField = defLibraryType.GetField("s_sceneDefs", BindingFlags.NonPublic | BindingFlags.Static);
-            
-                List<Def> sceneDefs = sceneDefsField.GetValue(null) as List<Def>;
-                sceneDefs.Add(def);
-
-                FieldInfo sceneLookupField = defLibraryType.GetField("s_sceneLookup", BindingFlags.NonPublic | BindingFlags.Static);
-
-                ConcurrentDictionary<string, Def> sceneLookup = sceneLookupField.GetValue(null) as ConcurrentDictionary<string, Def>;
-                sceneLookup.TryAdd(def.DefName, def);
-
-                Workspace.SceneDefs.Add(def);
+                EditorScene scene = Workspace.GetScene();
+                scene.AddDef(def);
 
                 return false;
             }

@@ -179,7 +179,8 @@ int main(int a_argc, char** a_argv)
 
     icarianCSProject = BuildIcarianCSProject(CBTRUE);
 
-    ret = CUBE_CSProject_Compile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", &lines, &lineCount);
+    // ret = CUBE_CSProject_Compile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", &lines, &lineCount);
+    ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", CUBE_CProjectCompiler_GCC, CBNULL, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 

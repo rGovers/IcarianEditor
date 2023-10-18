@@ -3,7 +3,7 @@ using IcarianEngine.Definitions;
 namespace IcarianEditor.Properties
 {
     [PWindow(typeof(LightDef))]
-    public class LightPropertiesWindow : PropertiesWindow
+    public class LightPropertiesWindow : PropertiesEditorWindow
     {
         public override void OnGUI(object a_object)
         {

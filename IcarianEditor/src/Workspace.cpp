@@ -2,20 +2,17 @@
 
 #include <imgui.h>
 
+#include "Flare/IcarianDefer.h"
 #include "Runtime/RuntimeManager.h"
 #include "Windows/EditorWindow.h"
 
 static Workspace* Instance = nullptr;
 
-#define WORKSPACE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
+#include "WorkspaceInterop.h"
 
-#define WORKSPACE_BINDING_FUNCTION_TABLE(F) \
-    F(MonoString*, IcarianEditor, Workspace, GetCurrentScene, {  return mono_string_new_wrapper(Instance->GetCurrentScene().string().c_str()); }) \
-    F(void, IcarianEditor, Workspace, SetCurrentScene, { char* str = mono_string_to_utf8(a_path); Instance->SetCurrentScene(str); mono_free(str); }, MonoString* a_path) \
-    \
-    F(uint32_t, IcarianEditor, Workspace, GetManipulationMode, { return (uint32_t)Instance->GetManipulationMode(); })
+#define WORKSPACE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
 
-WORKSPACE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
+WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION)
 
 Workspace::Workspace(RuntimeManager* a_runtime)
 {
@@ -23,7 +20,7 @@ Workspace::Workspace(RuntimeManager* a_runtime)
 
     m_manipulationMode = ManipulationMode_Translate;
 
-    WORKSPACE_BINDING_FUNCTION_TABLE(WORKSPACE_RUNTIME_ATTACH);
+    WORKSPACE_EXPORT_TABLE(WORKSPACE_RUNTIME_ATTACH);
 
     Instance = this;
 }
@@ -70,7 +67,7 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
         pathString
     };
 
-    m_runtime->ExecFunction("IcarianEditor", "AssetProperties", ":PushDef(string)", args);
+    m_runtime->ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
 }
 void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data)
 {

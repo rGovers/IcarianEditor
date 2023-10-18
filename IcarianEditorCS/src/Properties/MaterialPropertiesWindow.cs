@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace IcarianEditor.Properties
 {
     [PWindow(typeof(MaterialDef))]
-    public class MaterialPropertiesWindow : PropertiesWindow
+    public class MaterialPropertiesWindow : PropertiesEditorWindow
     {
         public override void OnGUI(object a_object)
         {

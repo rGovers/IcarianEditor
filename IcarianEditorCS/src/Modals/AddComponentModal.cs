@@ -24,7 +24,7 @@ namespace IcarianEditor.Modals
             m_selection = 0;
             m_components = new List<ComponentData>();
 
-            IEnumerable<ComponentDef> defs = DefLibrary.GetDefs<ComponentDef>();
+            IEnumerable<ComponentDef> defs = EditorDefLibrary.GenerateDefs<ComponentDef>();
             foreach (ComponentDef def in defs)
             {
                 m_components.Add(new ComponentData()
@@ -58,6 +58,8 @@ namespace IcarianEditor.Modals
                 ComponentData data = m_components[m_selection];
 
                 m_def.Components.Add(data.Def);
+
+                EditorDefLibrary.RebuildDefData(m_def);
 
                 return false;
             }

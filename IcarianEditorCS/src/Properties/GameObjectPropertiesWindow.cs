@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace IcarianEditor.Properties
 {
     [PWindow(typeof(GameObjectDef))]
-    public class GameObjectPropertiesWindow : PropertiesWindow
+    public class GameObjectPropertiesWindow : PropertiesEditorWindow
     {
         enum RotationMode
         {

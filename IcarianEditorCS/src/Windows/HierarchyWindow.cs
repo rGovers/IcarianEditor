@@ -99,14 +99,14 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void DisplayObject(SceneObject a_obj, GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList, bool a_scene)
+        static void DisplayObject(EditorScene a_scene, SceneObject a_obj, GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList)
         {
             if (a_def == null)
             {
                 return;
             }
 
-            if (a_scene && !a_def.IsSceneDef)
+            if (!a_def.IsSceneDef)
             {
                 return;
             }
@@ -114,19 +114,9 @@ namespace IcarianEditor.Windows
             string name = a_def.DefName;
 
             List<GameObjectDef> sChildren = new List<GameObjectDef>();
-            if (a_scene)
+            foreach (GameObjectDef def in a_def.Children)
             {
-                foreach (GameObjectDef def in a_def.Children)
-                {
-                    if (def.IsSceneDef)
-                    {
-                        sChildren.Add(def);
-                    }
-                }
-            }
-            else
-            {
-                foreach (GameObjectDef def in a_def.Children)
+                if (def.IsSceneDef)
                 {
                     sChildren.Add(def);
                 }
@@ -134,14 +124,14 @@ namespace IcarianEditor.Windows
         
             uint childCount = (uint)sChildren.Count;
 
-            ulong id = Workspace.GetID(a_obj, a_def);
+            ulong id = a_scene.GetID(a_obj, name);
 
             a_selectionList.Add(new SelectionObject()
             {
                 ID = id,
                 SelectionMode = SelectionObjectMode.GameObjectDef,
                 SceneObject = a_obj,
-                GameObject = a_def
+                GameObjectDefName = name
             });
 
             string idStr = $"##[{id}]{name}";
@@ -171,7 +161,11 @@ namespace IcarianEditor.Windows
                     {
                         if (def.IsSceneDef)
                         {
-                            DisplayObject(a_obj, def, ref a_selectionID, ref a_selectionList, a_scene);
+                            // Only generates a placeholder def need to generate the actual def
+                            // Side effect of needing to keep the defs in an intermediate state
+                            GameObjectDef cDef = EditorDefLibrary.GenerateDef<GameObjectDef>(def.DefName);
+
+                            DisplayObject(a_scene, a_obj, cDef, ref a_selectionID, ref a_selectionList);
                         }
                     }
 
@@ -200,7 +194,7 @@ namespace IcarianEditor.Windows
 
         static void OnGUI()
         {
-            Scene scene = Workspace.GetScene();
+            EditorScene scene = Workspace.GetScene();
 
             if (scene == null)
             {
@@ -212,14 +206,14 @@ namespace IcarianEditor.Windows
 
             bool context = false;
 
-            IEnumerable<SceneObjectData> sceneObjects = Workspace.SceneObjectList;
+            IEnumerable<SceneObjectData> sceneObjects = scene.SceneObjects;
             foreach (SceneObjectData objectData in sceneObjects)
             {
                 SceneObject obj = objectData.Object;
 
                 string name = obj.DefName;
 
-                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(name);
+                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(name);
                 if (def == null)
                 {
                     continue;
@@ -261,7 +255,7 @@ namespace IcarianEditor.Windows
 
                 if (show)
                 {
-                    DisplayObject(obj, def, ref selectionID, ref selectionList, true);
+                    DisplayObject(scene, obj, def, ref selectionID, ref selectionList);
 
                     GUI.PopNode();
                 }

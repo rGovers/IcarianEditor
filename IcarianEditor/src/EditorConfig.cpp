@@ -141,6 +141,7 @@ void EditorConfig::Serialize()
         break;
     }
     }
+    root->InsertEndChild(codeEditor);
 
     doc.SaveFile(ConfigFile);
 }

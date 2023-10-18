@@ -4,7 +4,7 @@ using IcarianEngine.Maths;
 namespace IcarianEditor.Properties
 {
     [PWindow(typeof(SelectionObject))]
-    public class SelectionObjectPropertiesWindow : PropertiesWindow
+    public class SelectionObjectPropertiesWindow : PropertiesEditorWindow
     {
         enum RotationMode
         {
@@ -139,7 +139,9 @@ namespace IcarianEditor.Properties
             }
             case SelectionObjectMode.GameObjectDef:
             {
-                GameObjectDef def = selectionObject.GameObject;
+                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(selectionObject.GameObjectDefName);
+
+                // GameObjectDef def = selectionObject.GameObject;
                 // Allow inline editing for scene objects
                 if (def != null && def.IsSceneDef)
                 {

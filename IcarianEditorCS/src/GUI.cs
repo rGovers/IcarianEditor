@@ -632,7 +632,6 @@ namespace IcarianEditor
             {
                 if (val.Input == a_label)
                 {
-                    IcarianEngine.Logger.Message($"{val.Def.DefName} {val.Def.DefPath}");
                     a_def = val.Def as T;
                     s_defValues.Remove(val);
 
@@ -665,22 +664,13 @@ namespace IcarianEditor
 
             if (ret != null)
             {
-                a_def = null;
-
-                IEnumerable<T> defList = DefLibrary.GetDefs<T>();
-                foreach (T def in defList)
+                if (ret == Def.SceneDefPath)
+                {   
+                    a_def = null;
+                }
+                else
                 {
-                    if (!a_useSceneDefs && def.IsSceneDef)
-                    {
-                        continue;
-                    }
-
-                    if (def.DefPath == ret)
-                    {
-                        a_def = def;
-
-                        break;
-                    }
+                    a_def = EditorDefLibrary.GeneratePathDef<T>(ret);
                 }
 
                 return true;
@@ -747,22 +737,13 @@ namespace IcarianEditor
 
             if (ret != null)
             {
-                a_def = null;
-
-                IEnumerable<Def> defList = DefLibrary.GetDefs();
-                foreach (Def def in defList)
+                if (ret == Def.SceneDefPath)
                 {
-                    if (!a_useSceneDefs && def.IsSceneDef)
-                    {
-                        continue;
-                    }
-
-                    if (def.DefPath == ret)
-                    {
-                        a_def = def;
-
-                        break;
-                    }
+                    a_def = null;
+                }
+                else
+                {
+                    a_def = EditorDefLibrary.GeneratePathDef(ret);
                 }
 
                 return true;

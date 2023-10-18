@@ -4,19 +4,14 @@ using IcarianEngine.Maths;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
+#include "InteropBinding.h"
+#include "WorkspaceInterop.h"
+
+WORKSPACE_EXPORT_TABLE(IOP_BIND_FUNCTION)
+
 namespace IcarianEditor
 {
-    public struct GameObjectData
-    {
-        public ulong ID;
-        public SceneObject Object;
-        public GameObjectDef Def;
-    }
-    public struct SceneObjectData
-    {
-        public ulong ID;
-        public SceneObject Object;
-    }
+    
 
     public enum SelectionObjectMode
     {
@@ -29,7 +24,7 @@ namespace IcarianEditor
         public ulong ID;
         public SelectionObjectMode SelectionMode;
         public SceneObject SceneObject;
-        public GameObjectDef GameObject;
+        public string GameObjectDefName;
 
         public Vector3 Translation
         {
@@ -39,7 +34,9 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    return GameObject.Translation;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    return def.Translation;
                 }
                 case SelectionObjectMode.SceneObject:
                 {
@@ -55,7 +52,11 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    GameObject.Translation = value;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    def.Translation = value;
+
+                    EditorDefLibrary.RebuildDefData(def);
 
                     break;
                 }
@@ -77,7 +78,9 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    return GameObject.Rotation;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    return def.Rotation;
                 }
                 case SelectionObjectMode.SceneObject:
                 {
@@ -93,7 +96,11 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    GameObject.Rotation = value;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    def.Rotation = value;
+
+                    EditorDefLibrary.RebuildDefData(def);
 
                     break;
                 }
@@ -115,7 +122,9 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    return GameObject.Scale;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    return def.Scale;
                 }
                 case SelectionObjectMode.SceneObject:
                 {
@@ -131,7 +140,11 @@ namespace IcarianEditor
                 {
                 case SelectionObjectMode.GameObjectDef:
                 {
-                    GameObject.Scale = value;
+                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
+
+                    def.Scale = value;
+
+                    EditorDefLibrary.RebuildDefData(def);
 
                     break;
                 }
@@ -148,24 +161,10 @@ namespace IcarianEditor
 
     public static class Workspace
     {
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        extern static string GetCurrentScene();
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        extern static void SetCurrentScene(string a_path);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        extern static uint GetManipulationMode();
-
-        public static List<Def> SceneDefs = new List<Def>();
-
         static ulong                 s_id = 0;
 
-        static Scene                 s_lastScene = null;
-
         static List<SelectionObject> s_selection = new List<SelectionObject>();
-        static List<Def>             s_selectedDefs = new List<Def>();
-
-        static List<SceneObjectData> s_sceneObjectList = new List<SceneObjectData>();
-        static List<GameObjectData>  s_sceneGameObjectList = new List<GameObjectData>();
+        static List<string>          s_selectedDefs = new List<string>();
         
         public static IEnumerable<SelectionObject> Selection
         {
@@ -174,26 +173,11 @@ namespace IcarianEditor
                 return s_selection;
             }
         }
-        public static IEnumerable<Def> SelectedDefs
+        public static IEnumerable<string> SelectedDefs
         {
             get
             {
                 return s_selectedDefs;
-            }
-        }
-
-        public static IEnumerable<SceneObjectData> SceneObjectList
-        {
-            get
-            {
-                return s_sceneObjectList;
-            }
-        }
-        public static IEnumerable<GameObjectData> SceneGameObjectList
-        {
-            get
-            {
-                return s_sceneGameObjectList;
             }
         }
 
@@ -212,6 +196,26 @@ namespace IcarianEditor
             }
         }
 
+        public static string CurrentScenePath
+        {
+            get
+            {
+                return WorkspaceInterop.GetCurrentScene();
+            }
+            set
+            {
+                WorkspaceInterop.SetCurrentScene(value);
+            }
+        }
+
+        public static ManipulationMode ManipulationMode
+        {
+            get
+            {
+                return (ManipulationMode)WorkspaceInterop.GetManipulationMode();
+            }
+        }
+
         public static void AddSelection(SelectionObject a_object)
         {
             s_selection.Add(a_object);
@@ -220,13 +224,13 @@ namespace IcarianEditor
         {
             s_selection.AddRange(a_objects);
         }
-        public static void AddDefSelection(Def a_object)
+        public static void AddDefSelection(string a_name)
         {
-            s_selectedDefs.Add(a_object);
+            s_selectedDefs.Add(a_name);
         }
-        public static void AddDefSelection(IEnumerable<Def> a_objects)
+        public static void AddDefSelection(IEnumerable<string> a_names)
         {
-            s_selectedDefs.AddRange(a_objects);
+            s_selectedDefs.AddRange(a_names);
         }
 
         public static void ClearSelection()
@@ -247,11 +251,23 @@ namespace IcarianEditor
 
             return false;
         }
+        public static bool SelectionContains(SceneObject a_obj, string a_def)
+        {
+            foreach (SelectionObject obj in s_selection)
+            {
+                if (obj.SceneObject == a_obj && obj.GameObjectDefName == a_def)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         public static bool SelectionContains(SceneObject a_obj, GameObjectDef a_def)
         {
             foreach (SelectionObject obj in s_selection)
             {
-                if (obj.SceneObject == a_obj && obj.GameObject == a_def)
+                if (obj.SceneObject == a_obj && obj.GameObjectDefName == a_def.DefName)
                 {
                     return true;
                 }
@@ -260,185 +276,31 @@ namespace IcarianEditor
             return false;
         }
 
-        public static SceneObject GetSceneObject(ulong a_id)
-        {
-            foreach (SceneObjectData obj in s_sceneObjectList)
-            {
-                if (obj.ID == a_id)
-                {
-                    return obj.Object;
-                }
-            }
-
-            return null;
-        }
-
         public static ulong NewID()
         {
             return s_id++;
         }
 
-        public static string CurrentScenePath
+        static void PushDef(string a_path)
         {
-            get
+            ClearSelection();
+
+            string defName = EditorDefLibrary.GetDefName(a_path);
+            if (!string.IsNullOrWhiteSpace(defName))
             {
-                return GetCurrentScene();
-            }
-            set
-            {
-                SetCurrentScene(value);
+                AddDefSelection(defName);
             }
         }
 
-        public static ManipulationMode ManipulationMode
+        public static EditorScene GetScene()
         {
-            get
-            {
-                return (ManipulationMode)GetManipulationMode();
-            }
-        }
-
-        public static ulong GetID(SceneObject a_sceneObject, GameObjectDef a_object)
-        {
-            foreach (GameObjectData dat in s_sceneGameObjectList)
-            {
-                if (dat.Object == a_sceneObject && dat.Def == a_object)
-                {
-                    return dat.ID;
-                }
-            }
-
-            return ulong.MaxValue;
-        }
-        public static ulong GetID(SceneObject a_object)
-        {
-            foreach (SceneObjectData dat in s_sceneObjectList)
-            {
-                if (dat.Object == a_object)
-                {
-                    return dat.ID;
-                }
-            }
-
-            return ulong.MaxValue;
-        }
-
-        static void GetObjects(SceneObject a_object, GameObjectDef a_def)
-        {
-            if (a_def == null)
-            {
-                return;
-            }
-
-            s_sceneGameObjectList.Add(new GameObjectData()
-            {
-                ID = NewID(),
-                Object = a_object,
-                Def = a_def
-            });
-
-            foreach (GameObjectDef child in a_def.Children)
-            {
-                GetObjects(a_object, child);
-            }
-        }
-
-        public static void CreateSceneObject(GameObjectDef a_def)
-        {
-            SceneObject obj = new SceneObject()
-            {
-                DefName = a_def.DefName,
-                Translation = Vector3.Zero,
-                Rotation = Quaternion.Identity,
-                Scale = Vector3.One
-            };
-            SceneObjectData data = new SceneObjectData()
-            {
-                ID = NewID(),
-                Object = obj
-            };
-
-            s_sceneObjectList.Add(data);
-
-            GetObjects(obj, a_def);
-        }
-        public static void DeleteSceneObject(SceneObject a_object)
-        {
-            List<GameObjectData> toRemove = new List<GameObjectData>();
-
-            foreach (GameObjectData obj in s_sceneGameObjectList)
-            {
-                if (obj.Object == a_object)
-                {
-                    toRemove.Add(obj);
-                }
-            }
-
-            foreach (GameObjectData obj in toRemove)
-            {
-                s_sceneGameObjectList.Remove(obj);
-            }
-
-            foreach (SceneObjectData obj in s_sceneObjectList)
-            {
-                if (obj.Object == a_object)
-                {
-                    s_sceneObjectList.Remove(obj);
-
-                    break;
-                }
-            }
-        }
-
-        // TODO: Redo this function as requirement have changed since it was first written
-        // A refactor is needed and was not done well the first time
-        public static Scene GetScene()
-        {
-            string curScene = GetCurrentScene();
-            if (string.IsNullOrEmpty(curScene))
+            string curPath = CurrentScenePath;
+            if (string.IsNullOrWhiteSpace(curPath))
             {
                 return null;
             }
 
-            Scene s = SceneData.GetScene(curScene);
-            if (s == null)
-            {
-                SetCurrentScene(string.Empty);
-
-                return null;
-            }
-
-            if (s != s_lastScene)
-            {
-                s_selection.Clear();
-                s_selectedDefs.Clear();
-
-                SceneDefs.Clear();
-                s_sceneObjectList.Clear();
-                s_sceneGameObjectList.Clear();
-
-                foreach (Def def in s.Defs)
-                {
-                    SceneDefs.Add(def);
-                }
-
-                foreach (SceneObject obj in s.SceneObjects)
-                {
-                    s_sceneObjectList.Add(new SceneObjectData()
-                    {
-                        ID = NewID(),
-                        Object = obj
-                    });
-
-                    GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
-
-                    GetObjects(obj, def);
-                }
-
-                s_lastScene = s;
-            }
-
-            return s;
+            return EditorScene.GetScene(curPath);
         }
     }
 }

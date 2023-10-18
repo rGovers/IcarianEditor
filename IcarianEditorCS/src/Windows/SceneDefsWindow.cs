@@ -12,8 +12,7 @@ namespace IcarianEditor.Windows
     {
         static void OnGUI()
         {
-            Scene scene = Workspace.GetScene();
-
+            EditorScene scene = Workspace.GetScene();
             if (scene == null)
             {
                 return;
@@ -24,30 +23,19 @@ namespace IcarianEditor.Windows
                 new CreateSceneDefModal();
             }
 
-            IEnumerable<Def> defs = Workspace.SceneDefs;
+            IEnumerable<string> defNames = scene.DefNames;
 
-            foreach (Def def in defs)
+            foreach (string defName in defNames)
             {
-                string defName = def.DefName;
                 GUI.PushID(defName);
 
                 if (GUI.Button("-"))
                 {
                     new ConfirmModal("Delete " + defName + "?", () =>
                     {
-                        Workspace.SceneDefs.Remove(def);
+                        EditorScene scene = Workspace.GetScene();
 
-                        Type defLibraryType = typeof(DefLibrary);
-                        
-                        FieldInfo sceneDefsField = defLibraryType.GetField("s_sceneDefs", BindingFlags.NonPublic | BindingFlags.Static);
-
-                        List<Def> sceneDefs = sceneDefsField.GetValue(null) as List<Def>;
-                        sceneDefs.Remove(def);
-
-                        FieldInfo sceneLookupField = defLibraryType.GetField("s_sceneLookup", BindingFlags.NonPublic | BindingFlags.Static);
-
-                        ConcurrentDictionary<string, Def> sceneLookup = sceneLookupField.GetValue(null) as ConcurrentDictionary<string, Def>;
-                        sceneLookup.TryRemove(defName, out Def _);
+                        scene.RemoveDef(defName);
                     });
 
                     GUI.PopID();
@@ -60,7 +48,8 @@ namespace IcarianEditor.Windows
                 if (GUI.Selectable(defName))
                 {
                     Workspace.ClearSelection();
-                    Workspace.AddDefSelection(def);
+
+                    Workspace.AddDefSelection(defName);
                 }
 
                 GUI.PopID();

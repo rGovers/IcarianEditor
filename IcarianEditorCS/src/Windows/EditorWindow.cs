@@ -68,13 +68,15 @@ namespace IcarianEditor.Windows
         {
             foreach (ComponentDef c in a_def.Components)
             {
-                Type t = c.ComponentType;
+                ComponentDef component = EditorDefLibrary.GenerateDef<ComponentDef>(c.DefName);
+
+                Type t = component.ComponentType;
                 if (s_componentLookup.ContainsKey(t))
                 {
                     EditorDisplay disp = s_componentLookup[t];
                     if (disp != null)
                     {
-                        disp.Render(a_selected, c, a_transform);
+                        disp.Render(a_selected, component, a_transform);
                     }
                     else
                     {
@@ -94,7 +96,9 @@ namespace IcarianEditor.Windows
 
             foreach (GameObjectDef c in a_gameObjectDef.Children)
             {
-                RenderGameObjects(a_sceneObject, c, mat);
+                GameObjectDef gameObject = EditorDefLibrary.GenerateDef<GameObjectDef>(c.DefName);
+
+                RenderGameObjects(a_sceneObject, gameObject, mat);
             }
         }
 
@@ -112,19 +116,21 @@ namespace IcarianEditor.Windows
 
             foreach (GameObjectDef c in a_gameObjectDef.Children)
             {
-                BeginSelectGameObjects(a_sceneObject, c, mat, ref a_mid, ref a_count);
+                GameObjectDef gameObject = EditorDefLibrary.GenerateDef<GameObjectDef>(c.DefName);
+
+                BeginSelectGameObjects(a_sceneObject, gameObject, mat, ref a_mid, ref a_count);
             }
         }
 
-        static void RenderScene()
+        static void RenderScene(EditorScene a_scene)
         {
-            IEnumerable<SceneObjectData> sceneObjects = Workspace.SceneObjectList;
+            IEnumerable<SceneObjectData> sceneObjects = a_scene.SceneObjects;
 
             foreach (SceneObjectData objData in sceneObjects)
             {
                 SceneObject obj = objData.Object;
 
-                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
+                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
 
                 if (def != null)
                 {
@@ -137,8 +143,7 @@ namespace IcarianEditor.Windows
 
         static void OnGUI()
         {
-            Scene scene = Workspace.GetScene();
-
+            EditorScene scene = Workspace.GetScene();
             if (scene == null)
             {
                 return;
@@ -153,12 +158,13 @@ namespace IcarianEditor.Windows
                     Vector3 mid = Vector3.Zero;
                     uint count = 0;
 
-                    IEnumerable<SceneObjectData> sceneObjects = Workspace.SceneObjectList;
+                    IEnumerable<SceneObjectData> sceneObjects = scene.SceneObjects;
+
                     foreach (SceneObjectData objData in sceneObjects)
                     {
                         SceneObject obj = objData.Object;
 
-                        GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(obj.DefName);
+                        GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
 
                         foreach (SelectionObject selectionObj in Workspace.Selection)
                         {
@@ -212,7 +218,7 @@ namespace IcarianEditor.Windows
                 }
                 else
                 {
-                    RenderScene();
+                    RenderScene(scene);
                 }
 
                 if (Gizmos.Manipulation(Workspace.ManipulationMode, ref s_mid, ref s_rotation, ref s_scale))
@@ -237,7 +243,7 @@ namespace IcarianEditor.Windows
             }
             else
             {
-                RenderScene();    
+                RenderScene(scene);    
             }
         }
     }

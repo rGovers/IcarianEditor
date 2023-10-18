@@ -112,6 +112,8 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_MINOR=1");
 
     CUBE_CProject_AppendIncludePath(&project, "include");
+    CUBE_CProject_AppendIncludePath(&project, "../EditorInterop");
+    CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/EngineInterop");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/FlareBase/include");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/CUBE/include");
     CUBE_CProject_AppendIncludePath(&project, "../IcarianEngine/deps/flare-glfw/include");

@@ -15,7 +15,7 @@ namespace IcarianEditor.Modals
             m_selection = 0;
             m_defNames = new List<string>();
 
-            IEnumerable<GameObjectDef> defs = DefLibrary.GetDefs<GameObjectDef>();
+            IEnumerable<GameObjectDef> defs = EditorDefLibrary.GenerateDefs<GameObjectDef>();
             foreach (GameObjectDef def in defs)
             {
                 m_defNames.Add(def.DefName);
@@ -36,15 +36,9 @@ namespace IcarianEditor.Modals
                     return true;
                 }
 
-                GameObjectDef def = DefLibrary.GetDef<GameObjectDef>(m_defNames[m_selection]);
-                if (def == null)
-                {
-                    Logger.Error($"Could not find GameObjectDef {m_defNames[m_selection]}");
+                EditorScene scene = Workspace.GetScene();
 
-                    return true;
-                }
-
-                Workspace.CreateSceneObject(def);
+                scene.AddSceneObject(m_defNames[m_selection]);
 
                 return false;
             }

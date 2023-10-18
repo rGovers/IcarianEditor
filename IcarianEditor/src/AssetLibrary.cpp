@@ -13,49 +13,23 @@
 #include "mono/metadata/object-forward.h"
 #include "mono/metadata/object.h"
 
+#include "EditorDefLibraryInterop.h"
+#include "EditorSceneInterop.h"
+
 static AssetLibrary* Instance = nullptr;
 
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(AssetProperties, WriteDef), MonoString* a_path, MonoArray* a_data)
-{
-    mono_unichar4* str = mono_string_to_utf32(a_path);
-    const std::filesystem::path p = std::filesystem::path(std::u32string((char32_t*)str));
+#define ASSETLIBRARY_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
 
-    const uintptr_t len = mono_array_length(a_data);
-
-    char* data = new char[len];
-    for (uintptr_t i = 0; i < len; ++i)
-    {
-        data[i] = (char)mono_array_get(a_data, mono_byte, i);
-    }
-
-    Instance->WriteDef(p, (uint32_t)len, data);
-
-    mono_free(str);
-}
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(SceneData, WriteScene), MonoString* a_path, MonoArray* a_data)
-{
-    mono_unichar4* str = mono_string_to_utf32(a_path);
-    const std::filesystem::path p = std::filesystem::path(std::u32string((char32_t*)str));
-    mono_free(str);
-
-    const uintptr_t len = mono_array_length(a_data);
-
-    char* data = new char[len];
-    for (uintptr_t i = 0; i < len; ++i)
-    {
-        data[i] = (char)mono_array_get(a_data, mono_byte, i);
-    }
-
-    Instance->WriteScene(p, (uint32_t)len, data);
-}
+EDITORDEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
+EDITORSCENE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
 AssetLibrary::AssetLibrary(RuntimeManager* a_runtime)
 {
     m_runtime = a_runtime;
-
-    BIND_FUNCTION(m_runtime, IcarianEditor, AssetProperties, WriteDef);
-    BIND_FUNCTION(m_runtime, IcarianEditor, SceneData, WriteScene);
     
+    EDITORDEFLIBRARY_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
+    EDITORSCENE_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
+
     Instance = this;
 }
 AssetLibrary::~AssetLibrary()
@@ -274,8 +248,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         defPathArray
     };
 
-    m_runtime->ExecFunction("IcarianEngine.Definitions", "DefLibrary", ":LoadDefs(byte[][],string[])", defArgs);
-    m_runtime->ExecFunction("IcarianEngine.Definitions", "DefLibrary", ":ResolveDefs()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":Load(byte[][],string[])", defArgs);
 
     const uint32_t sceneSize = (uint32_t)sceneAssets.size();
 
@@ -300,7 +273,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         scenePathArray
     };
 
-    m_runtime->ExecFunction("IcarianEditor", "SceneData", ":LoadScenes(byte[][],string[])", sceneArgs);
+    m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":LoadScenes(byte[][],string[])", sceneArgs);
 }
 void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
 {
@@ -468,26 +441,8 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
 
     const std::filesystem::path pPath = a_workingDir / "Project";
 
-    MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* stringClass = mono_get_string_class();
-
-    const uintptr_t count = (uintptr_t)defs.size();
-    MonoArray* pathArray = mono_array_new(domain, stringClass, count);
-    for (uintptr_t i = 0; i < count; ++i)
-    {
-        const Asset& a = defs[i];
-        
-        const std::u32string pStr = a.Path.u32string();
-        mono_array_set(pathArray, MonoString*, i, mono_string_new_utf32(domain, (mono_unichar4*)pStr.c_str(), (int32_t)pStr.size()));
-    }
-
-    void* args[] =
-    {
-        pathArray
-    };
-
-    m_runtime->ExecFunction("IcarianEditor", "AssetProperties", ":SerializeDefs(string[])", args);
-    m_runtime->ExecFunction("IcarianEditor", "SceneData", ":Serialize()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":SerializeDefs()", nullptr);
+    m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
 
     for (const Asset& a : m_assets)
     {
@@ -497,7 +452,6 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
         if (file.good() && file.is_open())
         {
             IDEFER(file.close());
-            // ICARIAN_DEFER_closeOFile(file);
 
             file.write(a.Data, a.Size);
         }

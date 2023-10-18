@@ -27,7 +27,7 @@ namespace IcarianEditor.Properties
         }
     }
 
-    public class PropertiesWindow
+    public class PropertiesEditorWindow
     {
         static void ShowFields(string a_name, ref object a_obj, object a_normVal, Type a_type)
         {

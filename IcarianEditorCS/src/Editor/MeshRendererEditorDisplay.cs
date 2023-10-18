@@ -21,7 +21,14 @@ namespace IcarianEditor.Editor
             {
                 return;
             }
-            Material mat = AssetLibrary.GetMaterial(def.MaterialDef);
+
+            MaterialDef matDef = EditorDefLibrary.GenerateDef<MaterialDef>(def.MaterialDef.DefName);
+            if (matDef == null)
+            {
+                return;
+            }
+
+            Material mat = AssetLibrary.GetMaterial(matDef);
             if (mat == null)
             {
                 return;

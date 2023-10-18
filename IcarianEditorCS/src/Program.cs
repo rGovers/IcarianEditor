@@ -10,16 +10,13 @@ namespace IcarianEditor
     {
         static void Load()
         {
-            Type defLibraryType = typeof(DefLibrary);
-            MethodInfo defLibraryInitMethod = defLibraryType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
-            defLibraryInitMethod.Invoke(null, new object[] { });
+            EditorDefLibrary.Init();
 
             Type assetLibraryType = typeof(AssetLibrary);
             MethodInfo assetLibraryInitMethod = assetLibraryType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
             assetLibraryInitMethod.Invoke(null, new object[] { });
 
-            AssetProperties.Init();
-            SceneData.Init();
+            PropertiesWindow.Init();
             EditorWindow.Init();
         }
 
@@ -31,8 +28,7 @@ namespace IcarianEditor
         static void Unload()
         {
             AssetLibrary.ClearAssets();
-            DefLibrary.Clear();
-            SceneData.Destroy();
+            EditorDefLibrary.Clear();
             AnimationMaster.Destroy();
         }
         
