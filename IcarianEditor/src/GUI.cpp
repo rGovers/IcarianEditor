@@ -150,7 +150,7 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetBitField,
         }
         else 
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.5f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
         }
         IDEFER(ImGui::PopStyleColor());
 

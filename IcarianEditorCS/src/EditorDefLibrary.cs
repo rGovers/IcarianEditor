@@ -353,7 +353,7 @@ namespace IcarianEditor
         {
             a_dataObject.Text = string.Empty;
             
-            if (a_value == a_default)
+            if (object.Equals(a_value, a_default))
             {
                 return;    
             }
@@ -407,16 +407,12 @@ namespace IcarianEditor
                     {
                         DefDataObject child = new DefDataObject();
                         child.Name = "lv";
+                        child.Children = new List<DefDataObject>();
 
                         SetData(ref child, list[i], null, gType);
 
-                        if (!string.IsNullOrWhiteSpace(child.Text) || (child.Children != null && child.Children.Count > 0))
+                        if (!string.IsNullOrWhiteSpace(child.Text) || child.Children.Count > 0)
                         {
-                            if (a_dataObject.Children == null)
-                            {
-                                a_dataObject.Children = new List<DefDataObject>();
-                            }
-
                             a_dataObject.Children.Add(child);
                         }
                     }
@@ -436,20 +432,22 @@ namespace IcarianEditor
                     {
                         DefDataObject child = new DefDataObject();
                         child.Name = "lv";
+                        child.Children = new List<DefDataObject>();
 
                         SetData(ref child, array.GetValue(i), null, gType);
 
-                        if (!string.IsNullOrWhiteSpace(child.Text) || (child.Children != null && child.Children.Count > 0))
+                        if (!string.IsNullOrWhiteSpace(child.Text) || child.Children.Count > 0)
                         {
-                            if (a_dataObject.Children == null)
-                            {
-                                a_dataObject.Children = new List<DefDataObject>();
-                            }
-
                             a_dataObject.Children.Add(child);
                         }
                     }
                 }
+
+                return;
+            }
+            else if (a_type.IsSubclassOf(typeof(Enum)))
+            {
+                a_dataObject.Text = a_value.ToString();
 
                 return;
             }
@@ -465,6 +463,16 @@ namespace IcarianEditor
                 {
                     foreach (FieldInfo field in fields)
                     {
+                        if (field.IsStatic || field.IsLiteral)
+                        {
+                            continue;
+                        }
+
+                        if (field.GetCustomAttribute<NonSerializedAttribute>() != null)
+                        {
+                            continue;
+                        }
+
                         object value = field.GetValue(a_value);
                         object defaultValue = null;
                         if (a_default != null)
@@ -474,16 +482,12 @@ namespace IcarianEditor
 
                         DefDataObject dataObject = new DefDataObject();
                         dataObject.Name = field.Name;
+                        dataObject.Children = new List<DefDataObject>();
 
                         SetData(ref dataObject, value, defaultValue, field.FieldType);
 
-                        if (!string.IsNullOrWhiteSpace(dataObject.Text) || (dataObject.Children != null && dataObject.Children.Count > 0))
+                        if (!string.IsNullOrWhiteSpace(dataObject.Text) || dataObject.Children.Count > 0)
                         {
-                            if (a_dataObject.Children == null)
-                            {
-                                a_dataObject.Children = new List<DefDataObject>();
-                            }
-
                             a_dataObject.Children.Add(dataObject);
                         }
                     }
@@ -495,7 +499,7 @@ namespace IcarianEditor
         {
             Type defType = a_def.GetType();
 
-            Def baseDef = Activator.CreateInstance(defType) as Def;
+            object baseDef = Activator.CreateInstance(defType);
             if (!string.IsNullOrWhiteSpace(a_def.DefParentName))
             {
                 baseDef = GenerateDef(a_def.DefParentName);
@@ -513,12 +517,23 @@ namespace IcarianEditor
             data.Parent = a_def.DefParentName;
             data.Path = a_def.DefPath;
             data.Abstract = false;
+            data.DefDataObjects = new List<DefDataObject>();
 
             Type baseType = baseDef.GetType();
 
             FieldInfo[] fields = defType.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (FieldInfo field in fields)
             {
+                if (field.IsStatic || field.IsLiteral)
+                {
+                    continue;
+                }
+
+                if (field.GetCustomAttribute<NonSerializedAttribute>() != null)
+                {
+                    continue;
+                }
+
                 object value = field.GetValue(a_def);
                 object defaultValue = null;
                 if (baseType.GetField(field.Name) != null)
@@ -528,16 +543,12 @@ namespace IcarianEditor
 
                 DefDataObject dataObject = new DefDataObject();
                 dataObject.Name = field.Name;
+                dataObject.Children = new List<DefDataObject>();
 
                 SetData(ref dataObject, value, defaultValue, field.FieldType);
 
-                if (!string.IsNullOrWhiteSpace(dataObject.Text) || (dataObject.Children != null && dataObject.Children.Count > 0))
-                {
-                    if (data.DefDataObjects == null)
-                    {
-                        data.DefDataObjects = new List<DefDataObject>();
-                    }
-                    
+                if (!string.IsNullOrWhiteSpace(dataObject.Text) || dataObject.Children.Count > 0)
+                {                    
                     data.DefDataObjects.Add(dataObject);
                 }
             }

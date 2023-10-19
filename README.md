@@ -3,8 +3,10 @@ The editor for Icarian Engine.
 
 ## Prerequisites
 * Vulkan SDK
-* GCC(Linux)
-* MingGW(Windows)
+### Linux
+* GCC
+### Windows
+* MingGW
 
 ## Building
 
