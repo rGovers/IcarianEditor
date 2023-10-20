@@ -2,7 +2,6 @@
 
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
-#include "Flare/RenderProgram.h"
 #include "Gizmos.h"
 #include "Logger.h"
 #include "Model.h"
@@ -12,6 +11,8 @@
 #include "ShaderStorage.h"
 #include "ShaderStorageObject.h"
 #include "UniformBuffer.h"
+
+#include "EngineMaterialInteropStructures.h"
 
 static RenderCommand* Instance = nullptr;
 
@@ -143,7 +144,7 @@ void RenderCommand::Destroy()
 
 void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 {
-    const FlareBase::RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
+    const RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
 
     if (program.VertexShader == -1 || program.PixelShader == -1)
     {
@@ -178,27 +179,27 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
     switch (program.CullingMode) 
     {
-    case FlareBase::CullMode_None:
+    case CullMode_None:
     {
         glDisable(GL_CULL_FACE);
 
         break;
     }
-    case FlareBase::CullMode_Back:
+    case CullMode_Back:
     {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
         break;
     }
-    case FlareBase::CullMode_Front:
+    case CullMode_Front:
     {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
 
         break;
     }
-    case FlareBase::CullMode_Both:
+    case CullMode_Both:
     {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT_AND_BACK);
@@ -209,23 +210,23 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
     for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
     {
-        const FlareBase::ShaderBufferInput& input = program.ShaderBufferInputs[i];
+        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
 
         switch (input.BufferType)
         {
-        case FlareBase::ShaderBufferType_CameraBuffer:
+        case ShaderBufferType_CameraBuffer:
         {
             glBindBufferBase(GL_UNIFORM_BUFFER, input.Slot, Instance->m_cameraBuffer->GetHandle());
 
             break;
         }
-        case FlareBase::ShaderBufferType_SSModelBuffer:
+        case ShaderBufferType_SSModelBuffer:
         {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_transformBatchBuffer->GetHandle());
 
             break;
         }
-        case FlareBase::ShaderBufferType_ModelBuffer:
+        case ShaderBufferType_ModelBuffer:
         {
             glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
 
@@ -269,7 +270,7 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
 
         return;
     }
-    FlareBase::RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
+    RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 
     ModelShaderBuffer buffer;
     buffer.Model = a_transform;
@@ -279,9 +280,9 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
     bool batched = false;
     for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
     {
-        const FlareBase::ShaderBufferInput& input = program.ShaderBufferInputs[i];
+        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
 
-        if (input.BufferType == FlareBase::ShaderBufferType_SSModelBuffer)
+        if (input.BufferType == ShaderBufferType_SSModelBuffer)
         {
             batched = true;
 
@@ -422,13 +423,13 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 
     Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
 
-    const FlareBase::RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
+    const RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 
     for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
     {
-        const FlareBase::ShaderBufferInput& input = program.ShaderBufferInputs[i];
+        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
 
-        if (input.BufferType == FlareBase::ShaderBufferType_SSBoneBuffer)
+        if (input.BufferType == ShaderBufferType_SSBoneBuffer)
         {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_skeletonBuffer->GetHandle());
 

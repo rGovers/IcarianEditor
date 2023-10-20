@@ -12,8 +12,9 @@ class RuntimeManager;
 class Texture;
 class VertexShader;
 
-#include "Flare/RenderProgram.h"
 #include "Flare/TextureSampler.h"
+
+#include "EngineMaterialInteropStructures.h"
 
 class RuntimeStorage
 {
@@ -28,7 +29,7 @@ private:
     std::vector<VertexShader*>             m_vertexShaders;
     std::vector<PixelShader*>              m_pixelShaders;
 
-    std::vector<FlareBase::RenderProgram>  m_renderPrograms;
+    std::vector<RenderProgram>             m_renderPrograms;
 
 protected:
 
@@ -55,14 +56,14 @@ public:
         return m_pixelShaders[a_addr];
     }
 
-    uint32_t GenerateRenderProgram(const FlareBase::RenderProgram& a_program);
+    uint32_t GenerateRenderProgram(const RenderProgram& a_program);
     void SetProgramTexture(uint32_t a_addr, uint32_t a_slot, uint32_t a_textureAddr);
     void DestroyRenderProgram(uint32_t a_addr);
-    inline FlareBase::RenderProgram GetRenderProgram(uint32_t a_addr) const
+    inline RenderProgram GetRenderProgram(uint32_t a_addr) const
     {
         return m_renderPrograms[a_addr];
     }
-    inline void SetRenderProgram(uint32_t a_addr, const FlareBase::RenderProgram& a_program) 
+    inline void SetRenderProgram(uint32_t a_addr, const RenderProgram& a_program) 
     {
         m_renderPrograms[a_addr] = a_program;
     }

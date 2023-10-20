@@ -41,8 +41,8 @@ struct RuntimeAnimationData
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
     \
-    F(FlareBase::RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
-    F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, FlareBase::RenderProgram a_program) \
+    F(RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
+    F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
     F(void, IcarianEngine.Rendering, Material, SetTexture, { Instance->SetProgramTexture(a_addr, a_slot, a_samplerAddr); }, uint32_t a_addr, uint32_t a_slot, uint32_t a_samplerAddr) \
     \
     F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadAnimationClip(str); }, MonoString* a_path) \
@@ -126,63 +126,107 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(PixelShader, GenerateFromFile)
     return -1;
 }
 
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Material, GenerateProgram), uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attribute, MonoArray* a_shaderInputs, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_enableColorBlending)
+RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram, 
 {
-    FlareBase::RenderProgram program;
+    RenderProgram program;
     program.VertexShader = a_vertexShader;
     program.PixelShader = a_pixelShader;
+    program.ShadowVertexShader = a_shadowVertexShader;
     program.VertexStride = a_vertexStride;
-    program.CullingMode = (FlareBase::e_CullMode)a_cullMode;
-    program.PrimitiveMode = (FlareBase::e_PrimitiveMode)a_primitiveMode;
+    program.CullingMode = (e_CullMode)a_cullMode;
+    program.PrimitiveMode = (e_PrimitiveMode)a_primitiveMode;
     program.EnableColorBlending = (uint8_t)a_enableColorBlending;
+    program.RenderLayer = a_renderLayer;
     program.Data = nullptr;
     program.Flags = 0;
 
-    program.VertexInputCount = 0;
-    program.VertexAttribs = nullptr;
-    program.ShaderBufferInputCount = 0;
-    program.ShaderBufferInputs = nullptr;
-
-    if (a_attribute != nullptr)
+    if (a_attributes != NULL)
     {
-        program.VertexInputCount = (uint16_t)mono_array_length(a_attribute);
+        program.VertexInputCount = (uint16_t)mono_array_length(a_attributes);
         program.VertexAttribs = new FlareBase::VertexInputAttrib[program.VertexInputCount];
 
         for (uint16_t i = 0; i < program.VertexInputCount; ++i)
         {
-            program.VertexAttribs[i] = mono_array_get(a_attribute, FlareBase::VertexInputAttrib, i);
+            program.VertexAttribs[i] = mono_array_get(a_attributes, FlareBase::VertexInputAttrib, i);
         }
     }
+    else
+    {
+        program.VertexInputCount = 0;
+        program.VertexAttribs = nullptr;
+    }
 
-    if (a_shaderInputs != nullptr)
+    if (a_shaderInputs != NULL)
     {
         program.ShaderBufferInputCount = (uint16_t)mono_array_length(a_shaderInputs);
-        program.ShaderBufferInputs = new FlareBase::ShaderBufferInput[program.ShaderBufferInputCount];
+        program.ShaderBufferInputs = new ShaderBufferInput[program.ShaderBufferInputCount];
 
         for (uint16_t i = 0; i < program.ShaderBufferInputCount; ++i)
         {
-            program.ShaderBufferInputs[i] = mono_array_get(a_shaderInputs, FlareBase::ShaderBufferInput, i);
+            program.ShaderBufferInputs[i] = mono_array_get(a_shaderInputs, ShaderBufferInput, i);
         }
+    }
+    else
+    {
+        program.ShaderBufferInputCount = 0;
+        program.ShaderBufferInputs = nullptr;
+    }
+
+    if (a_shadowShaderInputs != NULL)
+    {
+        program.ShadowShaderBufferInputCount = (uint16_t)mono_array_length(a_shadowShaderInputs);
+        program.ShadowShaderBufferInputs = new ShaderBufferInput[program.ShadowShaderBufferInputCount];
+
+        for (uint16_t i = 0; i < program.ShadowShaderBufferInputCount; ++i)
+        {
+            program.ShadowShaderBufferInputs[i] = mono_array_get(a_shadowShaderInputs, ShaderBufferInput, i);
+        }
+    }
+    else
+    {
+        program.ShadowShaderBufferInputCount = 0;
+        program.ShadowShaderBufferInputs = nullptr;
+    }
+
+    if (a_uboBuffer != NULL)
+    {
+        program.UBODataSize = a_uboSize;
+        program.UBOData = malloc((size_t)program.UBODataSize);
+
+        memcpy(program.UBOData, a_uboBuffer, (size_t)program.UBODataSize);
+    }
+    else 
+    {
+        program.UBODataSize = 0;
+        program.UBOData = NULL;
     }
 
     return Instance->GenerateRenderProgram(program);
-}
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(Material, DestroyProgram), uint32_t a_addr)
+}, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, MonoArray* a_shaderInputs, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_enableColorBlending, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, MonoArray* a_shadowShaderInputs, uint32_t a_uboSize, void* a_uboBuffer)
+RUNTIME_FUNCTION(void, Material, DestroyProgram, 
 {
-    FlareBase::RenderProgram program = Instance->GetRenderProgram(a_addr);
+    RenderProgram program = Instance->GetRenderProgram(a_addr);
 
-    if (program.VertexAttribs != nullptr)
+    IDEFER(
     {
-        delete[] program.VertexAttribs;
-    }
+        if (program.VertexAttribs != nullptr)
+        {
+            delete[] program.VertexAttribs;
+        }
 
-    if (program.ShaderBufferInputs != nullptr)
-    {
-        delete[] program.ShaderBufferInputs;
-    }
+        if (program.ShaderBufferInputs != nullptr)
+        {
+            delete[] program.ShaderBufferInputs;
+        }
+
+        if (program.UBOData != NULL)
+        {
+            free(program.UBOData);
+        }
+    });
 
     Instance->DestroyRenderProgram(a_addr);
-}
+}, uint32_t a_addr)
 
 // MSVC workaround
 static uint32_t M_Model_GenerateModel(MonoArray* a_vertices, MonoArray* a_indices, uint16_t a_vertexStride)
@@ -479,16 +523,16 @@ void RuntimeStorage::DestroyPixelShader(uint32_t a_addr)
     m_pixelShaders[a_addr] = nullptr;
 }
 
-uint32_t RuntimeStorage::GenerateRenderProgram(const FlareBase::RenderProgram& a_program)
+uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
 {
-    FlareBase::RenderProgram program = a_program;
+    RenderProgram program = a_program;
     ShaderStorage* storage = new ShaderStorage(this);
     program.Data = storage;
 
     const uint32_t programCount = (uint32_t)m_renderPrograms.size();
     for (uint32_t i = 0; i < programCount; ++i)
     {
-        if (m_renderPrograms[i].Flags & 0b1 << FlareBase::RenderProgram::FreeFlag)
+        if (m_renderPrograms[i].Flags & 0b1 << RenderProgram::FreeFlag)
         {            
             m_renderPrograms[i] = program;
 
@@ -502,15 +546,15 @@ uint32_t RuntimeStorage::GenerateRenderProgram(const FlareBase::RenderProgram& a
 }
 void RuntimeStorage::SetProgramTexture(uint32_t a_addr, uint32_t a_slot, uint32_t a_textureAddr)
 {
-    const FlareBase::RenderProgram& program = m_renderPrograms[a_addr];
+    const RenderProgram& program = m_renderPrograms[a_addr];
 
     ShaderStorage* storage = (ShaderStorage*)program.Data;
     storage->SetTexture(a_slot, m_textures[a_textureAddr]);
 }
 void RuntimeStorage::DestroyRenderProgram(uint32_t a_addr)
 {
-    FlareBase::RenderProgram& program = m_renderPrograms[a_addr];
-    if (program.Flags & 0b1 << FlareBase::RenderProgram::DestroyFlag)
+    RenderProgram& program = m_renderPrograms[a_addr];
+    if (program.Flags & 0b1 << RenderProgram::DestroyFlag)
     {
         DestroyVertexShader(program.VertexShader);
         DestroyPixelShader(program.PixelShader);
@@ -519,7 +563,7 @@ void RuntimeStorage::DestroyRenderProgram(uint32_t a_addr)
     delete (ShaderStorage*)program.Data;
     program.Data = nullptr;
 
-    program.Flags = 0b1 << FlareBase::RenderProgram::FreeFlag;
+    program.Flags = 0b1 << RenderProgram::FreeFlag;
 }
 
 uint32_t RuntimeStorage::GenerateModel(const void* a_vertices, uint32_t a_vertexCount, const uint32_t* a_indices, uint32_t a_indexCount, uint16_t a_vertexStride)

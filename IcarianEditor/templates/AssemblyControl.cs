@@ -15,6 +15,10 @@ namespace @ProjectName@
         {
             // Assembly Update
         }
+        public override void FixedUpdate()
+        {
+            // Assembly FixedUpdate
+        }
 
         public override void Close()
         {

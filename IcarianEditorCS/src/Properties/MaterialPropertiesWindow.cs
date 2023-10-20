@@ -1,6 +1,9 @@
 using IcarianEngine.Definitions;
+using IcarianEngine.Maths;
 using IcarianEngine.Rendering;
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace IcarianEditor.Properties
 {
@@ -235,6 +238,201 @@ namespace IcarianEditor.Properties
 
                 GUI.PopID();
                 GUI.Unindent();
+            }
+
+            GUI.StringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath);
+            GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the vertex shader file to be used for shadows.");
+
+            if (!string.IsNullOrWhiteSpace(def.ShadowVertexShaderPath))
+            {
+                show = GUI.ArrayView("Shadow Vertex Attributes", out addValue);
+                GUI.Tooltip("Shadow Vertex Attribute", "Used to determine input values for shaders.");
+
+                if (addValue)
+                {
+                    if (def.ShadowShaderBuffers == null)
+                    {
+                        def.ShadowShaderBuffers = new List<ShaderBufferInput>();
+                    }
+
+                    def.ShadowShaderBuffers.Add(new ShaderBufferInput());
+                }
+
+                if (show && def.ShadowShaderBuffers != null)
+                {
+                    GUI.Indent();
+                    GUI.PushID("ShadowShaderBuffers");
+
+                    for (int i = 0; i < def.ShadowShaderBuffers.Count; ++i)
+                    {
+                        ShaderBufferInput input = def.ShadowShaderBuffers[i];
+                        GUI.PushID($"[{i}]");
+
+                        if (GUI.Button("-"))
+                        {
+                            def.ShadowShaderBuffers.RemoveAt(i);
+                            --i;
+
+                            GUI.PopID();
+
+                            continue;
+                        }
+
+                        GUI.SameLine();
+
+                        if (GUI.StructView($"Shadow Shader Buffer[{i}]"))
+                        {
+                            GUI.Indent();
+
+                            GUI.EnumField("Buffer Type", ref input.BufferType);
+                            switch (input.BufferType)
+                            {
+                            case ShaderBufferType.ModelBuffer:
+                            case ShaderBufferType.UIBuffer:
+                            {
+                                break;
+                            }
+                            default:
+                            {
+                                uint slot = input.Slot;
+                                if (GUI.RUIntField("Slot", ref slot, 0))
+                                {
+                                    input.Slot = (ushort)slot;
+                                }
+                                uint set = input.Set;
+                                if (GUI.RUIntField("Set", ref set, 0))
+                                {
+                                    input.Set = (ushort)set;
+                                }
+
+                                break;
+                            }
+                            }
+
+                            GUI.EnumField("Shader Slot", ref input.ShaderSlot);
+
+                            def.ShadowShaderBuffers[i] = input;
+
+                            GUI.Unindent();
+                        }
+
+                        GUI.PopID();
+                    }
+
+                    GUI.PopID();
+                    GUI.Unindent();
+                }
+            }
+
+            Type uboType = def.UniformBufferType;
+            if (uboType != null)
+            {
+                object obj = Activator.CreateInstance(def.UniformBufferType);
+                object baseVal = Activator.CreateInstance(def.UniformBufferType);
+
+                if (def.UniformBufferFields != null)
+                {
+                    for (int i = 0; i < def.UniformBufferFields.Count; ++i)
+                    {
+                        UBOField field = def.UniformBufferFields[i];
+
+                        FieldInfo fieldInfo = uboType.GetField(field.Name);
+                        if (fieldInfo == null)
+                        {
+                            continue;
+                        }
+
+                        Type type = fieldInfo.FieldType;
+
+                        fieldInfo.SetValue(obj, MaterialDef.UBOValueToObject(type, field.Value));
+                    }
+                }
+
+                if (GUI.StructView("Uniform Buffer"))
+                {
+                    List<UBOField> fields = new List<UBOField>();
+
+                    FieldInfo[] fieldInfos = uboType.GetFields(BindingFlags.Public | BindingFlags.Instance);
+                    foreach (FieldInfo f in fieldInfos)
+                    {
+                        string name = f.Name;
+                        object value = f.GetValue(obj);
+                        object defValue = f.GetValue(baseVal);
+
+                        Type type = f.FieldType;
+
+                        if (def.UniformBufferFields != null)
+                        {
+                            foreach (UBOField field in def.UniformBufferFields)
+                            {
+                                if (field.Name == name)
+                                {
+                                    value = MaterialDef.UBOValueToObject(type, field.Value);
+
+                                    break;
+                                }
+                            }
+                        }
+                        
+
+                        if (value == null)
+                        {
+                            continue;
+                        }
+
+                        if (type == typeof(float))
+                        {
+                            float val = (float)value;
+                            float d = (float)defValue;
+
+                            GUI.RFloatField(name, ref val, d);
+
+                            value = val;
+                        }
+                        else if (type == typeof(Vector2))
+                        {
+                            Vector2 val = (Vector2)value;
+                            Vector2 d = (Vector2)defValue;
+
+                            GUI.RVec2Field(name, ref val, d);
+
+                            value = val;
+                        }
+                        else if (type == typeof(Vector3))
+                        {
+                            Vector3 val = (Vector3)value;
+                            Vector3 d = (Vector3)defValue;
+
+                            GUI.RVec3Field(name, ref val, d);
+
+                            value = val;
+                        }
+                        else if (type == typeof(Vector4))
+                        {
+                            Vector4 val = (Vector4)value;
+                            Vector4 d = (Vector4)defValue;
+
+                            GUI.RVec4Field(name, ref val, d);
+
+                            value = val;
+                        }
+
+                        if (object.Equals(value, defValue))
+                        {
+                            continue;
+                        }
+
+                        UBOField uF = new UBOField()
+                        {
+                            Name = name,
+                            Value = MaterialDef.UBOFieldValueToString(value)
+                        };
+
+                        fields.Add(uF);
+                    }
+
+                    def.UniformBufferFields = fields;
+                }
             }
         }
     }

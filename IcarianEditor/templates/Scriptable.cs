@@ -14,5 +14,10 @@ namespace @ProjectName@
         {
             // Script Update
         }
+
+        public override void FixedUpdate()
+        {
+            // Script FixedUpdate
+        }
     }
 }
