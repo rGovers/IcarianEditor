@@ -1,12 +1,21 @@
 #include "ShaderStorage.h"
 
+#include "Texture.h"
+#include "UniformBuffer.h"
+
 ShaderStorage::ShaderStorage(RuntimeStorage* a_runtimeStorage)
 {
     m_storage = a_runtimeStorage;
+
+    m_userUBOSlot = -1;
+    m_userUniformBuffer = nullptr;
 }
 ShaderStorage::~ShaderStorage()
 {
-
+    if (m_userUniformBuffer != nullptr)
+    {
+        delete m_userUniformBuffer;
+    }
 }
 
 void ShaderStorage::Bind()
@@ -17,6 +26,11 @@ void ShaderStorage::Bind()
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, m_texBindings[i].Tex->GetHandle());
         glUniform1i(m_texBindings[i].Slot, i);
+    }
+
+    if (m_userUBOSlot != -1 && m_userUniformBuffer != nullptr)
+    {
+        glBindBufferBase(GL_UNIFORM_BUFFER, m_userUBOSlot, m_userUniformBuffer->GetHandle());
     }
 }
 
@@ -38,4 +52,17 @@ void ShaderStorage::SetTexture(uint32_t a_slot, Texture* a_texture)
     binding.Tex = a_texture;
 
     m_texBindings.emplace_back(binding);
+}
+void ShaderStorage::SetUserUBO(uint32_t a_slot, const void* a_object, uint32_t a_size)
+{
+    m_userUBOSlot = a_slot;
+
+    if (m_userUniformBuffer != nullptr)
+    {
+        m_userUniformBuffer->WriteBuffer(a_object, a_size);
+    }
+    else
+    {
+        m_userUniformBuffer = new UniformBuffer(a_object, a_size);
+    }
 }

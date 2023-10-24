@@ -71,6 +71,10 @@ std::string GLSL_FromFShader(const std::string_view& a_str)
 				rStr = GLSL_SSBO_STRING(args[1], args[3], GLSL_BONE_SSBO_STRUCTURE, BONE_SHADER_NAMESTR);
 			}
 		}
+		else if (defName == "userbuffer")
+		{
+			rStr = std::string("layout(std140, binding=") + args[1] + ") uniform " + args[2];
+		}
 		else if (defName == "instancedstructure")
 		{
 			rStr = args[0] + ".objects[gl_InstanceID]";

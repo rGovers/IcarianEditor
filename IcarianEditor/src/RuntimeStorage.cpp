@@ -1,5 +1,6 @@
 #include "Runtime/RuntimeStorage.h"
 
+#include <cstring>
 #include <stb_image.h>
 
 #include "AssetLibrary.h"
@@ -526,8 +527,24 @@ void RuntimeStorage::DestroyPixelShader(uint32_t a_addr)
 uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
 {
     RenderProgram program = a_program;
+
     ShaderStorage* storage = new ShaderStorage(this);
     program.Data = storage;
+
+    for (uint32_t i = 0; i < a_program.ShaderBufferInputCount; ++i)
+    {
+        const ShaderBufferInput& input = a_program.ShaderBufferInputs[i];
+
+        switch (input.BufferType)
+        {
+        case ShaderBufferType_UserUBO:
+        {
+            storage->SetUserUBO(input.Slot, a_program.UBOData, a_program.UBODataSize);
+
+            break;
+        }
+        }
+    }
 
     const uint32_t programCount = (uint32_t)m_renderPrograms.size();
     for (uint32_t i = 0; i < programCount; ++i)
