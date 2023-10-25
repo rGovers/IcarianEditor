@@ -305,24 +305,24 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
     glBindVertexBuffer(0, vbo, 0, (GLsizei)program.VertexStride);
     for (uint16_t i = 0; i < program.VertexInputCount; ++i)
     {
-        const FlareBase::VertexInputAttrib& att = program.VertexAttribs[i];
+        const VertexInputAttribute& att = program.VertexAttributes[i];
         
         glEnableVertexAttribArray(i);
         switch (att.Type)
         {
-        case FlareBase::VertexType_Float:
+        case VertexType_Float:
         {
             glVertexAttribFormat((GLuint)i, (GLint)att.Count, GL_FLOAT, GL_FALSE, (GLuint)att.Offset);
 
             break;
         }
-        case FlareBase::VertexType_Int:
+        case VertexType_Int:
         {
             glVertexAttribIFormat((GLuint)i, (GLint)att.Count, GL_INT, (GLuint)att.Offset);
 
             break;
         }
-        case FlareBase::VertexType_UInt:
+        case VertexType_UInt:
         {
             glVertexAttribIFormat((GLuint)i, (GLint)att.Count, GL_UNSIGNED_INT, (GLuint)att.Offset);
 

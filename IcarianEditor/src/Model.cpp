@@ -4,6 +4,8 @@
 #include "Flare/OBJLoader.h"
 #include "Logger.h"
 
+#include "EngineModelInteropStructures.h"
+
 Model::Model(const void* a_vertices, uint32_t a_vertexCount, const GLuint* a_indices, uint32_t a_indexCount, uint16_t a_vertexStride)
 {
     m_indexCount = a_indexCount;
@@ -24,47 +26,47 @@ Model::~Model()
 
 Model* Model::CreateCube()
 {
-    constexpr FlareBase::Vertex Vertices[] = 
+    constexpr Vertex Vertices[] = 
     {
         // 0
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 3
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 6
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 9
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 12
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 15
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 18
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
 
         // 21
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        FlareBase::Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
+        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
     };
 
     constexpr GLuint Indices[] = 
@@ -77,7 +79,7 @@ Model* Model::CreateCube()
         13, 22, 16, 13, 19, 22
     };
 
-    return new Model(Vertices, sizeof(Vertices) / sizeof(*Vertices), Indices, sizeof(Indices) / sizeof(*Indices), sizeof(FlareBase::Vertex));
+    return new Model(Vertices, sizeof(Vertices) / sizeof(*Vertices), Indices, sizeof(Indices) / sizeof(*Indices), sizeof(Vertex));
 }
 
 Model* Model::FromFile(const std::filesystem::path& a_path)
@@ -91,7 +93,7 @@ Model* Model::FromFile(const std::filesystem::path& a_path)
 
     const std::filesystem::path& ext = a_path.extension();
 
-    std::vector<FlareBase::Vertex> vertices;
+    std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     float radius;
 
@@ -109,7 +111,7 @@ Model* Model::FromFile(const std::filesystem::path& a_path)
 
     if (vertexCount > 0 && indexCount > 0)
     {
-        return new Model(vertices.data(), vertexCount, (GLuint*)indices.data(), indexCount, sizeof(FlareBase::Vertex));
+        return new Model(vertices.data(), vertexCount, (GLuint*)indices.data(), indexCount, sizeof(Vertex));
     }
 
     Logger::Error("Failed to load file: " + a_path.string());

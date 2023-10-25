@@ -5,6 +5,7 @@
 
 #include "AssetLibrary.h"
 #include "Flare/ColladaLoader.h"
+#include "Flare/FBXLoader.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "Flare/OBJLoader.h"
@@ -144,17 +145,17 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     if (a_attributes != NULL)
     {
         program.VertexInputCount = (uint16_t)mono_array_length(a_attributes);
-        program.VertexAttribs = new FlareBase::VertexInputAttrib[program.VertexInputCount];
+        program.VertexAttributes = new VertexInputAttribute[program.VertexInputCount];
 
         for (uint16_t i = 0; i < program.VertexInputCount; ++i)
         {
-            program.VertexAttribs[i] = mono_array_get(a_attributes, FlareBase::VertexInputAttrib, i);
+            program.VertexAttributes[i] = mono_array_get(a_attributes, VertexInputAttribute, i);
         }
     }
     else
     {
         program.VertexInputCount = 0;
-        program.VertexAttribs = nullptr;
+        program.VertexAttributes = nullptr;
     }
 
     if (a_shaderInputs != NULL)
@@ -210,9 +211,9 @@ RUNTIME_FUNCTION(void, Material, DestroyProgram,
 
     IDEFER(
     {
-        if (program.VertexAttribs != nullptr)
+        if (program.VertexAttributes != nullptr)
         {
-            delete[] program.VertexAttribs;
+            delete[] program.VertexAttributes;
         }
 
         if (program.ShaderBufferInputs != nullptr)
@@ -265,7 +266,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
 
-    std::vector<FlareBase::Vertex> vertices;
+    std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     float radius;
 
@@ -278,7 +279,18 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
 
         if (dat != nullptr && size > 0 && FlareBase::OBJLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::Vertex));
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
+        }
+    }
+    else if (ext == ".fbx")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        {
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
     else if (ext == ".dae")
@@ -289,7 +301,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
 
         if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::Vertex));
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
 
@@ -303,7 +315,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
 
-    std::vector<FlareBase::SkinnedVertex> vertices;
+    std::vector<SkinnedVertex> vertices;
     std::vector<uint32_t> indices;
     float radius;
 
@@ -316,7 +328,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
 
         if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
         {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(FlareBase::SkinnedVertex));
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
     }
 

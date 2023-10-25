@@ -3,8 +3,6 @@
 #include <filesystem>
 #include <glad/glad.h>
 
-#include "Flare/Vertices.h"
-
 class Model
 {
 private:

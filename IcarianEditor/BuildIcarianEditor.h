@@ -239,8 +239,10 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/FlareBase/build/FlareBase.lib");
 
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/flare-glfw/build/GLFW.lib");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/miniz/build/miniz.lib");
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib");
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/OpenFBX/build/OpenFBXLibDeflate.lib");
 
         CUBE_CProject_AppendReference(&project, "gdi32");
         CUBE_CProject_AppendReference(&project, "wsock32");
@@ -258,7 +260,9 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/FlareBase/build/libFlareBase.a");
 
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/flare-glfw/build/libGLFW.a");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/miniz/build/libminiz.a");
         CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a");
+        CUBE_CProject_AppendLibrary(&project, "../IcarianEngine/deps/OpenFBX/build/libOpenFBXLibDeflate.a");
 
         CUBE_CProject_AppendReference(&project, "z");
 
