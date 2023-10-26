@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "AppMain.h"
+#include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "Modals/ErrorModal.h"
 #include "ProcessManager.h"
@@ -38,6 +39,13 @@ void ControlWindow::TransformControls()
         m_workspace->SetManipulationMode(ManipulationMode_Translate);
     }
 
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Translate");
+    }
+
     ImGui::SameLine();
 
     if (FlareImGui::ImageButton("Rotate", "Textures/Icons/Icon_Rotate.png", glm::vec2(16.0f)))
@@ -45,11 +53,25 @@ void ControlWindow::TransformControls()
         m_workspace->SetManipulationMode(ManipulationMode_Rotate);
     }
 
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Rotate");
+    }
+
     ImGui::SameLine();
 
     if (FlareImGui::ImageButton("Scale", "Textures/Icons/Icon_Scale.png", glm::vec2(16.0f)))
     {
         m_workspace->SetManipulationMode(ManipulationMode_Scale);
+    }
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Scale");
     }
 
     ImGui::EndGroup();

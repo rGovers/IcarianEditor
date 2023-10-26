@@ -18,6 +18,12 @@ static constexpr const char* CodeEditorNames[] =
     "Visual Studio Code"
 };
 
+static constexpr const char* DefEditorNames[] =
+{
+    "Editor",
+    "Visual Studio Code"
+};
+
 #if WIN32
 constexpr static bool CodeEditorEnabled[] =
 {
@@ -34,7 +40,7 @@ constexpr static bool CodeEditorEnabled[] =
 };
 #endif
 
-EditorConfigModal::EditorConfigModal() : Modal("Config", glm::vec2(400.0f, 300.0f))
+EditorConfigModal::EditorConfigModal() : Modal("Config", glm::vec2(450.0f, 300.0f))
 {
     m_currentTab = EditorConfigTab_General;
 }
@@ -46,12 +52,19 @@ EditorConfigModal::~EditorConfigModal()
 void EditorConfigModal::GeneralTab()
 {
     bool useDegrees = EditorConfig::GetUseDegrees();
-
     if (ImGui::Checkbox("Use Degrees", &useDegrees))
     {
         EditorConfig::SetUseDegrees(useDegrees);
     }
 
+    ImGui::SetNextItemWidth(ItemWidth);
+    float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
+    if (ImGui::DragFloat("Editor Mouse Sensitivity", &editorMouseSensitivity, 0.01f, 0.0f, 1.0f, "%.5f"))
+    {
+        EditorConfig::SetEditorMouseSensitivity(editorMouseSensitivity);
+    }
+    
+    ImGui::SetNextItemWidth(ItemWidth);
     glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
     if (ImGui::ColorEdit4("Background Color", (float*)&backgroundColor))
     {
@@ -62,7 +75,7 @@ void EditorConfigModal::ExternalToolsTab()
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
 
-    ImGui::SetNextItemWidth(200.0f);
+    ImGui::SetNextItemWidth(ItemWidth);
     if (ImGui::BeginCombo("Code Editor", CodeEditorNames[codeEditor]))
     {
         IDEFER(ImGui::EndCombo());
@@ -80,6 +93,29 @@ void EditorConfigModal::ExternalToolsTab()
             if (ImGui::Selectable(CodeEditorNames[i], selected))
             {
                 EditorConfig::SetCodeEditor((e_CodeEditor)i);
+            }
+
+            if (selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+    }
+
+    const e_DefEditor defEditor = EditorConfig::GetDefEditor();
+
+    ImGui::SetNextItemWidth(ItemWidth);
+    if (ImGui::BeginCombo("Def Editor", DefEditorNames[defEditor]))
+    {
+        IDEFER(ImGui::EndCombo());
+
+        for (uint32_t i = 0; i < DefEditor_End; ++i)
+        {
+            const bool selected = defEditor == i;
+
+            if (ImGui::Selectable(DefEditorNames[i], selected))
+            {
+                EditorConfig::SetDefEditor((e_DefEditor)i);
             }
 
             if (selected)

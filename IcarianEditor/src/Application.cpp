@@ -10,9 +10,6 @@ static void ErrorCallback(int a_error, const char* a_description)
 
 Application::Application(uint32_t a_width, uint32_t a_height, const std::string_view& a_title)
 {
-    m_width = a_width;
-    m_height = a_height;
-
     ICARIAN_ASSERT_R(glfwInit());
 
     glfwSetErrorCallback(ErrorCallback);
@@ -23,7 +20,7 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
-    m_window = glfwCreateWindow((int)m_width, (int)m_height, a_title.data(), NULL, NULL);
+    m_window = glfwCreateWindow((int)a_width, (int)a_height, a_title.data(), NULL, NULL);
 
     glfwSetWindowUserPointer(m_window, this);
 
@@ -91,6 +88,11 @@ void Application::SetCursor(e_Cursors a_cursor)
     glfwSetCursor(m_window, m_cursors[a_cursor]);
 }
 
+bool Application::IsFocused() const
+{
+    return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != GLFW_FALSE;
+}
+
 bool Application::IsMaximized() const
 {
     return glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) != GLFW_FALSE;
@@ -112,12 +114,28 @@ void Application::Minimize() const
     glfwIconifyWindow(m_window);
 }
 
-void Application::SetWindowSize(uint32_t a_width, uint32_t a_height)
+void Application::SetWindowSize(const glm::vec2& a_size)
 {
-    m_width = a_width;
-    m_height = a_height;
+    int width = (int)a_size.x;
+    int height = (int)a_size.y;
 
-    glfwSetWindowSize(m_window, (int)m_width, (int)m_height);
+    if (width < 1)
+    {
+        width = 1;
+    }
+    if (height < 1)
+    {
+        height = 1;
+    }
+
+    glfwSetWindowSize(m_window, width, height);
+}
+glm::vec2 Application::GetWindowSize() const
+{
+    int width, height;
+    glfwGetWindowSize(m_window, &width, &height);
+
+    return glm::vec2((float)width, (float)height);
 }
 
 glm::vec2 Application::GetCursorPos() const
@@ -125,16 +143,18 @@ glm::vec2 Application::GetCursorPos() const
     double x, y;
     glfwGetCursorPos(m_window, &x, &y);
 
-    return glm::vec2(x, y);
+    return glm::vec2((float)x, (float)y);
 }
 
 float Application::GetDPI() const
 {
     int x, y;
+    int width, height;
 
     glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &x, &y);
+    glfwGetFramebufferSize(m_window, &width, &height);
 
-    return (float)x / (float)m_width;
+    return (float)x / (float)width;
 }
 
 glm::vec2 Application::GetMousePos() const

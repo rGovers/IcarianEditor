@@ -186,7 +186,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
     SetImguiStyle();
 
@@ -228,7 +228,6 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     glBindVertexArray(m_vao);
 
     m_titleSet = 0.0;
-    m_refresh = false;
 
     BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModal);
     BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModalState);
@@ -289,40 +288,47 @@ void AppMain::Update(double a_delta, double a_time)
     ImGui::NewFrame();
     ImGuizmo::BeginFrame();
 
-    GLFWwindow* window = GetWindow();
-
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiStyle& style = ImGui::GetStyle();
 
     e_Cursors cursor = Cursor_Arrow;
     const glm::vec2 cursorPos = GetCursorPos();
 
-    const uint32_t width = GetWidth();
-    const uint32_t height = GetHeight();
+    const glm::vec2 winSize = GetWindowSize();
 
     const float dpi = GetDPI();
     const float resizeSize = ResizeThreshold / dpi;
 
     const bool leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool leftClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 
     // ImGui::ShowStyleEditor();
 
-    const int focusState = glfwGetWindowAttrib(window, GLFW_FOCUSED);
-    if (!m_focused && focusState)
-    {
-        m_refresh = true;
-    }
-
-    m_focused = (bool)focusState;
+    const bool focusState = IsFocused();
 
     const bool validProject = m_project->IsValidProject();
+    
+    bool refresh = false;
 
-    if (validProject && m_project->ShouldRefresh())
+    if (validProject)
     {
-        m_refresh = true;
+        if (!m_focused && focusState)
+        {
+            const std::filesystem::path workingDir = m_project->GetPath();
 
-        m_project->SetRefresh(false);
+            if (m_assets->ShouldRefresh(workingDir))   
+            {
+                refresh = true;
+            }
+        }
+
+        if (m_project->ShouldRefresh())
+        {
+            refresh = true;
+        }
     }
+
+    m_focused = focusState;
 
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
@@ -447,6 +453,7 @@ void AppMain::Update(double a_delta, double a_time)
             float offset = 0.0f;
 
             const float width = ImGui::GetWindowWidth();
+            const ImVec2 windowPos = ImGui::GetWindowPos();
 
             offset += 24;
             ImGui::SetCursorPosX(width - offset);
@@ -487,7 +494,10 @@ void AppMain::Update(double a_delta, double a_time)
 
                 ImGui::SetCursorPosX(xPos);
 
-                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
+                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
+
+                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
 
                 ImGui::Text("%s", m_fpsText.c_str());
             }
@@ -502,7 +512,10 @@ void AppMain::Update(double a_delta, double a_time)
 
                 ImGui::SetCursorPosX(xPos);
 
-                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
+                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
+
+                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
 
                 ImGui::Text("%s", m_engineFpsText.c_str());
             }
@@ -517,7 +530,10 @@ void AppMain::Update(double a_delta, double a_time)
 
                 ImGui::SetCursorPosX(xPos);
 
-                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
+                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
+
+                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
 
                 ImGui::Text("%s", m_engineUpsText.c_str());
             }
@@ -534,34 +550,37 @@ void AppMain::Update(double a_delta, double a_time)
 
                 ImGui::SetCursorPosX(xPos);
 
-                drawList->AddRectFilled(ImVec2(xPos - style.ItemSpacing.x, 0.0f), ImVec2(xPos + size.x + style.ItemSpacing.x, MenuBarSize), headerColor, 5.0f);
+                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
+                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
+
+                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
 
                 ImGui::Text("%s", name.c_str());
             }
         }
     }
 
-    if (leftDown && !m_windowActions)
+    if (leftClicked && !m_windowActions)
     {
-        if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(width, resizeSize)))
+        if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)))
         {
             m_windowActions |= 0b1 << TopResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(0.0f, height - resizeSize), glm::vec2(width, height + resizeSize)))
+        else if (InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
         {
             m_windowActions |= 0b1 << BottomResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, height)))
+        else if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)))
         {
             m_windowActions |= 0b1 << LeftResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(width - resizeSize, 0.0f), glm::vec2(width + resizeSize, height)))
+        else if (InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
         {
             m_windowActions |= 0b1 << RightResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(0.0f), glm::vec2(width, MenuBarSize)))
+        else if (InBounds(cursorPos, glm::vec2(0.0f), glm::vec2(winSize.x, MenuBarSize)))
         {
-            if (a_time - m_lastClick < DoubleClickThreshold)
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 Maximize(!IsMaximized());
             }
@@ -569,14 +588,12 @@ void AppMain::Update(double a_delta, double a_time)
             {
                 m_windowActions |= 0b1 << MoveBit;
             }
-
-            m_lastClick = a_time;
         }
 
         if (m_windowActions)
         {
             m_startWindowPos = GetWindowPos();
-            m_startWindowSize = glm::vec2(width, height);
+            m_startWindowSize = winSize;
             m_startMousePos = GetMousePos();
         }
     }
@@ -621,7 +638,7 @@ void AppMain::Update(double a_delta, double a_time)
         const float newHeight = m_startWindowSize.y - cDelta.y;
         const float newYPos = m_startWindowPos.y + cDelta.y;
         
-        SetWindowSize((uint32_t)m_startWindowSize.x, (uint32_t)newHeight);
+        SetWindowSize(glm::vec2(m_startWindowSize.x, newHeight));
         SetWindowPos(glm::vec2(m_startWindowPos.x, newYPos));
 
         break;
@@ -634,7 +651,7 @@ void AppMain::Update(double a_delta, double a_time)
 
         const float newHeight = m_startWindowSize.y + cDelta.y;
 
-        SetWindowSize((uint32_t)m_startWindowSize.x, (uint32_t)newHeight);
+        SetWindowSize(glm::vec2(m_startWindowSize.x, newHeight));
 
         break;
     }
@@ -647,7 +664,7 @@ void AppMain::Update(double a_delta, double a_time)
         const float newWidth = m_startWindowSize.x - cDelta.x;
         const float newXPos = m_startWindowPos.x + cDelta.x;
 
-        SetWindowSize((uint32_t)newWidth, (uint32_t)m_startWindowSize.y);
+        SetWindowSize(glm::vec2(newWidth, m_startWindowSize.y));
         SetWindowPos(glm::vec2(newXPos, m_startWindowPos.y));
 
         break;
@@ -660,7 +677,7 @@ void AppMain::Update(double a_delta, double a_time)
 
         const float newWidth = m_startWindowSize.x + cDelta.x;
 
-        SetWindowSize((uint32_t)newWidth, (uint32_t)m_startWindowSize.y);
+        SetWindowSize(glm::vec2(newWidth, m_startWindowSize.y));
 
         break;
     }
@@ -672,7 +689,7 @@ void AppMain::Update(double a_delta, double a_time)
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+    glViewport(0, 0, (GLsizei)winSize.x, (GLsizei)winSize.y);
 
     if (!m_modals.empty())
     {
@@ -699,39 +716,23 @@ void AppMain::Update(double a_delta, double a_time)
         ImGui::RenderPlatformWindowsDefault();
     }
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL))
+    if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl))
     {
-        if (glfwGetKey(window, GLFW_KEY_S))
+        if (ImGui::IsKeyPressed(ImGuiKey_S, false))
         {
-            if (!(m_inputByte & (0b1 << SaveBit)))
-            {
-                m_inputByte |= 0b1 << SaveBit;
-                m_project->Save();
-            }
-        }
-        else
-        {
-            m_inputByte &= ~(0b1 << SaveBit);
+            m_project->Save();
         }
 
-        if (glfwGetKey(window, GLFW_KEY_O))
+        if (ImGui::IsKeyPressed(ImGuiKey_O, false))
         {
-            if (!(m_inputByte & (0b1 << LoadBit)))
-            {
-                m_inputByte |= 0b1 << LoadBit;
-                m_project->Open();
-            }
-        }
-        else
-        {
-            m_inputByte &= ~(0b1 << LoadBit);
+            m_project->Open();
         }
     }
 
-    if (m_refresh && validProject)
+    if (refresh)
     {
         Logger::Message("Refreshing Project");
-        m_refresh = false;
+        m_project->SetRefresh(false);
 
         const std::filesystem::path path = m_project->GetPath(); 
         const std::string pathStr = path.string();
@@ -765,8 +766,8 @@ void AppMain::Update(double a_delta, double a_time)
 
         if (m_process->IsRunning())
         {
-            const int ups = m_process->GetUPS();
-            const int fps = m_process->GetFPS();
+            const int ups = (int)m_process->GetUPS();
+            const int fps = (int)m_process->GetFPS();
 
             m_engineFpsText = "Engine FPS " + std::to_string(fps);
             m_engineUpsText = "Engine UPS " + std::to_string(ups);
@@ -778,13 +779,13 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, height)) || 
-        InBounds(cursorPos, glm::vec2(width - resizeSize, 0.0f), glm::vec2(width + resizeSize, height)))
+    if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)) || 
+        InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
     {
         cursor = Cursor_HResize;
     }
-    else if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(width, resizeSize)) ||
-             InBounds(cursorPos, glm::vec2(0.0f, height - resizeSize), glm::vec2(width, height + resizeSize)))
+    else if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)) ||
+             InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
     {
         cursor = Cursor_VResize;
     }

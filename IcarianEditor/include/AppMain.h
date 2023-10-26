@@ -29,14 +29,7 @@ private:
     static constexpr float ResizeThreshold = 2.5f;
     static constexpr float MenuBarSize = 32.5f;
 
-    static constexpr float DoubleClickThreshold = 0.25f;
-
-
     double               m_titleSet;
-
-    double               m_lastClick;
-
-    bool                 m_refresh;
 
     std::string          m_fpsText;
     std::string          m_engineFpsText;
@@ -62,8 +55,6 @@ private:
 
     unsigned char        m_windowActions;
 
-    unsigned char        m_inputByte;
-
     std::vector<bool>    m_runtimeModalState;
 
 protected:
@@ -73,11 +64,6 @@ public:
     virtual ~AppMain();
 
     virtual void Update(double a_delta, double a_time);
-
-    inline void RefreshProject()
-    {
-        m_refresh = true;
-    }
 
     bool GetRuntimeModalState(uint32_t a_index);
     void SetRuntimeModalState(uint32_t a_index, bool a_state);

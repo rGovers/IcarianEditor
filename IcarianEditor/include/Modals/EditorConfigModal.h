@@ -12,6 +12,8 @@ enum e_EditorConfigTab
 class EditorConfigModal : public Modal
 {
 private:
+    static constexpr float ItemWidth = 150.0f;
+
     e_EditorConfigTab m_currentTab = EditorConfigTab_General;
 
     static void GeneralTab();

@@ -79,7 +79,7 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
 
     doc.SaveFile(path.string().c_str());
 
-    m_app->RefreshProject();
+    m_shouldRefresh = true;
 
     const std::string assemblyControlName = std::string(a_name) + "AssemblyControl";
 
@@ -122,7 +122,7 @@ void Project::OpenCallback(const std::filesystem::path& a_path, const std::strin
 
     GenerateDirs(m_path);
 
-    m_app->RefreshProject();
+    m_shouldRefresh = true;
 }
 
 void Project::New()

@@ -220,7 +220,9 @@ void EditorWindow::Update(double a_delta)
 
             const glm::vec2 mMov = m_prevMousePos - mPos;
 
-            m_rotation = glm::angleAxis(mMov.x * 0.01f, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * 0.01f, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f)) * m_rotation;
+            const float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
+
+            m_rotation = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f)) * m_rotation;
 
             m_translation += mov * m_scroll * (float)a_delta;
         }

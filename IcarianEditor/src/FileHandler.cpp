@@ -41,7 +41,23 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
 
 static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
 {
-    a_workspace->OpenDef(a_relativePath);
+    const e_DefEditor defEditor = EditorConfig::GetDefEditor();
+
+    switch (defEditor)
+    {
+    case DefEditor_VisualStudioCode:
+    {
+        IO::OpenFile("code", a_path);
+
+        break;
+    }
+    default:
+    {
+        a_workspace->OpenDef(a_relativePath);
+
+        break;
+    }
+    }
 }
 static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
 {

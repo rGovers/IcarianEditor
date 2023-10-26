@@ -65,6 +65,10 @@ void EditorConfig::Deserialize()
                             }
                         }
                     }
+                    else if (strcmp(name, "EditorMouseSensitivity") == 0)
+                    {
+                        Instance->m_editorMouseSensitivity = element->FloatText();
+                    }
                     else if (strcmp(name, "CodeEditor") == 0)
                     {
                         const char* codeEditor = element->GetText();
@@ -79,6 +83,18 @@ void EditorConfig::Deserialize()
                         else if (strcmp(codeEditor, "VisualStudio") == 0)
                         {
                             Instance->m_codeEditor = CodeEditor_VisualStudio;
+                        }
+                    }
+                    else if (strcmp(name, "DefEditor") == 0)
+                    {
+                        const char* defEditor = element->GetText();
+                        if (strcmp(defEditor, "Editor") == 0)
+                        {
+                            Instance->m_defEditor = DefEditor_Editor;
+                        }
+                        else if (strcmp(defEditor, "VisualStudioCode") == 0)
+                        {
+                            Instance->m_defEditor = DefEditor_VisualStudioCode;
                         }
                     }
                 }
@@ -119,6 +135,10 @@ void EditorConfig::Serialize()
         backgroundColor->InsertEndChild(a);
     }
 
+    tinyxml2::XMLElement* editorMouseSensitivity = doc.NewElement("EditorMouseSensitivity");
+    editorMouseSensitivity->SetText(Instance->m_editorMouseSensitivity);
+    root->InsertEndChild(editorMouseSensitivity);
+
     tinyxml2::XMLElement* codeEditor = doc.NewElement("CodeEditor");
     switch (Instance->m_codeEditor)
     {
@@ -142,6 +162,24 @@ void EditorConfig::Serialize()
     }
     }
     root->InsertEndChild(codeEditor);
+
+    tinyxml2::XMLElement* defEditor = doc.NewElement("DefEditor");
+    switch (Instance->m_defEditor)
+    {
+    case DefEditor_VisualStudioCode:
+    {
+        defEditor->SetText("VisualStudioCode");
+
+        break;
+    }
+    default:
+    {
+        defEditor->SetText("Editor");
+
+        break;
+    }
+    }
+    root->InsertEndChild(defEditor);
 
     doc.SaveFile(ConfigFile);
 }
@@ -169,25 +207,43 @@ bool EditorConfig::GetUseDegrees()
 {
     return Instance->m_useDegrees;
 }
-void EditorConfig::SetUseDegrees(bool useDegrees)
+void EditorConfig::SetUseDegrees(bool a_useDegrees)
 {
-    Instance->m_useDegrees = useDegrees;
+    Instance->m_useDegrees = a_useDegrees;
+}
+
+float EditorConfig::GetEditorMouseSensitivity()
+{
+    return Instance->m_editorMouseSensitivity;
+}
+void EditorConfig::SetEditorMouseSensitivity(float a_editorMouseSensitivity)
+{
+    Instance->m_editorMouseSensitivity = a_editorMouseSensitivity;
 }
 
 glm::vec4 EditorConfig::GetBackgroundColor()
 {
     return Instance->m_backgroundColor;
 }
-void EditorConfig::SetBackgroundColor(const glm::vec4& backgroundColor)
+void EditorConfig::SetBackgroundColor(const glm::vec4& a_backgroundColor)
 {
-    Instance->m_backgroundColor = backgroundColor;
+    Instance->m_backgroundColor = a_backgroundColor;
 }
 
 e_CodeEditor EditorConfig::GetCodeEditor()
 {
     return Instance->m_codeEditor;
 }
-void EditorConfig::SetCodeEditor(e_CodeEditor codeEditor)
+void EditorConfig::SetCodeEditor(e_CodeEditor a_codeEditor)
 {
-    Instance->m_codeEditor = codeEditor;
+    Instance->m_codeEditor = a_codeEditor;
+}
+
+e_DefEditor EditorConfig::GetDefEditor()
+{
+    return Instance->m_defEditor;
+}
+void EditorConfig::SetDefEditor(e_DefEditor a_defEditor)
+{
+    Instance->m_defEditor = a_defEditor;
 }

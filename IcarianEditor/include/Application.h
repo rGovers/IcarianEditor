@@ -25,9 +25,6 @@ class Application
 {
 private:
     GLFWwindow* m_window;
-            
-    uint32_t    m_width;
-    uint32_t    m_height;
 
     GLFWcursor* m_cursors[Cursor_Last];
 
@@ -39,20 +36,15 @@ public:
 
     void Run();
 
+    bool IsFocused() const;
+
     bool IsMaximized() const;
     void Maximize(bool a_state);
 
     void Minimize() const;
 
-    inline uint32_t GetWidth() const
-    {
-        return m_width;
-    }
-    inline uint32_t GetHeight() const
-    {
-        return m_height;
-    }
-    void SetWindowSize(uint32_t a_width, uint32_t a_height);
+    glm::vec2 GetWindowSize() const;
+    void SetWindowSize(const glm::vec2& a_size);
 
     void SetCursorState(FlareBase::e_CursorState a_state);
     void SetCursor(e_Cursors a_cursor);

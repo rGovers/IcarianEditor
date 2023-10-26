@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <fstream>
 
+#include "EditorConfig.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "IO.h"
@@ -43,15 +44,18 @@ AssetLibrary::~AssetLibrary()
     }
 }
 
-void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
+static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
 {
     for (const auto& iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
     {
+        const std::filesystem::path path = iter.path();
+
         if (iter.is_regular_file())
         {
             Asset asset;
 
-            asset.Path = IO::GetRelativePath(a_workingDir, iter.path());
+            asset.Path = IO::GetRelativePath(a_workingDir, path);
+            asset.ModifiedTime = std::filesystem::last_write_time(path);
 
             const std::filesystem::path ext = asset.Path.extension();
             const std::filesystem::path name = asset.Path.filename();
@@ -72,7 +76,7 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
             {
                 asset.AssetType = AssetType_Scene;
             }
-            else if (ext == ".dae" || ext == ".obj")
+            else if (ext == ".dae" || ext == ".fbx" || ext == ".obj")
             {
                 asset.AssetType = AssetType_Model;
             }
@@ -85,33 +89,42 @@ void AssetLibrary::TraverseTree(const std::filesystem::path& a_path, const std::
                 asset.AssetType = AssetType_Other;
             }
 
-            // Must resist urge to throw Windows under bus for own mistakes.
-            // Forgot to pass second argument and was causing obscure bugs on Windows.
-            std::ifstream file = std::ifstream(iter.path(), std::ios::binary);
-            if (file.good() && file.is_open())
-            {
-                IDEFER(file.close());
+            asset.Data = nullptr;
+            asset.Size = 0;
 
-                // Fuck Windows
-                // asset.Size = (uint32_t)std::filesystem::file_size(iter.path());
-                file.ignore(std::numeric_limits<std::streamsize>::max());
-                asset.Size = (uint32_t)file.gcount();
-                file.clear();
-                file.seekg(0, std::ios::beg);
-
-                asset.Data = new char[asset.Size];
-                file.read(asset.Data, asset.Size);
-
-                m_assets.emplace_back(asset);
-            }
-            else
-            {
-                Logger::Warning("Failed to open: " + iter.path().string());
-            }
+            a_assets->emplace_back(asset);
         }
         else if (iter.is_directory())
         {
-            TraverseTree(iter.path(), a_workingDir);
+            TraverseTree(a_assets, path, a_workingDir);
+        }
+    }
+}
+
+static void ReadAssets(std::vector<Asset>* a_assets, const std::filesystem::path& a_workingDir)
+{
+    for (Asset& asset : *a_assets)
+    {
+        if (asset.Data != nullptr)
+        {
+            delete[] asset.Data;
+            asset.Data = nullptr;
+        }
+
+        asset.Size = 0;
+
+        const std::filesystem::path p = a_workingDir / asset.Path;
+
+        std::ifstream file = std::ifstream(p, std::ios::binary);
+        if (file.good() && file.is_open())
+        {
+            file.ignore(std::numeric_limits<std::streamsize>::max());
+            asset.Size = (uint32_t)file.gcount();
+            file.clear();
+            file.seekg(0, std::ios::beg);
+
+            asset.Data = new char[asset.Size];
+            file.read(asset.Data, (std::streamsize)asset.Size);
         }
     }
 }
@@ -168,6 +181,36 @@ void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_si
     ICARIAN_ASSERT_MSG(0, "Scene not found");
 }
 
+bool AssetLibrary::ShouldRefresh(const std::filesystem::path& a_workingDir) const
+{
+    std::vector<Asset> assets;
+
+    const std::filesystem::path p = a_workingDir / "Project";
+    TraverseTree(&assets, p, p);
+
+    for (const Asset& internalAsset : assets)
+    {
+        for (const Asset& externalAsset : m_assets)
+        {
+            if (internalAsset.Path == externalAsset.Path)
+            {
+                if (externalAsset.ModifiedTime > internalAsset.ModifiedTime)
+                {
+                    return true;
+                }
+
+                goto Next;
+            }
+        }
+
+        // Not found, new asset.
+        return true;
+Next:;
+    }
+
+    return false;
+}
+
 void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 {
     for (const Asset& asset : m_assets)
@@ -182,7 +225,8 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 
     const std::filesystem::path p = a_workingDir / "Project";
 
-    TraverseTree(p, p);
+    TraverseTree(&m_assets, p, p);
+    ReadAssets(&m_assets, p);
 
     if (!m_runtime->IsBuilt() || !m_runtime->IsRunning())
     {
@@ -216,6 +260,10 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
             scenePaths.emplace_back(asset.Path);
 
             break;
+        }
+        default:
+        {
+            continue;
         }
         }
     }
@@ -427,7 +475,7 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std
     GetAsset(rPath, a_size, a_data);
 }
 
-void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
+void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir)
 {
     std::vector<Asset> defs;
 
@@ -444,16 +492,69 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir) const
     m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":SerializeDefs()", nullptr);
     m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
 
+    const e_DefEditor defEditor = EditorConfig::GetDefEditor();
+
     for (const Asset& a : m_assets)
     {
         const std::filesystem::path p = pPath / a.Path;
 
+        const e_AssetType type = a.AssetType;
+
+        switch (type) 
+        {
+        case AssetType_Script:
+        {
+            continue;
+        }
+        case AssetType_Def:
+        {
+            if (defEditor != DefEditor_Editor)
+            {
+                continue;
+            }
+
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            IDEFER(file.close());
-
             file.write(a.Data, a.Size);
         }
+    }
+
+    const std::filesystem::file_time_type time = std::filesystem::file_time_type::clock::now();
+
+    for (Asset& asset : m_assets)
+    {
+        const e_AssetType type = asset.AssetType;
+
+        switch (type)
+        {
+        case AssetType_Script:
+        {
+            continue;
+        }
+        case AssetType_Def:
+        {
+            if (defEditor != DefEditor_Editor)
+            {
+                continue;
+            }
+
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+
+        asset.ModifiedTime = time;
     }
 }

@@ -7,6 +7,7 @@
 #include "AssetLibrary.h"
 #include "Datastore.h"
 #include "FileHandler.h"
+#include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "IO.h"
@@ -64,7 +65,8 @@ void AssetBrowserWindow::MakeDirectoryNode(uint32_t a_parent, const std::filesys
 
     for (const std::filesystem::path& child : childPaths)
     {
-        node.Children.emplace_back(m_fileTree.size());
+        node.Children.emplace_back((uint32_t)m_fileTree.size());
+
         MakeDirectoryNode(index, child);
     }
 
@@ -73,36 +75,84 @@ void AssetBrowserWindow::MakeDirectoryNode(uint32_t a_parent, const std::filesys
 void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
 {
     const DirectoryNode& node = m_fileTree[a_index];
-    if (a_index != 0)
-    {
-        ImGui::Text("L");
-        ImGui::SameLine();
-    }
 
+    const uint32_t count = node.Children.size();
+
+    const std::string strID = "##" + std::to_string(a_index);
+    const std::string buttonID = strID + "Button";
     const std::string fileName = node.Path.filename().string();
 
-    if (ImGui::Button(fileName.c_str()))
+    bool open = false;
+    if (count > 0)
+    {
+        open = ImGui::TreeNode(strID.c_str());
+
+        ImGui::SameLine();
+    }
+    else
+    {
+        ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+        
+    }
+    IDEFER(
+    {
+        if (open)
+        {
+            ImGui::TreePop();
+        }
+        else if (count == 0)
+        {
+            ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+        } 
+    });
+
+    ImGui::PushID(buttonID.c_str());
+    IDEFER(ImGui::PopID());
+
+    if (ImGui::Selectable(fileName.c_str()))
     {
         m_curIndex = a_index;
     }
 
-    ImGui::Indent();
-
-    for (const uint32_t index : node.Children)
+    if (open)
     {
-        TraverseFolderTree(index);
+        for (const uint32_t index : node.Children)
+        {
+            TraverseFolderTree(index);
+        }
     }
-
-    ImGui::Unindent();
 }
 
 void AssetBrowserWindow::Refresh()
 {
+    std::filesystem::path curPath;
+    if (m_curIndex != -1)
+    {
+        ICARIAN_ASSERT(m_curIndex < m_fileTree.size());
+        
+        curPath = m_fileTree[m_curIndex].Path;
+    }
+
+    const std::filesystem::path projectPath = m_project->GetProjectPath();
+
     m_fileTree.clear(); 
 
     m_curIndex = 0;
 
-    MakeDirectoryNode(-1, m_project->GetProjectPath());
+    MakeDirectoryNode(-1, projectPath);
+
+    const uint32_t count = (uint32_t)m_fileTree.size();
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const DirectoryNode& node = m_fileTree[i];
+
+        if (node.Path == curPath)
+        {
+            m_curIndex = i;
+
+            break;
+        }
+    }
 }
 
 class DeleteAssetData : public ConfirmModalData
@@ -123,7 +173,7 @@ public:
     }
     virtual ~DeleteAssetData() { }
 
-    virtual void Confirm() override
+    virtual void Confirm()
     {
         // TODO: Should allow for partial update of tree instead of full refresh
         // Full refresh of project is expensive as it requires a full reload of
@@ -370,14 +420,40 @@ bool AssetBrowserWindow::ShowBaseAssetList(const DirectoryNode& a_node)
 {
     bool contextCaptured = false;
 
-    for (uint32_t index : a_node.Children)
+    std::list<uint32_t> folders;
+
+    // Sort folders by name
+    for (const uint32_t index : a_node.Children)
     {
         const DirectoryNode& cNode = m_fileTree[index];
 
-        const std::filesystem::path& p = cNode.Path;
+        if (!std::filesystem::exists(cNode.Path))
+        {
+            continue;
+        }
 
-        // Failsafe for when a folder is deleted
-        if (!std::filesystem::exists(p))
+        for (auto iter = folders.begin(); iter != folders.end(); ++iter)
+        {
+            const DirectoryNode& pNode = m_fileTree[*iter];
+
+            if (pNode.Path > cNode.Path)
+            {
+                folders.insert(iter, index);
+
+                goto NextFolder;
+            }
+        }
+
+        folders.emplace_back(index);
+
+        NextFolder:;
+    }
+
+    for (const uint32_t index : folders)
+    {
+        const DirectoryNode& cNode = m_fileTree[index];
+
+        if (!std::filesystem::exists(cNode.Path))
         {
             continue;
         }
@@ -388,9 +464,34 @@ bool AssetBrowserWindow::ShowBaseAssetList(const DirectoryNode& a_node)
         }
     }
 
+    std::list<std::filesystem::path> files;
+
+    // Sort files by name
+    for (const std::filesystem::path& path : a_node.Files)
+    {
+        if (!std::filesystem::exists(path))
+        {
+            continue;
+        }
+
+        for (auto iter = files.begin(); iter != files.end(); ++iter)
+        {
+            if (*iter > path)
+            {
+                files.insert(iter, path);
+
+                goto NextFile;
+            }
+        }
+
+        files.emplace_back(path);
+
+        NextFile:;
+    }
+
     const std::filesystem::path workingPath = m_project->GetProjectPath();
 
-    for (const std::filesystem::path& path : a_node.Files)
+    for (const std::filesystem::path& path : files)
     {
         // Failsafe for when a file is deleted
         if (!std::filesystem::exists(path))
@@ -501,6 +602,12 @@ void AssetBrowserWindow::Update(double a_delta)
     {
         m_project->SetRefresh(true);
     }
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+        
+        ImGui::Text("Reload Project");
+    }
 
     ImGui::SameLine();
 
@@ -514,6 +621,23 @@ void AssetBrowserWindow::Update(double a_delta)
         const DirectoryNode& node = m_fileTree[index];
 
         const std::string fileName = node.Path.filename().string();
+
+        if (index == 0)
+        {
+            if (FlareImGui::ImageButton("Project", "Textures/Icons/Icon_Home.png", { 16.0f, 16.0f }))
+            {
+                m_curIndex = index;
+            }
+
+            if (m_curIndex != index)
+            {
+                ImGui::SameLine();
+                ImGui::Text("/");
+                ImGui::SameLine();
+            }
+
+            continue;
+        }
 
         if (m_curIndex != index)
         {
