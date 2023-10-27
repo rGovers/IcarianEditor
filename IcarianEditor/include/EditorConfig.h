@@ -23,6 +23,21 @@ enum e_DefEditor : uint32_t
     DefEditor_End
 };
 
+enum e_KeyBindTarget : uint32_t
+{
+    KeyBindTarget_Null,
+    KeyBindTarget_Translate,
+    KeyBindTarget_Rotate,
+    KeyBindTarget_Scale,
+
+    KeyBindTarget_MoveUp,
+    KeyBindTarget_MoveDown,
+    KeyBindTarget_CameraModifier,
+
+    KeyBindTarget_End,
+    KeyBindTarget_Start = KeyBindTarget_Translate
+};
+
 class EditorConfig
 {
 private:
@@ -36,9 +51,7 @@ private:
     e_CodeEditor m_codeEditor = CodeEditor_Default;
     e_DefEditor  m_defEditor = DefEditor_Editor;
 
-    ImGuiKey     m_translateKey = ImGuiKey_Q;
-    ImGuiKey     m_rotateKey = ImGuiKey_W;
-    ImGuiKey     m_scaleKey = ImGuiKey_E;
+    ImGuiKey     m_keyBinds[KeyBindTarget_End];
 
     EditorConfig();
 
@@ -65,14 +78,9 @@ public:
     static e_DefEditor GetDefEditor();
     static void SetDefEditor(e_DefEditor a_defEditor);
 
-    static ImGuiKey GetTranslateKey();
-    static void SetTranslateKey(ImGuiKey a_translateKey);
-
-    static ImGuiKey GetRotateKey();
-    static void SetRotateKey(ImGuiKey a_rotateKey);
-
-    static ImGuiKey GetScaleKey();
-    static void SetScaleKey(ImGuiKey a_scaleKey);
+    static ImGuiKey GetKeyBind(e_KeyBindTarget a_keyBind);
+    static const char* GetKeyBindName(e_KeyBindTarget a_keyBind);
+    static void SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key);
 
     static void Deserialize();
     static void Serialize();

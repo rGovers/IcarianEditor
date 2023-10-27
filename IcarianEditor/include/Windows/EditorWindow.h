@@ -34,7 +34,8 @@ private:
 
     glm::vec2       m_prevMousePos;
 
-    float           m_scroll;
+    float           m_moveSpeed;
+    float           m_zoom;
 
     GLuint          m_textureHandle;
     GLuint          m_depthTextureHandle;

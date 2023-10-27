@@ -14,9 +14,26 @@ static EditorConfig* Instance = nullptr;
 
 EDITORCONFIG_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
+static constexpr const char* KeyBindNames[] =
+{
+    "Null",
+    "Translate",
+    "Rotate",
+    "Scale",
+    "MoveUp",
+    "MoveDown",
+    "CameraModifier"
+};
+
 EditorConfig::EditorConfig()
 {
-    
+    m_keyBinds[KeyBindTarget_Translate] = ImGuiKey_Q;
+    m_keyBinds[KeyBindTarget_Rotate] = ImGuiKey_W;
+    m_keyBinds[KeyBindTarget_Scale] = ImGuiKey_E;
+
+    m_keyBinds[KeyBindTarget_MoveUp] = ImGuiKey_Space;
+    m_keyBinds[KeyBindTarget_MoveDown] = ImGuiKey_LeftShift;
+    m_keyBinds[KeyBindTarget_CameraModifier] = ImGuiKey_LeftCtrl;
 }
 EditorConfig::~EditorConfig()
 {
@@ -97,17 +114,19 @@ void EditorConfig::Deserialize()
                             Instance->m_defEditor = DefEditor_VisualStudioCode;
                         }
                     }
-                    else if (strcmp(name, "TranslateKey") == 0)
+                    else 
                     {
-                        Instance->m_translateKey = (ImGuiKey)element->IntText();
-                    }
-                    else if (strcmp(name, "RotateKey") == 0)
-                    {
-                        Instance->m_rotateKey = (ImGuiKey)element->IntText();
-                    }
-                    else if (strcmp(name, "ScaleKey") == 0)
-                    {
-                        Instance->m_scaleKey = (ImGuiKey)element->IntText();
+                        for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
+                        {
+                            const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
+
+                            if (keyBindName == name)
+                            {
+                                Instance->m_keyBinds[i] = (ImGuiKey)element->IntText();
+
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -193,17 +212,14 @@ void EditorConfig::Serialize()
     }
     root->InsertEndChild(defEditor);
 
-    tinyxml2::XMLElement* translateKey = doc.NewElement("TranslateKey");
-    translateKey->SetText((int)Instance->m_translateKey);
-    root->InsertEndChild(translateKey);
+    for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
+    {
+        const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
 
-    tinyxml2::XMLElement* rotateKey = doc.NewElement("RotateKey");
-    rotateKey->SetText((int)Instance->m_rotateKey);
-    root->InsertEndChild(rotateKey);
-
-    tinyxml2::XMLElement* scaleKey = doc.NewElement("ScaleKey");
-    scaleKey->SetText((int)Instance->m_scaleKey);
-    root->InsertEndChild(scaleKey);
+        tinyxml2::XMLElement* keyBind = doc.NewElement(keyBindName.c_str());
+        keyBind->SetText((int)Instance->m_keyBinds[i]);
+        root->InsertEndChild(keyBind);
+    }
 
     doc.SaveFile(ConfigFile);
 }
@@ -272,29 +288,15 @@ void EditorConfig::SetDefEditor(e_DefEditor a_defEditor)
     Instance->m_defEditor = a_defEditor;
 }
 
-ImGuiKey EditorConfig::GetTranslateKey()
+ImGuiKey EditorConfig::GetKeyBind(e_KeyBindTarget a_keyBind)
 {
-    return Instance->m_translateKey;
+    return Instance->m_keyBinds[a_keyBind];
 }
-void EditorConfig::SetTranslateKey(ImGuiKey a_translateKey)
+const char* EditorConfig::GetKeyBindName(e_KeyBindTarget a_keyBind)
 {
-    Instance->m_translateKey = a_translateKey;
+    return KeyBindNames[a_keyBind];
 }
-
-ImGuiKey EditorConfig::GetRotateKey()
+void EditorConfig::SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key)
 {
-    return Instance->m_rotateKey;
-}
-void EditorConfig::SetRotateKey(ImGuiKey a_rotateKey)
-{
-    Instance->m_rotateKey = a_rotateKey;
-}
-
-ImGuiKey EditorConfig::GetScaleKey()
-{
-    return Instance->m_scaleKey;
-}
-void EditorConfig::SetScaleKey(ImGuiKey a_scaleKey)
-{
-    Instance->m_scaleKey = a_scaleKey;
+    Instance->m_keyBinds[a_keyBind] = a_key;
 }

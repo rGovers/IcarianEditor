@@ -75,99 +75,48 @@ void EditorConfigModal::GeneralTab()
 
 void EditorConfigModal::KeyBindingsTab()
 {
-    const ImGuiKey translateKey = EditorConfig::GetTranslateKey();
-    const char* translateKeyName = ImGui::GetKeyName(translateKey);
-
-    ImGui::Text("Translate Key");
-
-    ImGui::SameLine();
-
-    if (m_keyBindTarget == KeyBindTarget_Translate)
+    for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
     {
-        if (ImGui::Button("Press Any Key"))
-        {
-            m_keyBindTarget = KeyBindTarget_None;
-        }
+        const e_KeyBindTarget keyBindTarget = (e_KeyBindTarget)i;
 
-        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
+        const ImGuiKey keyBind = EditorConfig::GetKeyBind(keyBindTarget);
+        const char* keyBindName = EditorConfig::GetKeyBindName(keyBindTarget);
+
+        ImGui::PushID(keyBindName);
+        IDEFER(ImGui::PopID());
+
+        ImGui::Text("%s", keyBindName);
+
+        ImGui::SameLine();
+
+        if (m_keyBindTarget == keyBindTarget)
         {
-            if (ImGui::IsKeyPressed((ImGuiKey)i))
+            if (ImGui::Button("Press Any Key"))
             {
-                EditorConfig::SetTranslateKey((ImGuiKey)i);
+                m_keyBindTarget = KeyBindTarget_Null;
+            }
 
-                m_keyBindTarget = KeyBindTarget_None;
+            for (int j = ImGuiKey_NamedKey_BEGIN; j < ImGuiKey_NamedKey_END; ++j)
+            {
+                const ImGuiKey key = (ImGuiKey)j;
+                if (ImGui::IsKeyPressed(key))
+                {
+                    EditorConfig::SetKeyBind(keyBindTarget, key);
+
+                    m_keyBindTarget = KeyBindTarget_Null;
+
+                    break;
+                }
             }
         }
-    }
-    else 
-    {
-        if (ImGui::Button(translateKeyName))
+        else
         {
-            m_keyBindTarget = KeyBindTarget_Translate;
-        }
-    }
+            const char* keyName = ImGui::GetKeyName(keyBind);
 
-    const ImGuiKey rotateKey = EditorConfig::GetRotateKey();
-    const char* rotateKeyName = ImGui::GetKeyName(rotateKey);
-
-    ImGui::Text("Rotate Key");
-
-    ImGui::SameLine();
-
-    if (m_keyBindTarget == KeyBindTarget_Rotate)
-    {
-        if (ImGui::Button("Press Any Key"))
-        {
-            m_keyBindTarget = KeyBindTarget_None;
-        }
-
-        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
-        {
-            if (ImGui::IsKeyPressed((ImGuiKey)i))
+            if (ImGui::Button(keyName))
             {
-                EditorConfig::SetRotateKey((ImGuiKey)i);
-
-                m_keyBindTarget = KeyBindTarget_None;
+                m_keyBindTarget = keyBindTarget;
             }
-        }
-    }
-    else
-    {
-        if (ImGui::Button(rotateKeyName))
-        {
-            m_keyBindTarget = KeyBindTarget_Rotate;
-        }
-    }
-
-    const ImGuiKey scaleKey = EditorConfig::GetScaleKey();
-    const char* scaleKeyName = ImGui::GetKeyName(scaleKey);
-
-    ImGui::Text("Scale Key");
-
-    ImGui::SameLine();
-
-    if (m_keyBindTarget == KeyBindTarget_Scale)
-    {
-        if (ImGui::Button("Press Any Key"))
-        {
-            m_keyBindTarget = KeyBindTarget_None;
-        }
-
-        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
-        {
-            if (ImGui::IsKeyPressed((ImGuiKey)i))
-            {
-                EditorConfig::SetScaleKey((ImGuiKey)i);
-
-                m_keyBindTarget = KeyBindTarget_None;
-            }
-        }
-    }
-    else
-    {
-        if (ImGui::Button(scaleKeyName))
-        {
-            m_keyBindTarget = KeyBindTarget_Scale;
         }
     }
 }

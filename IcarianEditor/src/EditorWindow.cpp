@@ -71,11 +71,12 @@ EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : 
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    m_translation = glm::vec3(0.0f, -1.0f, 10.0f);
+    m_translation = glm::vec3(0.0f, -1.0f, -10.0f);
 
     m_rotation = glm::identity<glm::quat>();
 
-    m_scroll = 10.0f;
+    m_moveSpeed = 10.0f;
+    m_zoom = 10.0f;
 
     m_refresh = true;
 
@@ -122,7 +123,12 @@ void EditorWindow::Draw()
     const glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
     const glm::mat4 invProj = glm::inverse(proj);
 
-    const glm::mat4 trans = glm::translate(glm::identity<glm::mat4>(), m_translation) * glm::toMat4(m_rotation);
+    const glm::vec3 zoomAxis = m_rotation * glm::vec3(0.0f, 0.0f, m_zoom);
+
+    const glm::mat4 rotMat = glm::toMat4(m_rotation);
+    const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
+
+    const glm::mat4 trans = transMat * rotMat;
     const glm::mat4 view = glm::inverse(trans);
 
     CameraShaderBuffer camBuffer;
@@ -161,6 +167,8 @@ void EditorWindow::Draw()
 void EditorWindow::Update(double a_delta)
 {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    const ImGuiIO& io = ImGui::GetIO();
 
     const ImVec2 winPos = ImGui::GetWindowPos();
     const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
@@ -253,6 +261,8 @@ void EditorWindow::Update(double a_delta)
 
         const glm::vec2 mPos = glm::vec2(imPos.x, imPos.y);
 
+        const ImGuiKey cameraModifierKey = EditorConfig::GetKeyBind(KeyBindTarget_CameraModifier);
+
         if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
         {
             glm::vec3 mov = glm::vec3(0.0f);
@@ -273,14 +283,26 @@ void EditorWindow::Update(double a_delta)
             {
                 mov += m_rotation * glm::vec3(1.0f, 0.0f, 0.0f);
             }
-            if (ImGui::IsKeyDown(ImGuiKey_Space))
+
+            const ImGuiKey moveUpKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveUp);
+            const ImGuiKey moveDownKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveDown);
+            
+            if (ImGui::IsKeyDown(moveUpKey))
             {
                 mov += m_rotation * glm::vec3(0.0f, -1.0f, 0.0f);
             }
-            if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
+            if (ImGui::IsKeyDown(moveDownKey))
             {
                 mov += m_rotation * glm::vec3(0.0f, 1.0f, 0.0f);
             }
+
+            float modifier = 1.0f;
+            if (ImGui::IsKeyDown(cameraModifierKey))
+            {
+                modifier = 0.1f;
+            }
+
+            m_moveSpeed = glm::max(0.1f, m_moveSpeed + io.MouseWheel * 2.0f * modifier);
 
             const glm::vec2 mMov = m_prevMousePos - mPos;
 
@@ -288,13 +310,51 @@ void EditorWindow::Update(double a_delta)
 
             m_rotation = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f)) * m_rotation;
 
-            m_translation += mov * m_scroll * (float)a_delta;
+            m_translation += mov * m_moveSpeed * (float)a_delta;
+        }
+        else if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+        {
+            const glm::vec2 mMov = m_prevMousePos - mPos;
+
+            if (ImGui::IsKeyDown(cameraModifierKey))
+            {
+                constexpr float Sensitivity = 0.01f;
+
+                const glm::vec3 up = m_rotation * glm::vec3(0.0f, 1.0f, 0.0f);
+                const glm::vec3 right = m_rotation * glm::vec3(1.0f, 0.0f, 0.0f);
+
+                m_translation += up * mMov.y * m_zoom * Sensitivity;
+                m_translation += right * mMov.x * m_zoom * Sensitivity;
+            }
+            else
+            {   
+                const float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
+
+                const glm::quat rot = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f));
+                const glm::quat invRot = glm::inverse(rot);
+
+                const glm::vec3 forward = m_rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+
+                const glm::vec3 pos = m_translation - forward * m_zoom;
+
+                m_translation = pos + invRot * forward * m_zoom;
+                m_rotation = rot * m_rotation;
+            }
         }
         else
         {
-            const ImGuiKey translateKey = EditorConfig::GetTranslateKey();
-            const ImGuiKey rotateKey = EditorConfig::GetRotateKey();
-            const ImGuiKey scaleKey = EditorConfig::GetScaleKey();
+            const float startZoom = m_zoom;
+            m_zoom = glm::clamp(m_zoom + io.MouseWheel * 0.1f, 0.1f, 100.0f);
+
+            const float zoomDelta = m_zoom - startZoom;
+
+            const glm::vec3 forward = m_rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+
+            m_translation += forward * zoomDelta;
+
+            const ImGuiKey translateKey = EditorConfig::GetKeyBind(KeyBindTarget_Translate);
+            const ImGuiKey rotateKey = EditorConfig::GetKeyBind(KeyBindTarget_Rotate);
+            const ImGuiKey scaleKey = EditorConfig::GetKeyBind(KeyBindTarget_Scale);
 
             if (ImGui::IsKeyPressed(translateKey))
             {

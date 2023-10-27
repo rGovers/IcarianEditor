@@ -2,6 +2,8 @@
 
 #include "Modals/Modal.h"
 
+#include "EditorConfig.h"
+
 enum e_EditorConfigTab
 {
     EditorConfigTab_General,
@@ -10,21 +12,13 @@ enum e_EditorConfigTab
     EditorConfigTab_End
 };
 
-enum e_KeyBindTarget
-{
-    KeyBindTarget_None,
-    KeyBindTarget_Translate,
-    KeyBindTarget_Rotate,
-    KeyBindTarget_Scale,
-};
-
 class EditorConfigModal : public Modal
 {
 private:
     static constexpr float ItemWidth = 150.0f;
 
     e_EditorConfigTab m_currentTab = EditorConfigTab_General;
-    e_KeyBindTarget   m_keyBindTarget = KeyBindTarget_None;
+    e_KeyBindTarget   m_keyBindTarget = KeyBindTarget_Null;
 
     static void GeneralTab();
     void KeyBindingsTab();
