@@ -331,6 +331,17 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
     }
+    else if (ext == ".fbx")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        {
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
+        }
+    }
 
     return -1;
 }, MonoString* a_path)
