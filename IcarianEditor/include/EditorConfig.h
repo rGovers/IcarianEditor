@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include <cstdint>
+#include <imgui.h>
 
 class RuntimeManager;
 
@@ -35,6 +36,10 @@ private:
     e_CodeEditor m_codeEditor = CodeEditor_Default;
     e_DefEditor  m_defEditor = DefEditor_Editor;
 
+    ImGuiKey     m_translateKey = ImGuiKey_Q;
+    ImGuiKey     m_rotateKey = ImGuiKey_W;
+    ImGuiKey     m_scaleKey = ImGuiKey_E;
+
     EditorConfig();
 
 protected:
@@ -59,6 +64,15 @@ public:
 
     static e_DefEditor GetDefEditor();
     static void SetDefEditor(e_DefEditor a_defEditor);
+
+    static ImGuiKey GetTranslateKey();
+    static void SetTranslateKey(ImGuiKey a_translateKey);
+
+    static ImGuiKey GetRotateKey();
+    static void SetRotateKey(ImGuiKey a_rotateKey);
+
+    static ImGuiKey GetScaleKey();
+    static void SetScaleKey(ImGuiKey a_scaleKey);
 
     static void Deserialize();
     static void Serialize();

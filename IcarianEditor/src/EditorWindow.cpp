@@ -292,15 +292,19 @@ void EditorWindow::Update(double a_delta)
         }
         else
         {
-            if (ImGui::IsKeyPressed(ImGuiKey_Q))
+            const ImGuiKey translateKey = EditorConfig::GetTranslateKey();
+            const ImGuiKey rotateKey = EditorConfig::GetRotateKey();
+            const ImGuiKey scaleKey = EditorConfig::GetScaleKey();
+
+            if (ImGui::IsKeyPressed(translateKey))
             {
                 m_workspace->SetManipulationMode(ManipulationMode_Translate);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_W))
+            if (ImGui::IsKeyPressed(rotateKey))
             {
                 m_workspace->SetManipulationMode(ManipulationMode_Rotate);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_E))
+            if (ImGui::IsKeyPressed(scaleKey))
             {
                 m_workspace->SetManipulationMode(ManipulationMode_Scale);
             }

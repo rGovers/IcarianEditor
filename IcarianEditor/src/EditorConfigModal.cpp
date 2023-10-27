@@ -9,6 +9,7 @@
 static constexpr const char* EditorConfigTabNames[] =
 {
     "General",
+    "Key Bindings",
     "External Tools"
 };
 static constexpr const char* CodeEditorNames[] =
@@ -71,6 +72,106 @@ void EditorConfigModal::GeneralTab()
         EditorConfig::SetBackgroundColor(backgroundColor);
     }
 }
+
+void EditorConfigModal::KeyBindingsTab()
+{
+    const ImGuiKey translateKey = EditorConfig::GetTranslateKey();
+    const char* translateKeyName = ImGui::GetKeyName(translateKey);
+
+    ImGui::Text("Translate Key");
+
+    ImGui::SameLine();
+
+    if (m_keyBindTarget == KeyBindTarget_Translate)
+    {
+        if (ImGui::Button("Press Any Key"))
+        {
+            m_keyBindTarget = KeyBindTarget_None;
+        }
+
+        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
+        {
+            if (ImGui::IsKeyPressed((ImGuiKey)i))
+            {
+                EditorConfig::SetTranslateKey((ImGuiKey)i);
+
+                m_keyBindTarget = KeyBindTarget_None;
+            }
+        }
+    }
+    else 
+    {
+        if (ImGui::Button(translateKeyName))
+        {
+            m_keyBindTarget = KeyBindTarget_Translate;
+        }
+    }
+
+    const ImGuiKey rotateKey = EditorConfig::GetRotateKey();
+    const char* rotateKeyName = ImGui::GetKeyName(rotateKey);
+
+    ImGui::Text("Rotate Key");
+
+    ImGui::SameLine();
+
+    if (m_keyBindTarget == KeyBindTarget_Rotate)
+    {
+        if (ImGui::Button("Press Any Key"))
+        {
+            m_keyBindTarget = KeyBindTarget_None;
+        }
+
+        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
+        {
+            if (ImGui::IsKeyPressed((ImGuiKey)i))
+            {
+                EditorConfig::SetRotateKey((ImGuiKey)i);
+
+                m_keyBindTarget = KeyBindTarget_None;
+            }
+        }
+    }
+    else
+    {
+        if (ImGui::Button(rotateKeyName))
+        {
+            m_keyBindTarget = KeyBindTarget_Rotate;
+        }
+    }
+
+    const ImGuiKey scaleKey = EditorConfig::GetScaleKey();
+    const char* scaleKeyName = ImGui::GetKeyName(scaleKey);
+
+    ImGui::Text("Scale Key");
+
+    ImGui::SameLine();
+
+    if (m_keyBindTarget == KeyBindTarget_Scale)
+    {
+        if (ImGui::Button("Press Any Key"))
+        {
+            m_keyBindTarget = KeyBindTarget_None;
+        }
+
+        for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; ++i)
+        {
+            if (ImGui::IsKeyPressed((ImGuiKey)i))
+            {
+                EditorConfig::SetScaleKey((ImGuiKey)i);
+
+                m_keyBindTarget = KeyBindTarget_None;
+            }
+        }
+    }
+    else
+    {
+        if (ImGui::Button(scaleKeyName))
+        {
+            m_keyBindTarget = KeyBindTarget_Scale;
+        }
+    }
+}
+
 void EditorConfigModal::ExternalToolsTab()
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
@@ -152,6 +253,12 @@ bool EditorConfigModal::Update()
         case EditorConfigTab_General:
         {
             GeneralTab();   
+
+            break;
+        }
+        case EditorConfigTab_KeyBindings:
+        {
+            KeyBindingsTab();
 
             break;
         }

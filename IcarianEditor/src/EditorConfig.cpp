@@ -97,6 +97,18 @@ void EditorConfig::Deserialize()
                             Instance->m_defEditor = DefEditor_VisualStudioCode;
                         }
                     }
+                    else if (strcmp(name, "TranslateKey") == 0)
+                    {
+                        Instance->m_translateKey = (ImGuiKey)element->IntText();
+                    }
+                    else if (strcmp(name, "RotateKey") == 0)
+                    {
+                        Instance->m_rotateKey = (ImGuiKey)element->IntText();
+                    }
+                    else if (strcmp(name, "ScaleKey") == 0)
+                    {
+                        Instance->m_scaleKey = (ImGuiKey)element->IntText();
+                    }
                 }
             }
         }
@@ -181,6 +193,18 @@ void EditorConfig::Serialize()
     }
     root->InsertEndChild(defEditor);
 
+    tinyxml2::XMLElement* translateKey = doc.NewElement("TranslateKey");
+    translateKey->SetText((int)Instance->m_translateKey);
+    root->InsertEndChild(translateKey);
+
+    tinyxml2::XMLElement* rotateKey = doc.NewElement("RotateKey");
+    rotateKey->SetText((int)Instance->m_rotateKey);
+    root->InsertEndChild(rotateKey);
+
+    tinyxml2::XMLElement* scaleKey = doc.NewElement("ScaleKey");
+    scaleKey->SetText((int)Instance->m_scaleKey);
+    root->InsertEndChild(scaleKey);
+
     doc.SaveFile(ConfigFile);
 }
 
@@ -246,4 +270,31 @@ e_DefEditor EditorConfig::GetDefEditor()
 void EditorConfig::SetDefEditor(e_DefEditor a_defEditor)
 {
     Instance->m_defEditor = a_defEditor;
+}
+
+ImGuiKey EditorConfig::GetTranslateKey()
+{
+    return Instance->m_translateKey;
+}
+void EditorConfig::SetTranslateKey(ImGuiKey a_translateKey)
+{
+    Instance->m_translateKey = a_translateKey;
+}
+
+ImGuiKey EditorConfig::GetRotateKey()
+{
+    return Instance->m_rotateKey;
+}
+void EditorConfig::SetRotateKey(ImGuiKey a_rotateKey)
+{
+    Instance->m_rotateKey = a_rotateKey;
+}
+
+ImGuiKey EditorConfig::GetScaleKey()
+{
+    return Instance->m_scaleKey;
+}
+void EditorConfig::SetScaleKey(ImGuiKey a_scaleKey)
+{
+    Instance->m_scaleKey = a_scaleKey;
 }
