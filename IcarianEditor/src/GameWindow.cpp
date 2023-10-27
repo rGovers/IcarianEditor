@@ -2,9 +2,13 @@
 
 #include <imgui.h>
 
-#include "Application.h"
+#include "AppMain.h"
 #include "Flare/InputBindings.h"
+#include "FlareImGui.h"
+#include "Modals/ErrorModal.h"
 #include "ProcessManager.h"
+#include "Project.h"
+#include "Runtime/RuntimeManager.h"
 
 static constexpr ImGuiKey GameKeyTable[] = 
 {
@@ -137,10 +141,13 @@ static constexpr ImGuiKey GameKeyTable[] =
     ImGuiKey_Menu
 };
 
-GameWindow::GameWindow(Application* a_app, ProcessManager* a_processManager) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
+
     m_processManager = a_processManager;
+    m_runtimeManager = a_runtime;
+    m_project = a_project;
 }
 GameWindow::~GameWindow()
 {
@@ -149,6 +156,9 @@ GameWindow::~GameWindow()
 
 void GameWindow::Update(double a_delta)
 {
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    const ImVec2 winPos = ImGui::GetWindowPos();
     const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
     const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
     const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
@@ -156,7 +166,7 @@ void GameWindow::Update(double a_delta)
     m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
 
     const bool locked = m_processManager->GetCursorState() == FlareBase::CursorState_Locked;
-    const bool running = m_processManager->IsRunning();
+    bool running = m_processManager->IsRunning();
 
     if (!running)
     {
@@ -243,4 +253,34 @@ void GameWindow::Update(double a_delta)
     }
 
     ImGui::Image((ImTextureID)m_processManager->GetImage(), sizeIm);
+
+    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+    constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);
+    constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
+
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + 40.0f + WinSize.y);
+
+    drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
+
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + 5.0f, 45.0f));
+
+    if (FlareImGui::ImageSwitchButton("Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
+    {
+        if (running)
+        {
+            if (!m_runtimeManager->IsBuilt())
+            {
+                m_app->PushModal(new ErrorModal("Cannot start with build errors"));
+
+                return;
+            }
+
+            m_processManager->Start(m_project->GetCachePath());
+        }
+        else
+        {
+            m_processManager->Stop();
+        }
+    }
 }

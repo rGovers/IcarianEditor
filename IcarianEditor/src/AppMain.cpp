@@ -28,7 +28,6 @@
 #include "Runtime/RuntimeStorage.h"
 #include "Windows/AssetBrowserWindow.h"
 #include "Windows/ConsoleWindow.h"
-#include "Windows/ControlWindow.h"
 #include "Windows/EditorWindow.h"
 #include "Windows/GameWindow.h"
 #include "Windows/HierarchyWindow.h"
@@ -219,9 +218,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     FileHandler::Init(m_assets, m_workspace);
     
     m_windows.emplace_back(new ConsoleWindow());
-    m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));
     m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
-    m_windows.emplace_back(new GameWindow(this, m_process));
+    m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
     m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
@@ -405,11 +403,6 @@ void AppMain::Update(double a_delta, double a_time)
                 {
                     IDEFER(ImGui::EndMenu());
 
-                    if (ImGui::MenuItem("Control"))
-                    {
-                        m_windows.emplace_back(new ControlWindow(this, m_process, m_runtime, m_workspace, m_project));
-                    }
-
                     if (ImGui::MenuItem("Editor"))
                     {
                         m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
@@ -417,7 +410,7 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Game"))
                     {
-                        m_windows.emplace_back(new GameWindow(this, m_process));
+                        m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
                     }
 
                     if (ImGui::MenuItem("Asset Browser"))

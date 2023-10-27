@@ -5,6 +5,8 @@
 #include <ImGuizmo.h>
 
 #include "EditorConfig.h"
+#include "Flare/IcarianDefer.h"
+#include "FlareImGui.h"
 #include "Gizmos.h"
 #include "PixelShader.h"
 #include "RenderCommand.h"
@@ -158,6 +160,9 @@ void EditorWindow::Draw()
 
 void EditorWindow::Update(double a_delta)
 {
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    const ImVec2 winPos = ImGui::GetWindowPos();
     const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
     const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
     const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
@@ -182,6 +187,65 @@ void EditorWindow::Update(double a_delta)
     }
 
     ImGui::Image((ImTextureID)m_textureHandle, sizeIm);
+
+    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+    constexpr glm::vec2 WinSize = glm::vec2(117.0f, 40.0f);
+    constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
+
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + 40.0f + WinSize.y);
+
+    drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
+
+    float offset = 5.0f;
+
+    const e_ManipulationMode mode = m_workspace->GetManipulationMode();
+
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
+
+    if (FlareImGui::ImageButton("Translate", "Textures/Icons/Icon_Translate.png", glm::vec2(25.0f), mode == ManipulationMode_Translate))
+    {
+        m_workspace->SetManipulationMode(ManipulationMode_Translate);
+    }    
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Translate");
+    }
+
+    offset += 35.0f;
+
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
+
+    if (FlareImGui::ImageButton("Rotate", "Textures/Icons/Icon_Rotate.png", glm::vec2(25.0f), mode == ManipulationMode_Rotate))
+    {
+        m_workspace->SetManipulationMode(ManipulationMode_Rotate);
+    }
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Rotate");
+    }
+
+    offset += 35.0f;
+
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
+
+    if (FlareImGui::ImageButton("Scale", "Textures/Icons/Icon_Scale.png", glm::vec2(25.0f), mode == ManipulationMode_Scale))
+    {
+        m_workspace->SetManipulationMode(ManipulationMode_Scale);
+    }
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Scale");
+    }
 
     if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
     {

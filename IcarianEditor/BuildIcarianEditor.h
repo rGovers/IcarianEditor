@@ -149,7 +149,6 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendSource(&project, "src/BuildProjectModal.cpp");
     CUBE_CProject_AppendSource(&project, "src/ConfirmModal.cpp");
     CUBE_CProject_AppendSource(&project, "src/ConsoleWindow.cpp");
-    CUBE_CProject_AppendSource(&project, "src/ControlWindow.cpp");
     CUBE_CProject_AppendSource(&project, "src/CopyBuildLibraryLoadingTask.cpp");
     CUBE_CProject_AppendSource(&project, "src/CreateAssemblyControlModal.cpp");
     CUBE_CProject_AppendSource(&project, "src/CreateDefTableModal.cpp");
