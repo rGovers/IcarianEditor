@@ -6,7 +6,7 @@
 #include "Logger.h"
 #include "Texture.h"
 
-ConsoleWindow::ConsoleWindow() : Window("Console")
+ConsoleWindow::ConsoleWindow() : Window("Console", "Textures/WindowIcons/WindowIcon_Console.png")
 {
     Logger::AddConsoleWindow(this);
 

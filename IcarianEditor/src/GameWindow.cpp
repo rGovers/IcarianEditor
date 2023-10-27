@@ -137,7 +137,7 @@ static constexpr ImGuiKey GameKeyTable[] =
     ImGuiKey_Menu
 };
 
-GameWindow::GameWindow(Application* a_app, ProcessManager* a_processManager) : Window("Game")
+GameWindow::GameWindow(Application* a_app, ProcessManager* a_processManager) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
     m_processManager = a_processManager;

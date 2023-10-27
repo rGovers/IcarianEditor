@@ -50,7 +50,7 @@ static std::vector<uint32_t> GetChildren(uint32_t a_index, const ProfileSnapshot
     return children;
 }
 
-ProfilerWindow::ProfilerWindow() : Window("Profiler")
+ProfilerWindow::ProfilerWindow() : Window("Profiler", "Textures/WindowIcons/WindowIcon_Profiler.png")
 {
     
 }

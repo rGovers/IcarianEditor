@@ -5,7 +5,7 @@
 #include "GUI.h"
 #include "Runtime/RuntimeManager.h"
 
-SceneDefsWindow::SceneDefsWindow(RuntimeManager* a_runtime) : Window("Scene Definitions")
+SceneDefsWindow::SceneDefsWindow(RuntimeManager* a_runtime) : Window("Scene Definitions", "Textures/WindowIcons/WindowIcon_SceneDefs.png")
 {
     m_runtime = a_runtime;
 }

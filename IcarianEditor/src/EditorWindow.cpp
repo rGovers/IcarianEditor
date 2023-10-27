@@ -17,7 +17,7 @@
 uint32_t EditorWindow::RefCount = 0;
 ShaderProgram* EditorWindow::GridShader = nullptr;
 
-EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : Window("Editor")
+EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : Window("Editor", "Textures/WindowIcons/WindowIcon_Editor.png")
 {
     if (GridShader == nullptr)
     {

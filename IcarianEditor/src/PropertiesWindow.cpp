@@ -5,7 +5,7 @@
 #include "GUI.h"
 #include "Runtime/RuntimeManager.h"
 
-PropertiesWindow::PropertiesWindow(RuntimeManager* a_runtime) : Window("Properties")
+PropertiesWindow::PropertiesWindow(RuntimeManager* a_runtime) : Window("Properties", "Textures/WindowIcons/WindowIcon_Properties.png")
 {
     m_runtime = a_runtime;
 }

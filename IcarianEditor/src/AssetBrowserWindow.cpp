@@ -24,7 +24,7 @@
 #include "Templates.h"
 #include "Texture.h"
 
-AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
 {
     m_app = a_app;
     m_assetLibrary = a_assetLibrary;
@@ -105,6 +105,14 @@ void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
             ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
         } 
     });
+
+    const Texture* folderTex = Datastore::GetTexture("Textures/WindowIcons/WindowIcon_AssetBrowser.png");
+    if (folderTex != nullptr)
+    {
+        ImGui::Image((ImTextureID)folderTex->GetHandle(), ImVec2(16.0f, 16.0f));
+
+        ImGui::SameLine();
+    }
 
     ImGui::PushID(buttonID.c_str());
     IDEFER(ImGui::PopID());

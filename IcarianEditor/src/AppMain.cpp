@@ -113,6 +113,7 @@ static void SetImguiStyle()
     ImGui::StyleColorsDark();
 
     ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiIO& io = ImGui::GetIO();
 
     style.FrameRounding = 2.0f;
     style.WindowRounding = 2.0f;
@@ -120,10 +121,13 @@ static void SetImguiStyle()
     style.WindowBorderSize = 0.0f;
     style.ChildBorderSize = 0.0f;
     style.PopupBorderSize = 0.0f;
+    style.FramePadding = ImVec2(6.0f, 3.0f);
     style.WindowMenuButtonPosition = ImGuiDir_Right;
 
-    // ImVec4* colors = style.Colors;
-    // colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
+    ImFont* firaFont = io.Fonts->AddFontFromFileTTF("Fonts/FiraMono-Regular.ttf", 15);
+    io.Fonts->AddFontFromFileTTF("Fonts/Cousine-Regular.ttf", 15);
+
+    io.FontDefault = firaFont;
 
     ImVec4* colors = ImGui::GetStyle().Colors;
     colors[ImGuiCol_WindowBg]               = ImVec4(0.10f, 0.10f, 0.10f, 0.94f);

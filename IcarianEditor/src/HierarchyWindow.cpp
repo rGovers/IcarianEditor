@@ -2,7 +2,7 @@
 
 #include "Runtime/RuntimeManager.h"
 
-HierarchyWindow::HierarchyWindow(RuntimeManager* a_runtime) : Window("Hierarchy")
+HierarchyWindow::HierarchyWindow(RuntimeManager* a_runtime) : Window("Hierarchy", "Textures/WindowIcons/WindowIcon_Hierarchy.png")
 {
     m_runtime = a_runtime;
 }
