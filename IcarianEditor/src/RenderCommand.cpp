@@ -226,7 +226,7 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
             break;
         }
-        case ShaderBufferType_ModelBuffer:
+        case ShaderBufferType_PModelBuffer:
         {
             glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
 

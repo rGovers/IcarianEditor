@@ -669,7 +669,7 @@ void AssetBrowserWindow::Update(double a_delta)
     {
         const float width = ImGui::GetWindowWidth();
 
-        ImGui::Columns(glm::max(1, (int)(width / (ItemWidth + 8.0f))));
+        ImGui::Columns(glm::max(1, (int)(width / (ItemWidth + 16.0f))));
 
         if (m_searchBuffer[0] == 0)
         {

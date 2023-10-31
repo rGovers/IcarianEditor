@@ -81,7 +81,7 @@ std::string GLSL_FromFShader(const std::string_view& a_str)
 		}
 		else if (defName == "pushbuffer")
 		{
-			if (args[0] == "ModelBuffer")
+			if (args[0] == "PModelBuffer")
 			{
 				rStr = GLSL_PUSHBUFFER_STRING(args[1], GLSL_MODEL_SHADER_STRUCTURE);
 			}

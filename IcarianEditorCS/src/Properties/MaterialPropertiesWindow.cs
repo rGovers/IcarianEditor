@@ -134,8 +134,9 @@ namespace IcarianEditor.Properties
                         GUI.EnumField("Buffer Type", ref input.BufferType);
                         switch (input.BufferType)
                         {
-                        case ShaderBufferType.ModelBuffer:
-                        case ShaderBufferType.UIBuffer:
+                        case ShaderBufferType.PModelBuffer:
+                        case ShaderBufferType.PUIBuffer:
+                        case ShaderBufferType.PShadowLightBuffer:
                         {
                             break;
                         }
@@ -287,8 +288,9 @@ namespace IcarianEditor.Properties
                             GUI.EnumField("Buffer Type", ref input.BufferType);
                             switch (input.BufferType)
                             {
-                            case ShaderBufferType.ModelBuffer:
-                            case ShaderBufferType.UIBuffer:
+                            case ShaderBufferType.PModelBuffer:
+                            case ShaderBufferType.PUIBuffer:
+                            case ShaderBufferType.PShadowLightBuffer:
                             {
                                 break;
                             }

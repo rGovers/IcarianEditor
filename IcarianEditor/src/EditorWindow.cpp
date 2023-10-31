@@ -71,7 +71,7 @@ EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : 
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    m_translation = glm::vec3(0.0f, -1.0f, -10.0f);
+    m_translation = glm::vec3(0.0f, -1.0f, 10.0f);
 
     m_rotation = glm::identity<glm::quat>();
 
