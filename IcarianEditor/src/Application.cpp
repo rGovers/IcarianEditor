@@ -1,5 +1,7 @@
 #include "Application.h"
 
+#include <stb_image.h>
+
 #include "Flare/IcarianAssert.h"
 #include "Logger.h"
 
@@ -32,6 +34,17 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     }
     glfwMakeContextCurrent(m_window);
 
+    GLFWimage icon;
+
+    icon.pixels = stbi_load("Textures/Icons/Logo_White.png", &icon.width, &icon.height, NULL, 4);
+
+    if (icon.pixels != nullptr)
+    {
+        glfwSetWindowIcon(m_window, 1, &icon);
+
+        stbi_image_free(icon.pixels);
+    }
+    
     m_cursors[Cursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     m_cursors[Cursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
     m_cursors[Cursor_HResize] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);

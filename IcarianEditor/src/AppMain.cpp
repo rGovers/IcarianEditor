@@ -344,12 +344,13 @@ void AppMain::Update(double a_delta, double a_time)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 10.0f));
         IDEFER(ImGui::PopStyleVar());
+        
         const bool open = ImGui::BeginMainMenuBar();
         IDEFER(ImGui::EndMainMenuBar());
+
         if (open)
         {
-            // TODO: Insert icon here when we have one
-            FlareImGui::Image("Textures/Icons/Window_Close.png", { 32.0f, 32.0f });
+            FlareImGui::Image("Textures/Icons/Logo_White.png", { 32.0f, 32.0f });
 
             if (ImGui::BeginMenu("File"))
             {
