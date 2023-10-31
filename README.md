@@ -1,6 +1,6 @@
 # IcarianEditor
 
-![image](IcarianEngine/resources/Icarian_Logo_White.svg)
+![image](resources/Icarian_Logo_White.svg)
 
 The editor for Icarian Engine.
 
