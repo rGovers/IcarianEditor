@@ -12,24 +12,23 @@ class RuntimeManager;
 class Texture;
 class VertexShader;
 
-#include "Flare/TextureSampler.h"
-
 #include "EngineMaterialInteropStructures.h"
+#include "EngineTextureSamplerInteropStructures.h"
 
 class RuntimeStorage
 {
 private:
-    AssetLibrary*                          m_assets;
-    RuntimeManager*                        m_runtime;
+    AssetLibrary*                     m_assets;
+    RuntimeManager*                   m_runtime;
      
-    std::vector<Model*>                    m_models;
-    std::vector<Texture*>                  m_textures;
-    std::vector<FlareBase::TextureSampler> m_samplers;
+    std::vector<Model*>               m_models;
+    std::vector<Texture*>             m_textures;
+    std::vector<TextureSamplerBuffer> m_samplers;
 
-    std::vector<VertexShader*>             m_vertexShaders;
-    std::vector<PixelShader*>              m_pixelShaders;
+    std::vector<VertexShader*>        m_vertexShaders;
+    std::vector<PixelShader*>         m_pixelShaders;
 
-    std::vector<RenderProgram>             m_renderPrograms;
+    std::vector<RenderProgram>        m_renderPrograms;
 
 protected:
 
