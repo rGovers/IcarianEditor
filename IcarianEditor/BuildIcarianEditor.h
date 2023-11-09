@@ -214,6 +214,10 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     }
     case BuildConfiguration_ReleaseWithDebug:
     {
+        CUBE_CProject_AppendCFlag(&project, "-mavx");
+        // CUBE_CProject_AppendCFlag(&project, "-mavx2");
+        CUBE_CProject_AppendCFlag(&project, "-msse4.2");
+
         CUBE_CProject_AppendCFlag(&project, "-g");
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
@@ -221,6 +225,10 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     }
     case BuildConfiguration_Release:
     {
+        CUBE_CProject_AppendCFlag(&project, "-mavx");
+        // CUBE_CProject_AppendCFlag(&project, "-mavx2");
+        CUBE_CProject_AppendCFlag(&project, "-msse4.2");
+
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
         break;

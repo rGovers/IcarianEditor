@@ -2,6 +2,7 @@
 
 #include <implot.h>
 
+#include "Flare/IcarianDefer.h"
 #include "ProfilerData.h"
 
 static uint32_t GetParent(uint32_t a_index, const ProfileSnapshot& a_snapshot)
@@ -113,6 +114,10 @@ void ProfilerWindow::Update(double a_delta)
         const uint32_t index = GetFrameIndex(snapshot);
         const std::vector<uint32_t> childIndices = GetChildren(index, snapshot);
 
+        const std::string windowName = "ProfilerWindow[" + std::to_string(index) + "]";
+        ImGui::PushID(windowName.c_str());
+        IDEFER(ImGui::PopID());
+
         const ProfileFrame& frame = snapshot.Scopes[0].Frames[index];
 
         const uint32_t timeOff = FramesOffset + (index * FrameSize) + TimeOffset;
@@ -121,6 +126,10 @@ void ProfilerWindow::Update(double a_delta)
 
         if (index != 0)
         {
+            const std::string backName = "Back[" + std::to_string(index) + "]";
+            ImGui::PushID(backName.c_str());
+            IDEFER(ImGui::PopID());
+
             if (ImGui::Button("<"))
             {
                 const uint32_t parentIndex = GetParent(index, snapshot);
@@ -132,6 +141,10 @@ void ProfilerWindow::Update(double a_delta)
 
         for (uint32_t cIndex : childIndices)
         {
+            const std::string cName = "Child[" + std::to_string(cIndex) + "][" + std::to_string(index) + "]";
+            ImGui::PushID(cName.c_str());
+            IDEFER(ImGui::PopID());
+
             const ProfileFrame& cFrame = snapshot.Scopes[0].Frames[cIndex];
             if (ImGui::Button(cFrame.Name))
             {
@@ -150,7 +163,7 @@ void ProfilerWindow::Update(double a_delta)
 
             for (uint32_t cIndex : childIndices)
             {
-                const ProfileFrame &cFrame = snapshot.Scopes[0].Frames[cIndex];
+                const ProfileFrame& cFrame = snapshot.Scopes[0].Frames[cIndex];
 
                 const uint32_t cTimeOff = FramesOffset + (cIndex * FrameSize) + TimeOffset;
 
