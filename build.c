@@ -166,6 +166,30 @@ int main(int a_argc, char** a_argv)
 
     icarianEnginePath = CUBE_Path_CreateC("IcarianEngine");
 
+    // Fuck you for adding a python dependency
+    // I do not know why that slow piece language that breaks abi every fucking update is used at all
+    // Somehow managed to take 1st place from javascript for hatred
+    // Probably gonna have to rewrite down the line to remove shitty dependency
+    CUBE_CommandLine commandLine = { 0 };
+
+    CUBE_String_AppendC(&commandLine.Path, "IcarianEngine/IcarianNative/lib/SPIRV-Tools");
+    CUBE_String_AppendC(&commandLine.Command, "python3");
+
+    CUBE_CommandLine_AppendArgumentC(&commandLine, "utils/git-sync-deps");
+
+    int retCode = CUBE_CommandLine_Execute(&commandLine, &lines, &lineCount);
+
+    FlushLines(&lines, &lineCount);
+
+    CUBE_CommandLine_Destroy(&commandLine);
+
+    if (retCode != 0)
+    {
+        printf("Failed to sync SPIRV-Tools\n");
+
+        return 1;
+    }
+
     PrintHeader("Building Dependencies");
 
     printf("Creating Dependencies projects...\n");
