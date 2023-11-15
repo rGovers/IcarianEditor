@@ -111,6 +111,8 @@ RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 }
 RenderCommand::~RenderCommand()
 {
+    Clear();
+
     delete m_cameraBuffer;
     delete m_transformBuffer;
     delete m_transformBatchBuffer;
@@ -132,6 +134,18 @@ void RenderCommand::Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage)
         BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, PushBoneData);
         BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, DrawBones);
     }
+}
+void RenderCommand::Clear()
+{
+    for (auto iter = Instance->m_shaders.begin(); iter != Instance->m_shaders.end(); ++iter)
+    {
+        delete iter->second;
+    }
+    Instance->m_shaders.clear();
+
+    Instance->m_skeletonData.clear();
+
+    Instance->m_boundShader = -1;
 }
 void RenderCommand::Destroy()
 {

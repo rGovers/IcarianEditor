@@ -467,6 +467,18 @@ void RuntimeStorage::Clear()
     }
     m_models.clear();
 
+    // May have forgotten about this and been leaking bout 1GB of VRAM.......
+    // Opps :D fixed now
+    // No idea how this has not caused more issues
+    for (const Texture* t : m_textures)
+    {
+        if (t != nullptr)
+        {
+            delete t;
+        }
+    }
+    m_textures.clear();
+
     for (const VertexShader* v : m_vertexShaders)
     {
         if (v != nullptr)

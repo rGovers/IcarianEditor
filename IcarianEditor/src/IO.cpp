@@ -76,6 +76,11 @@ std::filesystem::path IO::GetRelativePath(const std::filesystem::path& a_relativ
 
     while (tempPath != a_relative)
     {
+        if (!tempPath.has_filename())
+        {
+            return std::filesystem::path();
+        }
+
         if (path.empty())
         {
             path = tempPath.stem();

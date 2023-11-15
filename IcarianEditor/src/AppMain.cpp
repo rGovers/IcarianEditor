@@ -731,6 +731,8 @@ void AppMain::Update(double a_delta, double a_time)
         Logger::Message("Refreshing Project");
         m_project->SetRefresh(false);
 
+        RenderCommand::Clear();
+
         const std::filesystem::path path = m_project->GetPath(); 
         const std::string pathStr = path.string();
         const std::string projectName = m_project->GetName();
