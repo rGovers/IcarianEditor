@@ -10,8 +10,12 @@ static void ErrorCallback(int a_error, const char* a_description)
     Logger::Error(a_description);
 }
 
+// I dont not know if I need to throw GLFW or Windows under the bus for this one and have had enough of the WIN32 api to go digging
+
 Application::Application(uint32_t a_width, uint32_t a_height, const std::string_view& a_title)
 {
+    m_maximized = false;
+
     ICARIAN_ASSERT_R(glfwInit());
 
     glfwSetErrorCallback(ErrorCallback);
@@ -33,6 +37,26 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
         ICARIAN_ASSERT(0);
     }
     glfwMakeContextCurrent(m_window);
+
+#ifdef WIN32
+    // Center window on screen on Windows
+    // For some reason Windows does not center the window by default
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+
+    // Monitor can be null even if there is a monitor
+    if (monitor != NULL)
+    {
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+        if (mode != NULL)
+        {
+            const int xPos = (mode->width - a_width) / 2;
+            const int yPos = (mode->height - a_height) / 2;
+
+            glfwSetWindowPos(m_window, xPos, yPos);
+        }
+    }
+#endif
 
     GLFWimage icon;
 
@@ -108,17 +132,55 @@ bool Application::IsFocused() const
 
 bool Application::IsMaximized() const
 {
-    return glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) != GLFW_FALSE;
+    // Maximized state does not seem to be set correctly on Windows
+    // Therefore we need to keep track of it ourselves
+    return m_maximized;
 }
 void Application::Maximize(bool a_state)
 {
-    if (a_state)
+    if (m_maximized == a_state)
     {
+        return;
+    }
+
+    m_maximized = a_state;
+
+    if (m_maximized)
+    {
+        glfwGetWindowPos(m_window, &m_xPosState, &m_yPosState);
+
+#ifdef WIN32
+        // Dodgy hack to get maximized window to not be off screen on Windows
+        // Need to be done before maximizing window otherwise crashes
+        GLFWmonitor* monitor = glfwGetWindowMonitor(m_window);
+
+        // Window can be on no monitor apparently so check for that
+        if (monitor != NULL)
+        {
+            int xPos;
+            int yPos;
+            glfwGetMonitorPos(monitor, &xPos, &yPos);
+
+            glfwSetWindowPos(m_window, xPos, yPos);
+        }
+        else
+        {
+            // Fallback to 0, 0
+            glfwSetWindowPos(m_window, 0, 0);
+        }
+#endif
+
         glfwMaximizeWindow(m_window);
     }
     else
     {
         glfwRestoreWindow(m_window);
+
+#ifdef WIN32
+        // Restore window position
+        // Needs to be done after restoring window otherwise crashes or gets stuck in current position
+        glfwSetWindowPos(m_window, m_xPosState, m_yPosState);
+#endif
     }
 }
 
@@ -187,6 +249,13 @@ glm::vec2 Application::GetWindowPos() const
 }
 void Application::SetWindowPos(const glm::vec2& a_pos)
 {
+    // Safeguard against window getting stuck on Windows
+    // Want to keep behavior consistent across platforms
+    if (m_maximized)
+    {
+        return;
+    }
+
     glfwSetWindowPos(m_window, (int)a_pos.x, (int)a_pos.y);
 }
 

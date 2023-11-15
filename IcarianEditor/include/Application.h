@@ -24,6 +24,11 @@ enum e_Cursors
 class Application
 {
 private:
+    bool        m_maximized;
+
+    int         m_xPosState;
+    int         m_yPosState;
+
     GLFWwindow* m_window;
 
     GLFWcursor* m_cursors[Cursor_Last];

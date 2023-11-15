@@ -307,6 +307,7 @@ void AppMain::Update(double a_delta, double a_time)
     // ImGui::ShowStyleEditor();
 
     const bool focusState = IsFocused();
+    bool maximized = IsMaximized();
 
     const bool validProject = m_project->IsValidProject();
     
@@ -464,8 +465,6 @@ void AppMain::Update(double a_delta, double a_time)
             offset += 24;
             ImGui::SetCursorPosX(width - offset);
 
-            bool maximized = IsMaximized();
-
             if (FlareImGui::ImageSwitchButton("O", "Textures/Icons/Window_Restore.png", "Textures/Icons/Window_Maximize.png", &maximized, { 16.0f, 16.0f }))
             {
                 Maximize(maximized);
@@ -560,19 +559,19 @@ void AppMain::Update(double a_delta, double a_time)
 
     if (leftClicked && !m_windowActions)
     {
-        if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)))
+        if (!maximized && InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)))
         {
             m_windowActions |= 0b1 << TopResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
+        else if (!maximized && InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
         {
             m_windowActions |= 0b1 << BottomResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)))
+        else if (!maximized && InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)))
         {
             m_windowActions |= 0b1 << LeftResizeBit;
         }
-        else if (InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
+        else if (!maximized && InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
         {
             m_windowActions |= 0b1 << RightResizeBit;
         }
@@ -580,9 +579,9 @@ void AppMain::Update(double a_delta, double a_time)
         {
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                Maximize(!IsMaximized());
+                Maximize(!maximized);
             }
-            else
+            else if (!maximized)
             {
                 m_windowActions |= 0b1 << MoveBit;
             }
@@ -777,20 +776,23 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)) || 
+    if (!maximized)
+    {
+        if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)) || 
         InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
-    {
-        cursor = Cursor_HResize;
-    }
-    else if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)) ||
-             InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
-    {
-        cursor = Cursor_VResize;
-    }
-    
-    if (m_windowActions & 0b1 << MoveBit)
-    {
-        cursor = Cursor_Move;
+        {
+            cursor = Cursor_HResize;
+        }
+        else if (InBounds(cursorPos, glm::vec2(0.0f, -resizeSize), glm::vec2(winSize.x, resizeSize)) ||
+                 InBounds(cursorPos, glm::vec2(0.0f, winSize.y - resizeSize), glm::vec2(winSize.x, winSize.y + resizeSize)))
+        {
+            cursor = Cursor_VResize;
+        }
+
+        if (m_windowActions & 0b1 << MoveBit)
+        {
+            cursor = Cursor_Move;
+        }
     }
 
     if (cursor != Cursor_Arrow)

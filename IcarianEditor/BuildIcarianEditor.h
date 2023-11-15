@@ -108,8 +108,18 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         CUBE_CProject_AppendDefine(&project, "NDEBUG");
     }
 
-    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_MAJOR=0");
-    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_MINOR=1");
+    CUBE_StackString commitHash = CUBE_Git_GetCommitHashShort();
+
+    CUBE_String commitDefine = CUBE_String_CreateC("ICARIANEDITOR_COMMIT_HASH=");
+    CUBE_String_AppendSS(&commitDefine, &commitHash);
+
+    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_MAJOR=2023");
+    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_MINOR=0");
+    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_PATCH=0");
+    CUBE_CProject_AppendDefine(&project, commitDefine.Data);
+    CUBE_CProject_AppendDefine(&project, "ICARIANEDITOR_VERSION_TAG=DEV");
+
+    CUBE_String_Destroy(&commitDefine);
 
     CUBE_CProject_AppendIncludePath(&project, "include");
     CUBE_CProject_AppendIncludePath(&project, "../EditorInterop");
