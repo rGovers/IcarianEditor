@@ -1,10 +1,12 @@
 #include "FileDialogBlock.h"
 
+#include "Datastore.h"
 #include "FileDialog.h"
 #include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "IO.h"
 #include "imgui.h"
+#include "Texture.h"
 
 #include <cstring>
 
@@ -78,6 +80,8 @@ void FileDialogBlock::Refresh()
 
 e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outPath, std::string* a_outString, BlockCallback a_blockCallback)
 {
+    const ImGuiStyle& style = ImGui::GetStyle();
+
     char buffer[BufferSize];
 
     const std::string pathStr = m_path.string();
@@ -109,9 +113,79 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
         Refresh();
     }
 
+    glm::vec2 size = m_size;
+    const ImVec2 region = ImGui::GetContentRegionAvail();
+    if (size.x < 0.0f)
+    {
+        size.x = region.x - style.FramePadding.x * 2.0f;
+    }
+    if (size.y < 0.0f)
+    {
+        size.y = region.y - ImGui::GetFrameHeightWithSpacing() * 1.5f;
+    }
+
+    {
+        ImGui::BeginGroup();
+        IDEFER(ImGui::EndGroup());
+
+        const float upperHeight = size.y * 0.25f - style.FramePadding.y;
+        const float lowerHeight = size.y * 0.75f;
+
+        if (ImGui::BeginChild("Drives", { DirectoryExplorerWidth, upperHeight }))
+        {  
+            IDEFER(ImGui::EndChild());
+
+            const std::vector<std::filesystem::path> drives = IO::GetDrives();
+
+            for (const std::filesystem::path& drive : drives)
+            {
+                const std::string str = drive.string();
+
+                if (ImGui::Selectable(str.c_str(), m_path == drive))
+                {
+                    m_path = drive;
+
+                    Refresh();
+                }
+            }        
+        }
+
+        if (ImGui::BeginChild("Special", { DirectoryExplorerWidth, lowerHeight }))
+        {
+            IDEFER(ImGui::EndChild());
+
+            const Texture* folderTex = Datastore::GetTexture("Textures/WindowIcons/WindowIcon_AssetBrowser.png");
+
+            const std::vector<std::filesystem::path> specialDirectories = IO::GetUserDirectories();
+
+            for (const std::filesystem::path& specialDirectory : specialDirectories)
+            {
+                const std::string filename = specialDirectory.filename().string();
+
+                if (folderTex != nullptr)
+                {
+                    ImGui::Image((ImTextureID)folderTex->GetHandle(), ImVec2(16.0f, 16.0f));
+
+                    ImGui::SameLine();
+                }
+
+                if (ImGui::Selectable(filename.c_str(), m_path == specialDirectory))
+                {
+                    m_path = specialDirectory;
+
+                    Refresh();
+                }
+            }
+        }
+    }
+    
+    ImGui::SameLine();
+
+    size.x -= DirectoryExplorerWidth + style.FramePadding.x;
+
     if (m_directoryExplorer)
     {
-        if (!FileDialog::DirectoryExplorer(m_dirs, &m_path, m_size))
+        if (!FileDialog::DirectoryExplorer(m_dirs, &m_path, size))
         {
             Refresh();
         }
@@ -127,7 +201,7 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
             }
         }
 
-        if (!FileDialog::FileExplorer(m_dirs, m_files, &m_path, &m_name, filter, m_size))
+        if (!FileDialog::FileExplorer(m_dirs, m_files, &m_path, &m_name, filter, size))
         {
             Refresh();
         }

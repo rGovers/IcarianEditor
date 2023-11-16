@@ -4,6 +4,7 @@
 
 #include "AppMain.h"
 #include "FileDialogBlock.h"
+#include "Flare//IcarianDefer.h"
 #include "LoadingTasks/BuildLoadingTask.h"
 #include "LoadingTasks/CopyBuildLibraryLoadingTask.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
@@ -37,8 +38,14 @@ void BuildProjectModal::OptionsDisplay()
     const std::string defaultOption = m_exportOptions[m_selectedExport];
 
     ImGui::Text("%s", "Platform");
+    
+    ImGui::PushItemWidth(128.0f);
+    IDEFER(ImGui::PopItemWidth());
+
     if (ImGui::BeginCombo("##Platform", defaultOption.c_str()))
     {
+        IDEFER(ImGui::EndCombo());
+
         for (uint32_t i = 0; i < m_exportOptions.size(); ++i)
         {
             if (ImGui::Selectable(m_exportOptions[i].c_str()))
@@ -51,8 +58,6 @@ void BuildProjectModal::OptionsDisplay()
                 ImGui::SetItemDefaultFocus();
             }
         }
-
-        ImGui::EndCombo();
     }
 }
 

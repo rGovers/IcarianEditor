@@ -22,6 +22,7 @@ public:
 
 private:
     static constexpr uint32_t BufferSize = 4096;
+    static constexpr float DirectoryExplorerWidth = 150.0f;
 
     uint32_t                         m_filterIndex;  
     uint32_t                         m_filterCount;
