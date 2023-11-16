@@ -8,21 +8,17 @@
 
 class AppMain;
 class AssetLibrary;
+class FileDialogBlock;
 class Project;
 
 class BuildProjectModal : public Modal
 {
 private:
-    static constexpr uint32_t BufferSize = 4096;
-
     AppMain*                         m_app;
     AssetLibrary*                    m_library;
     Project*                         m_project;
 
-    std::filesystem::path            m_path;
-    std::string                      m_name;
-
-    std::list<std::filesystem::path> m_dirs;
+    FileDialogBlock*                 m_fileDialogBlock;
 
     uint32_t                         m_selectedExport;
     std::vector<std::string>         m_exportOptions;

@@ -173,6 +173,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     CUBE_CProject_AppendSource(&project, "src/EditorWindow.cpp");
     CUBE_CProject_AppendSource(&project, "src/ErrorModal.cpp");
     CUBE_CProject_AppendSource(&project, "src/FileDialog.cpp");
+    CUBE_CProject_AppendSource(&project, "src/FileDialogBlock.cpp");
     CUBE_CProject_AppendSource(&project, "src/FileHandler.cpp");
     CUBE_CProject_AppendSource(&project, "src/FlareImGui.cpp");
     CUBE_CProject_AppendSource(&project, "src/GameWindow.cpp");

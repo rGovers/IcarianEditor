@@ -5,6 +5,7 @@
 
 #include "AppMain.h"
 #include "FileDialog.h"
+#include "FileDialogBlock.h"
 #include "IO.h"
 #include "Modals/ErrorModal.h"
 
@@ -14,105 +15,56 @@ CreateProjectModal::CreateProjectModal(AppMain* a_app, Callback a_callback) : Mo
 
     m_callback = a_callback;
 
-    m_path = IO::GetHomePath();
-    m_name = "UnnamedProject";
-
-    FileDialog::GenerateDirs(&m_dirs, m_path);
+    m_fileDialogBlock = new FileDialogBlock(glm::vec2(-1, -1), true);
 }
 CreateProjectModal::~CreateProjectModal()
 {
-
+    delete m_fileDialogBlock;
 }
 
 bool CreateProjectModal::Update()
 {
-    char buffer[BufferSize];
+    std::filesystem::path path;
+    std::string name;
 
-    const std::string pathStr = m_path.string();
-    const uint32_t pathLen = (uint32_t)pathStr.length();
-    if (pathLen > BufferSize)
+    const e_FileDialogStatus status = m_fileDialogBlock->ShowFileDialog(&path, &name);
+
+    switch (status)
     {
-        m_app->PushModal(new ErrorModal("Path exceeds buffer size"));
-
-        m_path = IO::GetHomePath();
-
-        return true;
-    }
-    for (uint32_t i = 0; i < pathLen; ++i)
+    case FileDialogStatus_Ok:
     {
-        buffer[i] = pathStr[i];
-    }
-    buffer[pathLen] = 0;
-
-    if (ImGui::InputText("Path", buffer, BufferSize))
-    {
-        m_path = buffer;
-
-        m_dirs.clear();
-
-        FileDialog::GenerateDirs(&m_dirs, m_path);
-    }   
-
-    if (!FileDialog::DirectoryExplorer(m_dirs, &m_path))
-    {
-        m_dirs.clear();
-
-        FileDialog::GenerateDirs(&m_dirs, m_path);
-    }
-
-    const uint32_t nameLen = (uint32_t)m_name.length();
-    if (nameLen > BufferSize)
-    {
-        m_app->PushModal(new ErrorModal("Name exceeds buffer size"));
-
-        m_name.clear();
-
-        return true;
-    }
-    for (uint32_t i = 0; i < nameLen; ++i)
-    {
-        buffer[i] = m_name[i];
-    }
-    buffer[nameLen] = 0;
-
-    if (ImGui::InputText("Name", buffer, BufferSize))
-    {
-        m_name = buffer;
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Create"))
-    {
-        if (m_name.empty())
-        {
-            m_app->PushModal(new ErrorModal("Invalid Name"));
-
-            return true;
-        }
-
-        if (!IO::ValidatePathName(m_name))
-        {
-            m_app->PushModal(new ErrorModal("Invalid Name"));
-
-            return true;
-        }
-
-        if (!std::filesystem::exists(m_path))
+        if (!std::filesystem::exists(path))
         {
             m_app->PushModal(new ErrorModal("Directory does not exist"));
+
+            return true;
         }
 
-        m_callback(m_path / m_name, m_name);
+        if (name.empty())
+        {
+            m_app->PushModal(new ErrorModal("Invalid Name"));
+
+            return true;
+        }
+
+        m_callback(path, name);
 
         return false;
     }
+    case FileDialogStatus_Error:
+    {
+        m_app->PushModal(new ErrorModal("File dialog error"));
 
-    ImGui::SameLine();
-
-    if (ImGui::Button("Cancel"))
+        break;
+    }
+    case FileDialogStatus_Cancel:
     {
         return false;
+    }
+    default:
+    {
+        break;
+    }
     }
 
     return true;
