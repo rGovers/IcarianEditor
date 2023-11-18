@@ -1,5 +1,8 @@
 #include "Windows/Window.h"
 
+#define GLM_FORCE_SWIZZLE 
+#include <glm/glm.hpp>
+
 #include <cstdint>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -40,32 +43,38 @@ bool Window::Display(double a_delta)
                 {
                     const ImGuiWindow* window = ImGui::GetCurrentWindow();
                     const ImGuiDockNode* dockNode = window->DockNode;
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
                     const ImGuiStyle& style = ImGui::GetStyle();
 
-                    const ImVec2 offset = style.FramePadding;
+                    const glm::vec2 windowPos = glm::vec2(window->Pos.x, window->Pos.y);
+                    const glm::vec2 offset = glm::vec2(style.FramePadding.x, style.FramePadding.y);
 
                     const ImRect titleBarRect = window->TitleBarRect();
-
                     const float titleBarHeight = titleBarRect.Max.y - titleBarRect.Min.y;
 
                     const float size = titleBarHeight - (offset.y * 2.0f);
 
                     ImGui::PushClipRect(titleBarRect.Min, titleBarRect.Max, false);
                     IDEFER(ImGui::PopClipRect());
+                    
                     if (dockNode != nullptr)
                     {
                         const ImRect r = window->DockTabItemRect;
 
-                        const ImVec2 basePos = ImVec2(r.Min.x - titleBarRect.Min.x, 0.0f);
+                        const glm::vec2 basePos = glm::vec2(r.Min.x - titleBarRect.Min.x, 0.0f);
 
-                        ImGui::SetCursorPos(ImVec2(basePos.x + offset.x, basePos.y + offset.y));
+                        const glm::vec2 startRect = windowPos + basePos + offset;
+                        const glm::vec2 endRect = startRect + glm::vec2(size);
+
+                        drawList->AddImage((ImTextureID)texture->GetHandle(), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
                     }
                     else
                     {
-                        ImGui::SetCursorPos(offset);
-                    }
+                        const glm::vec2 startRect = windowPos + offset;
+                        const glm::vec2 endRect = startRect + glm::vec2(size);
 
-                    ImGui::Image((ImTextureID)texture->GetHandle(), ImVec2(size, size));
+                        drawList->AddImage((ImTextureID)texture->GetHandle(), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
+                    }
                 }                
             }
             
