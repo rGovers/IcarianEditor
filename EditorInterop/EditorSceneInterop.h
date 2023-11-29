@@ -15,4 +15,4 @@
             data[i] = (char)mono_array_get(a_data, mono_byte, i); \
         } \
         Instance->WriteScene(p, (uint32_t)len, data); \
-    }, IOP_STRING a_path, IOP_ARRAY a_data) \
+    }, IOP_STRING a_path, IOP_ARRAY(byte[]) a_data) \

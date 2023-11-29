@@ -17,16 +17,11 @@
 #include "Texture.h"
 #include "VertexShader.h"
 
+#include "EngineSkeletonInteropStructures.h"
+
 static RuntimeStorage* Instance = nullptr;
 
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
-struct RuntimeBoneData
-{
-    MonoArray* Names;
-    MonoArray* Parents;
-    MonoArray* BindPoses;
-};
 
 struct RuntimeAnimationFrame
 {
@@ -346,7 +341,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
     return -1;
 }, MonoString* a_path)
 
-RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData, 
+RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData, 
 {
     char* str = mono_string_to_utf8(a_path);
     IDEFER(mono_free(str));
@@ -354,7 +349,7 @@ RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData,
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
 
-    RuntimeBoneData data;
+    RuntimeImportBoneData data;
 
     data.BindPoses = NULL;
     data.Names = NULL;
@@ -394,6 +389,38 @@ RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData,
                 mono_array_set(data.Parents, uint32_t, i, bone.Parent);
             }
         }   
+    }
+    else if (ext == ".fbx")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadBoneData(dat, size, &bones))
+        {
+            MonoDomain* domain = mono_domain_get();
+            MonoClass* fClass = mono_get_single_class();
+
+            const uint32_t count = (uint32_t)bones.size();
+            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
+            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
+            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const BoneData& bone = bones[i];
+
+                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
+                for (uint32_t j = 0; j < 16; ++j)
+                {
+                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
+                }
+
+                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
+                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
+                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
+            }
+        }
     }
 
     return data;

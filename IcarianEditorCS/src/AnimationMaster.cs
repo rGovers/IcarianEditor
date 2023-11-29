@@ -27,6 +27,14 @@ namespace IcarianEditor
             public SkeletonAnimator Animator;
         }
 
+        struct BoneData
+        {
+            public string Object;
+            public uint Parent;
+            public float[] BindPose;
+            public float[] InverseBindPose;
+        }
+
         static List<Skeleton> s_updatedSkeletons = new List<Skeleton>();
 
         static Dictionary<Skeleton, SkeletonData> s_skeletonData = new Dictionary<Skeleton, SkeletonData>();
@@ -52,19 +60,27 @@ namespace IcarianEditor
             s_updatedSkeletons.Clear();
         }
 
-        static void GenerateBones(uint a_buffer, Skeleton a_skeleton, Bone a_bone, Matrix4 a_inverse)
+        static void GenerateBones(uint a_buffer, Skeleton a_skeleton, Bone a_bone, Matrix4 a_inverse, ref Dictionary<uint, BoneData> a_boneData)
         {
             Matrix4 bindPose = a_bone.BindingPose;
             Matrix4 inverseBindPose = Matrix4.Inverse(bindPose);
 
             Matrix4 transform = bindPose * a_inverse;
 
-            PushBoneData(a_buffer, a_bone.Name, a_bone.Parent, transform.ToArray(), inverseBindPose.ToArray());
+            BoneData data = new BoneData()
+            {
+                Object = a_bone.Name,
+                Parent = a_bone.Parent,
+                BindPose = transform.ToArray(),
+                InverseBindPose = inverseBindPose.ToArray()
+            };
+            a_boneData.Add(a_bone.Index, data);
+            // PushBoneData(a_buffer, a_bone.Name, a_bone.Parent, transform.ToArray(), inverseBindPose.ToArray());
 
             IEnumerable<Bone> children = a_skeleton.GetChildren(a_bone);
             foreach (Bone child in children)
             {
-                GenerateBones(a_buffer, a_skeleton, child, inverseBindPose);
+                GenerateBones(a_buffer, a_skeleton, child, inverseBindPose, ref a_boneData);
             }
         }
 
@@ -87,9 +103,18 @@ namespace IcarianEditor
                 Type type = a_def.ComponentType;
 
                 uint buffer = GenerateSkeletonBuffer();
+
+                Dictionary<uint, BoneData> boneData = new Dictionary<uint, BoneData>();
+                
                 foreach (Bone bone in skeleton.RootBones)
                 {
-                    GenerateBones(buffer, skeleton, bone, Matrix4.Identity);
+                    GenerateBones(buffer, skeleton, bone, Matrix4.Identity, ref boneData);
+                }
+
+                foreach (Bone b in skeleton.Bones)
+                {
+                    BoneData bDat = boneData[b.Index];
+                    PushBoneData(buffer, bDat.Object, bDat.Parent, bDat.BindPose, bDat.InverseBindPose);
                 }
 
                 SkeletonAnimator animator = Activator.CreateInstance(type) as SkeletonAnimator;
