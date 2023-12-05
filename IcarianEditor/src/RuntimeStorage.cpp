@@ -18,21 +18,11 @@
 #include "VertexShader.h"
 
 #include "EngineSkeletonInteropStructures.h"
+#include "EngineAnimationDataInteropStructures.h"
 
 static RuntimeStorage* Instance = nullptr;
 
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
-struct RuntimeAnimationFrame
-{
-    float Time;
-    MonoArray* Transform;
-};
-struct RuntimeAnimationData
-{
-    MonoString* Name;
-    MonoArray* Frames;
-};
 
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
@@ -42,7 +32,8 @@ struct RuntimeAnimationData
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
     F(void, IcarianEngine.Rendering, Material, SetTexture, { Instance->SetProgramTexture(a_addr, a_slot, a_samplerAddr); }, uint32_t a_addr, uint32_t a_slot, uint32_t a_samplerAddr) \
     \
-    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadAnimationClip(str); }, MonoString* a_path) \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadDAEAnimationClip(str); }, MonoString* a_path) \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadFBXAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadFBXAnimationClip(str); }, MonoString* a_path) \
     \
     F(void, IcarianEngine.Rendering, Texture, DestroyTexture, { Instance->DestroyTexture(a_addr); }, uint32_t a_addr) \
     \
@@ -695,14 +686,14 @@ void RuntimeStorage::DestroyTexture(uint32_t a_addr)
     m_textures[a_addr] = nullptr;
 }
 
-MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path) const
+MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_path) const
 {
     MonoArray* data = NULL;
 
     MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationData");
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimation");
     ICARIAN_ASSERT(animationDataClass != NULL);
-    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrame");
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimationFrame");
     ICARIAN_ASSERT(animationFrameClass != NULL);
     MonoClass* floatClass = mono_get_single_class();
 
@@ -719,7 +710,7 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
         {
             const ColladaAnimationData& animation = animations[i];
 
-            RuntimeAnimationData animData;
+            DAERAnimation animData;
             animData.Name = mono_string_new(domain, animation.Name.c_str());
 
             const uint32_t frameCount = (uint32_t)animation.Frames.size();
@@ -728,7 +719,7 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
             {
                 const ColladaAnimationFrame& frame = animation.Frames[j];
 
-                RuntimeAnimationFrame animFrame;
+                DAERAnimationFrame animFrame;
                 animFrame.Time = frame.Time;
 
                 const float* t = (float*)&frame.Transform;
@@ -741,10 +732,57 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
 
                 animFrame.Transform = transform;
 
-                mono_array_set(animData.Frames, RuntimeAnimationFrame, j, animFrame);
+                mono_array_set(animData.Frames, DAERAnimationFrame, j, animFrame);
             }
 
-            mono_array_set(data, RuntimeAnimationData, i, animData);
+            mono_array_set(data, DAERAnimation, i, animData);
+        }
+    }
+
+    return data;
+}
+
+MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_path) const
+{
+    MonoArray* data = NULL;
+
+    MonoDomain* domain = m_runtime->GetEditorDomain();
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimation");
+    ICARIAN_ASSERT(animationDataClass != NULL);
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimationFrame");
+    ICARIAN_ASSERT(animationFrameClass != NULL);
+
+    uint32_t size;
+    const char* dat;
+    m_assets->GetAsset(a_path, &size, &dat);
+
+    std::vector<FBXAnimationData> animations;
+    if (size > 0 && dat != nullptr && FlareBase::FBXLoader_LoadAnimationData(dat, size, &animations))
+    {
+        const uint32_t count = (uint32_t)animations.size();
+        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const FBXAnimationData& animation = animations[i];
+
+            FBXRAnimation animData;
+            animData.Name = mono_string_new(domain, animation.Name.c_str());
+            animData.Target = mono_string_new(domain, animation.PropertyName.c_str());
+
+            const uint32_t frameCount = (uint32_t)animation.Frames.size();
+            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
+            for (uint32_t j = 0; j < frameCount; ++j)
+            {
+                const FBXAnimationFrame& frame = animation.Frames[j];
+
+                FBXRAnimationFrame animFrame;
+                animFrame.Time = frame.Time;
+                animFrame.Data = frame.Data;
+
+                mono_array_set(animData.Frames, FBXRAnimationFrame, j, animFrame);
+            }   
+
+            mono_array_set(data, FBXRAnimation, i, animData);
         }
     }
 
