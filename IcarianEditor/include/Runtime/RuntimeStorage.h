@@ -79,6 +79,7 @@ public:
 
     MonoArray* LoadDAEAnimationClip(const std::filesystem::path& a_path) const;
     MonoArray* LoadFBXAnimationClip(const std::filesystem::path& a_path) const;
+    MonoArray* LoadGLTFAnimationClip(const std::filesystem::path& a_path) const;
 
     void Clear();
 };
