@@ -1,6 +1,6 @@
 [submodule "IcarianEngine"]
 	path = IcarianEngine
-	url = https://github.com/rGovers/IcarianEngine.git
+	url = https://github.com/rGovers/Icarian-Engine-Closed.git
 [submodule "IcarianEditor/lib/imgui"]
 	path = IcarianEditor/lib/imgui
 	url = https://github.com/ocornut/imgui.git
