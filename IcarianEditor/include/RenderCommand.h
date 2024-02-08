@@ -50,6 +50,7 @@ public:
     ~RenderCommand();
 
     static void Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage);
+    static void Clear();
     static void Destroy();
 
     static void BindMaterial(uint32_t a_materialAddr);

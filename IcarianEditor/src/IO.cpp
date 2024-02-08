@@ -3,7 +3,12 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "Flare/WindowsHeaders.h"
 #include "Logger.h"
+
+#ifdef WIN32
+#include <shlobj.h>
+#endif
 
 std::filesystem::path IO::GetHomePath()
 {
@@ -13,6 +18,7 @@ std::filesystem::path IO::GetHomePath()
 
     return homeDrive + homePath;
 #else
+    // Yes I am aware of root home but you should not be running this as root in the first place.
     return std::getenv("HOME");
 #endif
 }
@@ -76,6 +82,11 @@ std::filesystem::path IO::GetRelativePath(const std::filesystem::path& a_relativ
 
     while (tempPath != a_relative)
     {
+        if (!tempPath.has_filename())
+        {
+            return std::filesystem::path();
+        }
+
         if (path.empty())
         {
             path = tempPath.stem();
@@ -99,6 +110,114 @@ std::filesystem::path IO::GetCSCPath()
 #else
     return std::filesystem::current_path() / "bin" / "csc";
 #endif
+}
+
+std::vector<std::filesystem::path> IO::GetDrives()
+{
+    std::vector<std::filesystem::path> drives;
+
+#ifdef WIN32
+    const DWORD drivesMask = GetLogicalDrives();
+    for (uint32_t i = 0; i < 26; ++i)
+    {
+        if (drivesMask & (0b1 << i))
+        {
+            const std::string drive = std::string(1, 'A' + i) + ":\\";
+
+            drives.push_back(drive);
+        }
+    }
+#else
+    // Bit tricky to get drives on Linux.
+    // I believe I want to read /proc/mounts but I am not sure if that is across all systems cause linux is a pain like that.
+    // Cannot be bothered to do it right now as everything mounts under root directory so everything should be accessible.
+
+    drives.push_back("/");
+#endif
+
+    return drives;
+}
+std::vector<std::filesystem::path> IO::GetUserDirectories()
+{
+    std::vector<std::filesystem::path> specialDirectories;
+
+#ifdef WIN32
+    CHAR path[MAX_PATH];
+
+    HRESULT result = SHGetFolderPathA(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path);
+    if (result == S_OK)
+    {
+        specialDirectories.push_back(path);
+    }
+
+    result = SHGetFolderPathA(NULL, CSIDL_MYDOCUMENTS, NULL, 0, path);
+    if (result == S_OK)
+    {
+        specialDirectories.push_back(path);
+    }
+
+    result = SHGetFolderPathA(NULL, CSIDL_MYPICTURES, NULL, 0, path);
+    if (result == S_OK)
+    {
+        specialDirectories.push_back(path);
+    }
+
+    result = SHGetFolderPathA(NULL, CSIDL_MYVIDEO, NULL, 0, path);
+    if (result == S_OK)
+    {
+        specialDirectories.push_back(path);
+    }
+
+    result = SHGetFolderPathA(NULL, CSIDL_MYMUSIC, NULL, 0, path);
+    if (result == S_OK)
+    {
+        specialDirectories.push_back(path);
+    } 
+#else
+    // To my knowledge there is no standard way to get special directories on Linux.
+    // There are ways that are basically standard but nothing is guaranteed.
+    // Some systems do not even have these directories.
+    const std::filesystem::path homePath = GetHomePath();
+
+    specialDirectories.push_back(homePath);
+
+    if (std::filesystem::exists(homePath / "Desktop"))
+    {
+        specialDirectories.push_back(homePath / "Desktop");
+    }
+
+    if (std::filesystem::exists(homePath / "Documents"))
+    {
+        specialDirectories.push_back(homePath / "Documents");
+    }
+
+    if (std::filesystem::exists(homePath / "Pictures"))
+    {
+        specialDirectories.push_back(homePath / "Pictures");
+    }
+
+    if (std::filesystem::exists(homePath / "Videos"))
+    {
+        specialDirectories.push_back(homePath / "Videos");
+    }
+
+    if (std::filesystem::exists(homePath / "Music"))
+    {
+        specialDirectories.push_back(homePath / "Music");
+    }
+
+    if (std::filesystem::exists(homePath / "Downloads"))
+    {
+        specialDirectories.push_back(homePath / "Downloads");
+    }
+
+    if (std::filesystem::exists(homePath / "Templates"))
+    {
+        specialDirectories.push_back(homePath / "Templates");
+    }
+#endif
+
+    return specialDirectories;
 }
 
 void IO::OpenFileExplorer(const std::filesystem::path& a_path)

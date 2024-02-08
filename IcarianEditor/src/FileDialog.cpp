@@ -3,9 +3,12 @@
 #include <filesystem>
 #include <imgui.h>
 
+#include "Datastore.h"
+#include "Texture.h"
+
 static bool IDirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, std::filesystem::path* a_path)
 {
-    if (a_path->has_parent_path())
+    if (a_path->has_parent_path() && *a_path != "/")
     {
         if (ImGui::Selectable(".."))
         {
@@ -17,8 +20,17 @@ static bool IDirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, s
         ImGui::NextColumn();
     }
 
+    const Texture* folderTex = Datastore::GetTexture("Textures/WindowIcons/WindowIcon_AssetBrowser.png");
+
     for (const std::filesystem::path& dir : a_dirs)
     {
+        if (folderTex != nullptr)
+        {
+            ImGui::Image((ImTextureID)folderTex->GetHandle(), ImVec2(16.0f, 16.0f));
+
+            ImGui::SameLine();
+        }
+
         // C string seems to be a bit wonky so using another var seems to fix crash
         const std::string name = dir.filename().string();
         if (ImGui::Selectable(name.c_str()))
@@ -117,7 +129,7 @@ bool FileDialog::DirectoryExplorer(const std::list<std::filesystem::path>& a_dir
 
     return ret;
 }
-bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, const std::list<std::filesystem::path>& a_files, std::filesystem::path* a_path, std::string* a_name, const glm::vec2& a_size)
+bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, const std::list<std::filesystem::path>& a_files, std::filesystem::path* a_path, std::string* a_name, const char* a_filter, const glm::vec2& a_size)
 {
     const ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 region = ImGui::GetContentRegionAvail();
@@ -155,6 +167,14 @@ bool FileDialog::FileExplorer(const std::list<std::filesystem::path>& a_dirs, co
 
             for (const std::filesystem::path& path : a_files)
             {
+                if (a_filter != nullptr)
+                {
+                    if (path.extension() != a_filter)
+                    {
+                        continue;
+                    }
+                }
+
                 const std::string name = path.filename().string();
                 if (ImGui::Selectable(name.c_str()))
                 {

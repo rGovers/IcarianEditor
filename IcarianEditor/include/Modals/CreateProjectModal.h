@@ -7,6 +7,7 @@
 #include <list>
 
 class AppMain;
+class FileDialogBlock;
 
 class CreateProjectModal : public Modal
 {
@@ -14,16 +15,11 @@ public:
     using Callback = std::function<void(const std::filesystem::path&, const std::string_view&)>;
 
 private:
-    static constexpr uint32_t BufferSize = 4096;
-
-    AppMain*                         m_app;
+    AppMain*         m_app;
              
-    std::filesystem::path            m_path;
-    std::string                      m_name;
+    FileDialogBlock* m_fileDialogBlock;
 
-    std::list<std::filesystem::path> m_dirs;
-
-    Callback                         m_callback;
+    Callback         m_callback;
 
 protected:
 

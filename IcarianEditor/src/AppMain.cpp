@@ -34,6 +34,7 @@
 #include "Windows/ProfilerWindow.h"
 #include "Windows/PropertiesWindow.h"
 #include "Windows/SceneDefsWindow.h"
+#include "Windows/TimelineWindow.h"
 #include "Workspace.h"
 
 #include "Modals/ErrorModal.h"
@@ -440,6 +441,13 @@ void AppMain::Update(double a_delta, double a_time)
                         m_windows.emplace_back(new SceneDefsWindow(m_runtime));
                     }
 
+                    // ImGui::Separator();
+
+                    // if (ImGui::MenuItem("Timeline"))
+                    // {
+                    //     m_windows.emplace_back(new TimelineWindow(m_runtime));
+                    // }
+
                     ImGui::Separator();
 
                     if (ImGui::MenuItem("Profiler"))
@@ -730,6 +738,8 @@ void AppMain::Update(double a_delta, double a_time)
     {
         Logger::Message("Refreshing Project");
         m_project->SetRefresh(false);
+
+        RenderCommand::Clear();
 
         const std::filesystem::path path = m_project->GetPath(); 
         const std::string pathStr = path.string();

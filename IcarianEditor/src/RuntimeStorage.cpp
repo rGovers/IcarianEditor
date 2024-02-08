@@ -6,6 +6,7 @@
 #include "AssetLibrary.h"
 #include "Flare/ColladaLoader.h"
 #include "Flare/FBXLoader.h"
+#include "Flare/GLTFLoader.h"
 #include "Flare/IcarianAssert.h"
 #include "Flare/IcarianDefer.h"
 #include "Flare/OBJLoader.h"
@@ -17,27 +18,12 @@
 #include "Texture.h"
 #include "VertexShader.h"
 
+#include "EngineSkeletonInteropStructures.h"
+#include "EngineAnimationDataInteropStructures.h"
+
 static RuntimeStorage* Instance = nullptr;
 
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
-struct RuntimeBoneData
-{
-    MonoArray* Names;
-    MonoArray* Parents;
-    MonoArray* BindPoses;
-};
-
-struct RuntimeAnimationFrame
-{
-    float Time;
-    MonoArray* Transform;
-};
-struct RuntimeAnimationData
-{
-    MonoString* Name;
-    MonoArray* Frames;
-};
 
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
@@ -47,7 +33,9 @@ struct RuntimeAnimationData
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
     F(void, IcarianEngine.Rendering, Material, SetTexture, { Instance->SetProgramTexture(a_addr, a_slot, a_samplerAddr); }, uint32_t a_addr, uint32_t a_slot, uint32_t a_samplerAddr) \
     \
-    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadAnimationClip(str); }, MonoString* a_path) \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadDAEAnimationClip(str); }, MonoString* a_path) \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadFBXAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadFBXAnimationClip(str); }, MonoString* a_path) \
+    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadGLTFAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadGLTFAnimationClip(str); }, MonoString* a_path) \
     \
     F(void, IcarianEngine.Rendering, Texture, DestroyTexture, { Instance->DestroyTexture(a_addr); }, uint32_t a_addr) \
     \
@@ -282,6 +270,17 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
+    else if (ext == ".dae")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        {
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
+        }
+    }
     else if (ext == ".fbx")
     {
         const char* dat;
@@ -293,13 +292,13 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
-    else if (ext == ".dae")
+    else if (ext == ".glb" || ext == ".gltf")
     {
         const char* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
@@ -342,11 +341,22 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
     }
+    else if (ext == ".glb" || ext == ".gltf")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        {
+            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
+        }
+    }
 
     return -1;
 }, MonoString* a_path)
 
-RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData, 
+RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData, 
 {
     char* str = mono_string_to_utf8(a_path);
     IDEFER(mono_free(str));
@@ -354,7 +364,7 @@ RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData,
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
 
-    RuntimeBoneData data;
+    RuntimeImportBoneData data;
 
     data.BindPoses = NULL;
     data.Names = NULL;
@@ -394,6 +404,70 @@ RUNTIME_FUNCTION(RuntimeBoneData, Skeleton, LoadBoneData,
                 mono_array_set(data.Parents, uint32_t, i, bone.Parent);
             }
         }   
+    }
+    else if (ext == ".fbx")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadBoneData(dat, size, &bones))
+        {
+            MonoDomain* domain = mono_domain_get();
+            MonoClass* fClass = mono_get_single_class();
+
+            const uint32_t count = (uint32_t)bones.size();
+            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
+            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
+            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const BoneData& bone = bones[i];
+
+                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
+                for (uint32_t j = 0; j < 16; ++j)
+                {
+                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
+                }
+
+                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
+                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
+                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
+            }
+        }
+    }
+    else if (ext == ".glb" || ext == ".gltf")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadBones(dat, size, &bones))
+        {
+            MonoDomain* domain = mono_domain_get();
+            MonoClass* fClass = mono_get_single_class();
+
+            const uint32_t count = (uint32_t)bones.size();
+            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
+            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
+            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
+
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const BoneData& bone = bones[i];
+
+                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
+                for (uint32_t j = 0; j < 16; ++j)
+                {
+                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
+                }
+
+                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
+                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
+                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
+            }
+        }
     }
 
     return data;
@@ -466,6 +540,18 @@ void RuntimeStorage::Clear()
         }
     }
     m_models.clear();
+
+    // May have forgotten about this and been leaking bout 1GB of VRAM.......
+    // Opps :D fixed now
+    // No idea how this has not caused more issues
+    for (const Texture* t : m_textures)
+    {
+        if (t != nullptr)
+        {
+            delete t;
+        }
+    }
+    m_textures.clear();
 
     for (const VertexShader* v : m_vertexShaders)
     {
@@ -656,14 +742,14 @@ void RuntimeStorage::DestroyTexture(uint32_t a_addr)
     m_textures[a_addr] = nullptr;
 }
 
-MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path) const
+MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_path) const
 {
     MonoArray* data = NULL;
 
     MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationData");
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimation");
     ICARIAN_ASSERT(animationDataClass != NULL);
-    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrame");
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimationFrame");
     ICARIAN_ASSERT(animationFrameClass != NULL);
     MonoClass* floatClass = mono_get_single_class();
 
@@ -680,7 +766,7 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
         {
             const ColladaAnimationData& animation = animations[i];
 
-            RuntimeAnimationData animData;
+            DAERAnimation animData;
             animData.Name = mono_string_new(domain, animation.Name.c_str());
 
             const uint32_t frameCount = (uint32_t)animation.Frames.size();
@@ -689,7 +775,7 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
             {
                 const ColladaAnimationFrame& frame = animation.Frames[j];
 
-                RuntimeAnimationFrame animFrame;
+                DAERAnimationFrame animFrame;
                 animFrame.Time = frame.Time;
 
                 const float* t = (float*)&frame.Transform;
@@ -702,10 +788,104 @@ MonoArray* RuntimeStorage::LoadAnimationClip(const std::filesystem::path& a_path
 
                 animFrame.Transform = transform;
 
-                mono_array_set(animData.Frames, RuntimeAnimationFrame, j, animFrame);
+                mono_array_set(animData.Frames, DAERAnimationFrame, j, animFrame);
             }
 
-            mono_array_set(data, RuntimeAnimationData, i, animData);
+            mono_array_set(data, DAERAnimation, i, animData);
+        }
+    }
+
+    return data;
+}
+
+MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_path) const
+{
+    MonoArray* data = NULL;
+
+    MonoDomain* domain = m_runtime->GetEditorDomain();
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimation");
+    ICARIAN_ASSERT(animationDataClass != NULL);
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimationFrame");
+    ICARIAN_ASSERT(animationFrameClass != NULL);
+
+    uint32_t size;
+    const char* dat;
+    m_assets->GetAsset(a_path, &size, &dat);
+
+    std::vector<FBXAnimationData> animations;
+    if (size > 0 && dat != nullptr && FlareBase::FBXLoader_LoadAnimationData(dat, size, &animations))
+    {
+        const uint32_t count = (uint32_t)animations.size();
+        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const FBXAnimationData& animation = animations[i];
+
+            FBXRAnimation animData;
+            animData.Name = mono_string_new(domain, animation.Name.c_str());
+            animData.Target = mono_string_new(domain, animation.PropertyName.c_str());
+
+            const uint32_t frameCount = (uint32_t)animation.Frames.size();
+            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
+            for (uint32_t j = 0; j < frameCount; ++j)
+            {
+                const FBXAnimationFrame& frame = animation.Frames[j];
+
+                FBXRAnimationFrame animFrame;
+                animFrame.Time = frame.Time;
+                animFrame.Data = frame.Data;
+
+                mono_array_set(animData.Frames, FBXRAnimationFrame, j, animFrame);
+            }   
+
+            mono_array_set(data, FBXRAnimation, i, animData);
+        }
+    }
+
+    return data;
+}
+
+MonoArray* RuntimeStorage::LoadGLTFAnimationClip(const std::filesystem::path& a_path) const
+{
+    MonoArray* data = NULL;
+
+    MonoDomain* domain = m_runtime->GetEditorDomain();
+    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "GLTFRAnimation");
+    ICARIAN_ASSERT(animationDataClass != NULL);
+    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "GLTFRAnimationFrame");
+    ICARIAN_ASSERT(animationFrameClass != NULL);
+
+    uint32_t size;
+    const char* dat;
+    m_assets->GetAsset(a_path, &size, &dat);
+
+    std::vector<GLTFAnimationData> animations;
+    if (size > 0 && dat != nullptr && FlareBase::GLTFLoader_LoadAnimationData(dat, size, &animations))
+    {
+        const uint32_t count = (uint32_t)animations.size();
+        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const GLTFAnimationData& animation = animations[i];
+
+            GLTFRAnimation animData;
+            animData.Name = mono_string_new(domain, animation.Name.c_str());
+            animData.Target = mono_string_new(domain, animation.Target.c_str());
+
+            const uint32_t frameCount = (uint32_t)animation.Frames.size();
+            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
+            for (uint32_t j = 0; j < frameCount; ++j)
+            {
+                const GLTFAnimationFrame& frame = animation.Frames[j];
+
+                GLTFRAnimationFrame animFrame;
+                animFrame.Time = frame.Time;
+                animFrame.Data = frame.Data;
+
+                mono_array_set(animData.Frames, GLTFRAnimationFrame, j, animFrame);
+            }   
+
+            mono_array_set(data, GLTFRAnimation, i, animData);
         }
     }
 

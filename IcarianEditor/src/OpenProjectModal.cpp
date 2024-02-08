@@ -3,9 +3,11 @@
 #include <imgui.h>
 
 #include "AppMain.h"
-#include "FileDialog.h"
-#include "IO.h"
+#include "FileDialogBlock.h"
 #include "Modals/ErrorModal.h"
+
+constexpr static const char* const Filters[] = { ".icproj", "*" };
+constexpr uint32_t FilterCount = sizeof(Filters) / sizeof(*Filters);
 
 OpenProjectModal::OpenProjectModal(AppMain* a_app, Callback a_callback) : Modal("Open Project", glm::vec2(640, 480))
 {
@@ -13,114 +15,56 @@ OpenProjectModal::OpenProjectModal(AppMain* a_app, Callback a_callback) : Modal(
 
     m_callback = a_callback;
 
-    m_path = IO::GetHomePath();
-    m_name = "";
-
-    FileDialog::GenerateFileDirs(&m_dirs, &m_files, m_path);
+    m_fileDialogBlock = new FileDialogBlock(glm::vec2(-1, -1), false, FilterCount, Filters);
 }
 OpenProjectModal::~OpenProjectModal()
 {
-
+    delete m_fileDialogBlock;
 }
 
 bool OpenProjectModal::Update()
 {
-    char buffer[BufferSize];
+    std::filesystem::path path;
+    std::string name;
 
-    const std::string pathStr = m_path.string();
-    uint32_t pathLen = (uint32_t)pathStr.length();
-    if (pathLen > BufferSize)
+    const e_FileDialogStatus status = m_fileDialogBlock->ShowFileDialog(&path, &name);
+
+    switch (status)
     {
-        m_app->PushModal(new ErrorModal("Path exceeds buffer size"));
-
-        m_path = IO::GetHomePath();
-
-        pathLen = (uint32_t)m_path.string().length();
-    }
-    
-    for (uint32_t i = 0; i < pathLen; ++i)
+    case FileDialogStatus_Ok:
     {
-        buffer[i] = pathStr[i];
-    }
-    buffer[pathLen] = 0;
-
-    if (ImGui::InputText("Path", buffer, BufferSize))
-    {
-        m_path = buffer;
-
-        m_dirs.clear();
-        m_files.clear();
-
-        FileDialog::GenerateFileDirs(&m_dirs, &m_files, m_path);
-    }
-
-    if (!FileDialog::FileExplorer(m_dirs, m_files, &m_path, &m_name))
-    {
-        m_dirs.clear();
-        m_files.clear();
-
-        FileDialog::GenerateFileDirs(&m_dirs, &m_files, m_path);
-    }
-
-    uint32_t nameLen = (uint32_t)m_name.length();
-    if (nameLen > BufferSize)
-    {
-        m_app->PushModal(new ErrorModal("Name exceeds buffer size"));
-
-        m_name.clear();
-
-        nameLen = 0;
-    }
-
-    for (uint32_t i = 0; i < nameLen; ++i)
-    {
-        buffer[i] = m_name[i];
-    }
-    buffer[nameLen] = 0;
-
-    if (ImGui::InputText("Name", buffer, BufferSize))
-    {
-        m_name = buffer;
-    }
-
-    ImGui::SameLine();
-    
-    if (ImGui::Button("Open"))
-    {
-        if (!std::filesystem::exists(m_path))
+        if (!std::filesystem::exists(path))
         {
             m_app->PushModal(new ErrorModal("Directory does not exist"));
 
             return true;
         }
 
-        if (m_name.empty())
+        if (name.empty())
         {
             m_app->PushModal(new ErrorModal("Invalid Name"));
 
             return true;
         }
 
-        if (!std::filesystem::exists(m_path / m_name))
-        {
-            if (!std::filesystem::exists(m_path / (m_name + ".icproj")))
-            {
-                m_app->PushModal(new ErrorModal("File does not exist"));
-
-                return true;
-            }
-        }
-
-        m_callback(m_path, m_name);
+        m_callback(path, name);
 
         return false;
     }
+    case FileDialogStatus_Error:
+    {
+        m_app->PushModal(new ErrorModal("File dialog error"));
 
-    ImGui::SameLine();
-
-    if (ImGui::Button("Cancel"))
+        break;
+    }
+    case FileDialogStatus_Cancel:
     {
         return false;
+    }
+    default:
+    {
+        break;
+    }
     }
 
     return true;
