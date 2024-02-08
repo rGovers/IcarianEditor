@@ -145,12 +145,12 @@ namespace IcarianEditor.Properties
                             uint slot = input.Slot;
                             if (GUI.RUIntField("Slot", ref slot, 0))
                             {
-                                input.Slot = (ushort)slot;
+                                input.Slot = (byte)slot;
                             }
                             uint set = input.Set;
                             if (GUI.RUIntField("Set", ref set, 0))
                             {
-                                input.Set = (ushort)set;
+                                input.Set = (byte)set;
                             }
 
                             break;
@@ -299,12 +299,12 @@ namespace IcarianEditor.Properties
                                 uint slot = input.Slot;
                                 if (GUI.RUIntField("Slot", ref slot, 0))
                                 {
-                                    input.Slot = (ushort)slot;
+                                    input.Slot = (byte)slot;
                                 }
                                 uint set = input.Set;
                                 if (GUI.RUIntField("Set", ref set, 0))
                                 {
-                                    input.Set = (ushort)set;
+                                    input.Set = (byte)set;
                                 }
 
                                 break;

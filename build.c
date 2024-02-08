@@ -119,6 +119,84 @@ int main(int a_argc, char** a_argv)
                 return 1;
             }
         }
+        else if (strncmp(a_argv[i], CompileCommandsString, CompileCommandsStringLen) == 0)
+        {
+            // TODO: Clean this up so passing a working directory is not required
+            CBUINT32 offset;
+            CBUINT32 engineDependencyCount;
+            DependencyProject* engineDependencies;
+
+            const char* compileCommandsStr = a_argv[i] + CompileCommandsStringLen;
+            while (*compileCommandsStr != '=' && *compileCommandsStr != '\0')
+            {
+                ++compileCommandsStr;
+            }
+
+            if (*compileCommandsStr == '\0')
+            {
+                printf("Invalid compile commands argument: %s\n", a_argv[i]);
+            }
+
+            ++compileCommandsStr;
+
+            printf("Generating compile commands projects \n");
+            dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
+            engineDependencies = BuildIcarianNativeDependencies(&engineDependencyCount, targetPlatform, buildConfiguration);
+            
+            CBUINT32 finalCount = dependencyProjectCount + engineDependencyCount + 3;
+            CUBE_CProject* projects = malloc(sizeof(CUBE_CProject) * finalCount);
+            offset = 0;
+            for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
+            {
+                CUBE_CProject proj = dependencyProjects[i].Project;
+                CUBE_CProject_PrependPaths(&proj, dependencyProjects[i].WorkingDirectory, CBTRUE);
+                CUBE_CProject_PrependPaths(&proj, "./IcarianEngine/", CBTRUE);
+                projects[offset++] = proj;
+            }
+
+            free(dependencyProjects);
+
+            flareBaseProject = BuildFlareBaseProject(CBTRUE, targetPlatform, buildConfiguration);
+            CUBE_CProject_PrependPaths(&flareBaseProject, "./IcarianEngine/FlareBase/", CBTRUE);
+            projects[offset++] = flareBaseProject;
+
+            for (CBUINT32 i = 0; i < engineDependencyCount; ++i)
+            {
+                CUBE_CProject proj = engineDependencies[i].Project;
+                CUBE_CProject_PrependPaths(&proj, engineDependencies[i].WorkingDirectory, CBTRUE);
+                CUBE_CProject_PrependPaths(&proj, "./IcarianEngine/", CBTRUE);
+                projects[offset++] = proj;
+            }
+
+            free(engineDependencies);
+
+            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
+            CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
+            projects[offset++] = icarianNativeProject;
+
+            icarianEditorProject = BuildIcarianEditorProject(targetPlatform, buildConfiguration);
+            CUBE_CProject_PrependPaths(&icarianEditorProject, "./IcarianEditor", CBTRUE);
+            projects[offset++] = icarianEditorProject;
+
+            printf("Generating compile commands \n");
+            CUBE_String compCom = CUBE_CProject_GenerateMultiCompileCommands(projects, finalCount, CUBE_CProjectCompiler_GCC, compileCommandsStr);
+
+            printf("Writing compile commands \n");
+            CUBE_IO_WriteFileC("compile_commands.json", compCom.Data, compCom.Length);
+
+            CUBE_String_Destroy(&compCom);
+
+            for (CBUINT32 i = 0; i < finalCount; ++i)
+            {
+                CUBE_CProject_Destroy(&(projects[i]));
+            }
+
+            free(projects);
+
+            printf("Done!\n");
+
+            return 0;
+        }
         else if (strncmp(a_argv[i], HelpString, HelpStringLen) == 0)
         {
             PrintHelp();
@@ -265,6 +343,12 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
+    // This is to work around issues with using .NET compiler removing the main method for some reason it does that and crashes on Windows
+    // This is not an issue on Linux or when using Mono compilers
+    // Just a workaround to allow it to be run from embedded mono runtime
+    // This is a hack and only works because of how managed .NET assemblies work with there not being much difference between a DLL and an EXE
+    // Also stops the end user from running IcarianCS.exe directly
+    // Will probably fix this down the line so it can be run as a true dll
     CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "IcarianEngine/IcarianCS/build/IcarianCS.dll");
 
     printf("IcarianCS Compiled!\n");
