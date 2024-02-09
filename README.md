@@ -8,7 +8,7 @@ The editor for Icarian Engine.
 * Vulkan SDK
 * Python3(SPIRV-Tools)
 ### Linux
-* GCC
+* GCC, Clang or Zig
 ### Windows
 * MingGW
 
