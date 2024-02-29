@@ -10,6 +10,7 @@ enum e_AssetType
 {
     AssetType_Null = -1,
     AssetType_About,
+    AssetType_Assembly,
     AssetType_Def,
     AssetType_Model,
     AssetType_Scene,

@@ -44,6 +44,57 @@ AssetLibrary::~AssetLibrary()
     }
 }
 
+template<typename T>
+static T ToWInt(const unsigned char* a_data)
+{
+    constexpr uint32_t Size = sizeof(T);
+
+    T val = 0;
+    for (uint32_t i = 0; i < Size; ++i)
+    {
+        val |= (T)(a_data[i] << i * 8);
+    }
+
+    return val;
+}
+
+// Microsoft magic bullshit
+// Reference: https://learn.microsoft.com/en-us/cpp/dotnet/how-to-determine-if-an-image-is-native-or-clr?view=msvc-170
+static bool IsManagedAssembly(const unsigned char* a_data, const uint32_t a_length)
+{
+    if (a_length < 64)
+    {
+        return false;
+    }
+
+    constexpr uint16_t MagicDLLNumber = 0x5A4D;
+    constexpr uint32_t MagicNTAddress = 0x00004550;
+    
+    // Is Exe/DLL
+    if (ToWInt<uint16_t>(a_data) != MagicDLLNumber)
+    {
+        return false;
+    }
+
+    const uint32_t winNTHdr = ToWInt<uint32_t>(a_data + 60);
+    // Address is valid
+    if (ToWInt<uint32_t>(a_data + winNTHdr) != MagicNTAddress)
+    {
+        return false;
+    }
+
+    const uint32_t lightningAddr = winNTHdr + 24 + 208;
+    for (uint32_t i = 0; i < 8; ++i)
+    {
+        if (a_data[i + lightningAddr])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
 {
     for (const auto& iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
@@ -63,6 +114,10 @@ static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::pa
             if (ext == ".cs")
             {
                 asset.AssetType = AssetType_Script;
+            }
+            else if (ext == ".dll" || ext == ".so")
+            {
+                asset.AssetType = AssetType_Assembly;
             }
             else if (ext == ".def")
             {
@@ -323,6 +378,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 
     m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":LoadScenes(byte[][],string[])", sceneArgs);
 }
+
 void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
 {
     for (const Asset& asset : m_assets)
@@ -345,6 +401,37 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
             else
             {
                 Logger::Warning("Failed writing about: " + p.string());
+            }
+
+            break;
+        }
+        case AssetType_Assembly:
+        {
+            const std::filesystem::path fileName = asset.Path.filename();
+            const std::filesystem::path ext = asset.Path.extension();
+            std::filesystem::path p;
+
+            if (ext == ".dll" && IsManagedAssembly((unsigned char*)asset.Data, asset.Size))
+            {
+                p = a_path / "Core" / "Assemblies" / fileName;
+            }
+            else
+            {
+                p = a_path / "Core" / "Assemblies" / "Native" / fileName;
+            }
+
+            std::filesystem::create_directories(p.parent_path());
+
+            std::ofstream file = std::ofstream(p, std::ios_base::binary);
+            if (file.good() && file.is_open())
+            {
+                file.write(asset.Data, asset.Size);
+
+                file.close();
+            }
+            else
+            {
+                Logger::Warning("Failed to write assembly: " + p.string());
             }
 
             break;
