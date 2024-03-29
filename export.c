@@ -9,7 +9,7 @@
 #include "IcarianEngine/IcarianCS/BuildIcarianCS.h"
 #include "IcarianEngine/IcarianNative/BuildIcarianNative.h"
 
-CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform)
+CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform, CBUINT32 a_jobThreads)
 {
     CBUINT32 lineCount;
     CUBE_String* lines;
@@ -67,7 +67,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform)
         CUBE_Path workingDirectory = CUBE_Path_CombineC(a_enginePath, dependencyProjects[i].WorkingDirectory);
         CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
+        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, a_jobThreads, &lines, &lineCount);
 
         CUBE_String_Destroy(&workingDirectoryStr);
         CUBE_Path_Destroy(&workingDirectory);
@@ -92,7 +92,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform)
 
     printf("Compiling FlareBase...\n");
 
-    ret = CUBE_CProject_Compile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, a_jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
@@ -114,7 +114,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform)
         CUBE_Path workingDirectory = CUBE_Path_CombineC(a_enginePath, dependencyProjects[i].WorkingDirectory);
         CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
+        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, a_jobThreads, &lines, &lineCount);
 
         CUBE_String_Destroy(&workingDirectoryStr);
         CUBE_Path_Destroy(&workingDirectory);
@@ -139,7 +139,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform)
 
     icarianNativeProject = BuildIcarianNativeProject(a_platform, BuildConfiguration_Release, CBFALSE, CBFALSE);
 
-    ret = CUBE_CProject_Compile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, a_jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
@@ -161,12 +161,16 @@ int main(int a_argc, char** a_argv)
 {
     CUBE_CSProject icarianCSProject;
 
+    CBUINT32 jobThreads;
+
     CBUINT32 lineCount;
     CUBE_String* lines;
 
     CBBOOL ret;
 
     CUBE_Path icarianEnginePath;
+
+    jobThreads = 4;
 
     lineCount = 0;
     lines = CBNULL;
@@ -195,7 +199,7 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    if (!BuildPlatform(&icarianEnginePath, TargetPlatform_Windows))
+    if (!BuildPlatform(&icarianEnginePath, TargetPlatform_Windows, jobThreads))
     {
         printf("Failed to build Windows Export\n");
 
@@ -222,7 +226,7 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Windows/lib/mono/", "build/BuildFiles/Windows/bin/lib/mono/", CBTRUE);
     CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Windows/etc/", "build/BuildFiles/Windows/bin/etc/", CBTRUE);
 
-    if (!BuildPlatform(&icarianEnginePath, TargetPlatform_Linux))
+    if (!BuildPlatform(&icarianEnginePath, TargetPlatform_Linux, jobThreads))
     {
         printf("Failed to build Linux Export\n");
 

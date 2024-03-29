@@ -27,6 +27,8 @@ int main(int a_argc, char** a_argv)
     CBUINT32 dependencyProjectCount;
     DependencyProject* dependencyProjects;
 
+    CBUINT32 jobThreads;
+
     CBUINT32 lineCount;
     CUBE_String* lines;
 
@@ -44,6 +46,8 @@ int main(int a_argc, char** a_argv)
 
     lineCount = 0;
     lines = CBNULL;
+
+    jobThreads = 4;
 
     printf("IcarianEditor Build\n");
     printf("\n");
@@ -205,6 +209,25 @@ int main(int a_argc, char** a_argv)
 
             return 0;
         }
+        else if (strncmp(a_argv[i], JobString, JobStringLen) == 0)
+        {
+            const char* jobCountStr = a_argv[i] + JobStringLen;
+            while (*jobCountStr != '=' && *jobCountStr != 0)
+            {
+                ++jobCountStr;
+            }
+
+            if (*jobCountStr == 0)
+            {
+                printf("Invalid job count argument: %s\n", a_argv[i]);
+
+                return 1;
+            }
+
+            ++jobCountStr;
+
+            jobThreads = (CBUINT32)atoi(jobCountStr);
+        }
         else if (strncmp(a_argv[i], HelpString, HelpStringLen) == 0)
         {
             PrintHelp();
@@ -219,7 +242,7 @@ int main(int a_argc, char** a_argv)
         {
             buildConfiguration = BuildConfiguration_Release;
         }
-        else 
+        else
         {
             printf("Unknown argument: %s\n", a_argv[i]);
             printf("\n");
@@ -306,7 +329,7 @@ int main(int a_argc, char** a_argv)
         CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
         CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
+        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
 
         CUBE_String_Destroy(&workingDirectoryStr);
         CUBE_Path_Destroy(&workingDirectory);
@@ -333,7 +356,7 @@ int main(int a_argc, char** a_argv)
     flareBaseProject = BuildFlareBaseProject(CBTRUE, targetPlatform, buildConfiguration);
 
     printf("Compiling FlareBase...\n");
-    ret = CUBE_CProject_Compile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
@@ -398,7 +421,7 @@ int main(int a_argc, char** a_argv)
         CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
         CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_Compile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, &lines, &lineCount);
+        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
 
         CUBE_String_Destroy(&workingDirectoryStr);
         CUBE_Path_Destroy(&workingDirectory);
@@ -423,9 +446,11 @@ int main(int a_argc, char** a_argv)
     icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
 
     printf("Compiling IcarianNative...\n");
-    ret = CUBE_CProject_Compile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
+
+    CUBE_CProject_Destroy(&icarianNativeProject);
 
     if (!ret)
     {
@@ -479,7 +504,7 @@ int main(int a_argc, char** a_argv)
     icarianEditorProject = BuildIcarianEditorProject(targetPlatform, buildConfiguration);
 
     printf("Compiling IcarianEditor...\n");
-    ret = CUBE_CProject_Compile(&icarianEditorProject, compiler, "IcarianEditor", CBNULL, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&icarianEditorProject, compiler, "IcarianEditor", CBNULL, jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 

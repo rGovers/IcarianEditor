@@ -7,6 +7,7 @@ The editor for Icarian Engine.
 ## Prerequisites
 * Vulkan SDK
 * Python3(SPIRV-Tools)
+* zstd
 ### Linux
 * GCC, Clang or Zig
 ### Windows
