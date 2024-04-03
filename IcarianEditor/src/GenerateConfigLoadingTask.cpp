@@ -20,7 +20,7 @@ void GenerateConfigLoadingTask::Run()
     doc.InsertEndChild(doc.NewDeclaration(nullptr));
 
     tinyxml2::XMLElement* root = doc.NewElement("Config");
-    doc.InsertFirstChild(root);
+    doc.InsertEndChild(root);
 
     tinyxml2::XMLElement* applicationName = doc.NewElement("ApplicationName");
     root->InsertEndChild(applicationName);
