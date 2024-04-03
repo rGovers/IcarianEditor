@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "Datastore.h"
+#include "FlareImGui.h"
 #include "Logger.h"
 #include "Texture.h"
 
@@ -278,7 +279,7 @@ void ConsoleWindow::Update(double a_delta)
             
             if (draw.Tex != nullptr)
             {
-                ImGui::Image((ImTextureID)draw.Tex->GetHandle(), ImVec2(16.0f, 16.0f));
+                ImGui::Image(TexToImHandle(draw.Tex), ImVec2(16.0f, 16.0f));
                 ImGui::SameLine();
             }
 

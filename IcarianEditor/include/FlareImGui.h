@@ -8,6 +8,8 @@
 
 class Texture;
 
+#define TexToImHandle(texture) (ImTextureID)(uintptr_t)(texture)->GetHandle()
+
 namespace FlareImGui
 {
     void Label(const std::string_view& a_label);

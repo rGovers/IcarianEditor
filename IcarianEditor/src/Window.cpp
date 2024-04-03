@@ -9,6 +9,7 @@
 
 #include "Datastore.h"
 #include "Flare/IcarianDefer.h"
+#include "FlareImGui.h"
 #include "Texture.h"
 
 Window::Window(const std::string_view& a_displayName, const std::string_view& a_texturePath)
@@ -66,14 +67,14 @@ bool Window::Display(double a_delta)
                         const glm::vec2 startRect = windowPos + basePos + offset;
                         const glm::vec2 endRect = startRect + glm::vec2(size);
 
-                        drawList->AddImage((ImTextureID)texture->GetHandle(), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
+                        drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
                     }
                     else
                     {
                         const glm::vec2 startRect = windowPos + offset;
                         const glm::vec2 endRect = startRect + glm::vec2(size);
 
-                        drawList->AddImage((ImTextureID)texture->GetHandle(), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
+                        drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
                     }
                 }                
             }

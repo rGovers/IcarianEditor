@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "Datastore.h"
+#include "FlareImGui.h"
 #include "Texture.h"
 
 static bool IDirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, std::filesystem::path* a_path)
@@ -26,7 +27,7 @@ static bool IDirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, s
     {
         if (folderTex != nullptr)
         {
-            ImGui::Image((ImTextureID)folderTex->GetHandle(), ImVec2(16.0f, 16.0f));
+            ImGui::Image(TexToImHandle(folderTex), ImVec2(16.0f, 16.0f));
 
             ImGui::SameLine();
         }

@@ -16,3 +16,4 @@
         } \
         Instance->WriteScene(p, (uint32_t)len, data); \
     }, IOP_STRING a_path, IOP_ARRAY(byte[]) a_data) \
+

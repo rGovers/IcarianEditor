@@ -122,7 +122,7 @@ namespace FlareImGui
         const Texture* tex = Datastore::GetTexture(a_path);
         if (tex != nullptr)
         {
-            ImGui::Image((ImTextureID)tex->GetHandle(), a_size);
+            ImGui::Image(TexToImHandle(tex), a_size);
 
             return true;
         }
@@ -151,7 +151,7 @@ namespace FlareImGui
 
         if (a_texture != nullptr)
         {
-            ret = ImGui::ImageButton((ImTextureID)a_texture->GetHandle(), { a_size.x, a_size.y });
+            ret = ImGui::ImageButton(TexToImHandle(a_texture), { a_size.x, a_size.y });
         }
 
         style.Colors[ImGuiCol_Button] = color;
@@ -180,7 +180,7 @@ namespace FlareImGui
             const ImGuiID id = ImGui::GetID(a_label);
 
             ImGui::PushID(id);
-            ret = ImGui::ImageButton((ImTextureID)tex->GetHandle(), a_size);
+            ret = ImGui::ImageButton(TexToImHandle(tex), a_size);
             ImGui::PopID();
         }
         else
@@ -222,7 +222,7 @@ namespace FlareImGui
             const ImGuiID id = ImGui::GetID(a_label);
 
             ImGui::PushID(id);
-            ret = ImGui::ImageButton((ImTextureID)tex->GetHandle(), a_size);
+            ret = ImGui::ImageButton(TexToImHandle(tex), a_size);
             ImGui::PopID();
 
             if (ret)

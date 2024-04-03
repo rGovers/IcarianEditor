@@ -109,7 +109,7 @@ void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
     const Texture* folderTex = Datastore::GetTexture("Textures/WindowIcons/WindowIcon_AssetBrowser.png");
     if (folderTex != nullptr)
     {
-        ImGui::Image((ImTextureID)folderTex->GetHandle(), ImVec2(16.0f, 16.0f));
+        ImGui::Image(TexToImHandle(folderTex), ImVec2(16.0f, 16.0f));
 
         ImGui::SameLine();
     }
@@ -606,7 +606,7 @@ void AssetBrowserWindow::Update(double a_delta)
     ImGui::BeginGroup();
 
     const Texture* resetTex = Datastore::GetTexture("Textures/Icons/Icon_Reset.png");
-    if (ImGui::ImageButton((ImTextureID)resetTex->GetHandle(), { 16.0f, 16.0f }))
+    if (ImGui::ImageButton(TexToImHandle(resetTex), { 16.0f, 16.0f }))
     {
         m_project->SetRefresh(true);
     }

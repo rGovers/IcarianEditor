@@ -194,7 +194,7 @@ void EditorWindow::Update(double a_delta)
         return;
     }
 
-    ImGui::Image((ImTextureID)m_textureHandle, sizeIm);
+    ImGui::Image((ImTextureID)(uintptr_t)m_textureHandle, sizeIm);
 
     const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
     constexpr glm::vec2 WinSize = glm::vec2(117.0f, 40.0f);

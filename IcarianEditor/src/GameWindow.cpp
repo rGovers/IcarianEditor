@@ -252,7 +252,7 @@ void GameWindow::Update(double a_delta)
         m_processManager->PushKeyboardState(state);
     }
 
-    ImGui::Image((ImTextureID)m_processManager->GetImage(), sizeIm);
+    ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
 
     const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
     constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);

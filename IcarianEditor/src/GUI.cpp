@@ -407,7 +407,7 @@ RUNTIME_FUNCTION(uint32_t, GUI, ShowTexture,
     const Texture* texture = Datastore::GetTexture(path);
     if (texture != nullptr)
     {
-        ImGui::Image((ImTextureID)texture->GetHandle(), ImVec2(a_size.x, a_size.y));
+        ImGui::Image(TexToImHandle(texture), ImVec2(a_size.x, a_size.y));
 
         return 1;
     }
