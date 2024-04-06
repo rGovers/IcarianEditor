@@ -243,9 +243,9 @@ bool AssetLibrary::ShouldRefresh(const std::filesystem::path& a_workingDir) cons
     const std::filesystem::path p = a_workingDir / "Project";
     TraverseTree(&assets, p, p);
 
-    for (const Asset& internalAsset : assets)
+    for (const Asset& externalAsset : assets)
     {
-        for (const Asset& externalAsset : m_assets)
+        for (const Asset& internalAsset : m_assets)
         {
             if (internalAsset.Path == externalAsset.Path)
             {
@@ -539,10 +539,14 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
     }
 }
 
-void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data)
+void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type)
 {
     *a_size = 0;
     *a_data = nullptr;
+    if (a_type != nullptr)
+    {
+        *a_type = AssetType_Null;
+    }
 
     for (const Asset& asset : m_assets)
     {
@@ -550,16 +554,20 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
         {
             *a_size = asset.Size;
             *a_data = asset.Data;
+            if (a_type != nullptr)
+            {
+                *a_type = asset.AssetType;
+            }
 
             return;
         }
     }
 }
-void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data)
+void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type)
 {
     const std::filesystem::path rPath = IO::GetRelativePath(a_workingDir, a_path);
 
-    GetAsset(rPath, a_size, a_data);
+    GetAsset(rPath, a_size, a_data, a_type);
 }
 
 void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir)

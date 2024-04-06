@@ -62,7 +62,7 @@ Texture* Datastore::GetTexture(const std::string_view& a_path)
             const unsigned char* data = stbi_load(a_path.data(), &width, &height, &comp, STBI_rgb_alpha);
             if (data != nullptr)
             {
-                Texture* tex = new Texture((uint32_t)width, (uint32_t)height, data);
+                Texture* tex = Texture::CreateRGBA((uint32_t)width, (uint32_t)height, data);
 
                 Instance->m_textures.emplace(pStr, tex);
 

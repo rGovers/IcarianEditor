@@ -1,6 +1,7 @@
 #include "Runtime/RuntimeStorage.h"
 
 #include <cstring>
+#include <ktx.h>
 #include <stb_image.h>
 
 #include "AssetLibrary.h"
@@ -54,16 +55,16 @@ static RuntimeStorage* Instance = nullptr;
 
 RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(VertexShader, GenerateFromFile), MonoString* a_path)
+RUNTIME_FUNCTION(uint32_t, VertexShader, GenerateFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
 
     const std::filesystem::path p = std::filesystem::path(str);
-
-    mono_free(str);
+    const std::filesystem::path ext = p.extension();
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (p.extension() == ".fvert")
+    if (ext == ".fvert")
     {
         uint32_t size; 
         const char* dat;
@@ -73,7 +74,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(VertexShader, GenerateFromFile
 
         return Instance->GenerateVertexShader(s);
     }
-    else if (p.extension() == ".vert")
+    else if (ext == ".vert")
     {
         uint32_t size; 
         const char* dat;
@@ -83,28 +84,27 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(VertexShader, GenerateFromFile
     }
 
     return -1;
-}
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(PixelShader, GenerateFromFile), MonoString* a_path)
+}, MonoString* a_path)
+RUNTIME_FUNCTION(uint32_t, PixelShader, GenerateFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
 
     const std::filesystem::path p = std::filesystem::path(str);
-
-    mono_free(str);
+    const std::filesystem::path ext = p.extension();
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (p.extension() == ".fpix" || p.extension() == ".ffrag")
+    if (ext == ".fpix" || ext == ".ffrag")
     {
         uint32_t size;
         const char* dat;
-
         library->GetAsset(p, &size, &dat);
 
         const std::string s = GLSL_FromFShader(std::string_view(dat, size));
 
         return Instance->GeneratePixelShader(s);
     }
-    else if (p.extension() == ".pix" || p.extension() == ".frag")
+    else if (ext == ".pix" || ext == ".frag")
     {
         uint32_t size; 
         const char* dat;
@@ -114,7 +114,7 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(PixelShader, GenerateFromFile)
     }
 
     return -1;
-}
+}, MonoString* a_path)
 
 RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram, 
 {
@@ -473,14 +473,16 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     return data;
 }, MonoString* a_path)
 
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Texture, GenerateFromFile), MonoString* a_path)
+RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
     IDEFER(mono_free(str));
+    
     const std::filesystem::path p = std::filesystem::path(str);
+    const std::filesystem::path ext = p.extension();
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (p.extension() == ".png")
+    if (ext == ".png")
     {
         const char* dat;
         uint32_t size;
@@ -498,9 +500,35 @@ FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Texture, GenerateFromFile), Mo
             return Instance->GenerateTexture((uint32_t)width, (uint32_t)height, (unsigned char*)pixels);
         }
     }
+    else if (ext == ".ktx2")
+    {
+        const char* dat;
+        uint32_t size;
+        library->GetAsset(p, &size, &dat);
+
+        if (dat != nullptr && size > 0)
+        {
+            ktxTexture2* ktxTex;
+            if (ktxTexture2_CreateFromMemory((ktx_uint8_t*)dat, (ktx_size_t)size, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTex) == KTX_SUCCESS)
+            {
+                IDEFER(ktxTexture_Destroy((ktxTexture*)ktxTex));
+
+                if (ktxTexture2_NeedsTranscoding(ktxTex))
+                {
+                    ktxTexture2_TranscodeBasis(ktxTex, KTX_TTF_BC3_RGBA, 0);
+                }
+
+                GLuint texHandle = 0;
+                GLenum target;
+                ktxTexture_GLUpload((ktxTexture*)ktxTex, &texHandle, &target, NULL);
+                
+                return Instance->GenerateTextureFromHandle((uint32_t)texHandle);
+            }
+        }
+    }
 
     return -1;
-}
+}, MonoString* a_path)
 
 RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets)
 {
@@ -719,7 +747,26 @@ void RuntimeStorage::DestroyModel(uint32_t a_addr)
 
 uint32_t RuntimeStorage::GenerateTexture(uint32_t a_width, uint32_t a_height, const unsigned char* a_data)
 {
-    Texture* texture = new Texture(a_width, a_height, a_data);
+    Texture* texture = Texture::CreateRGBA(a_width, a_height, a_data);
+
+    const uint32_t textureCount = (uint32_t)m_textures.size();
+    for (uint32_t i = 0; i < textureCount; ++i)
+    {
+        if (m_textures[i] == nullptr)
+        {
+            m_textures[i] = texture;
+
+            return i;
+        }
+    }
+
+    m_textures.emplace_back(texture);
+
+    return textureCount;
+}
+uint32_t RuntimeStorage::GenerateTextureFromHandle(uint32_t a_handle)
+{
+    Texture* texture = new Texture((GLuint)a_handle);
 
     const uint32_t textureCount = (uint32_t)m_textures.size();
     for (uint32_t i = 0; i < textureCount; ++i)

@@ -75,6 +75,7 @@ public:
     }
     
     uint32_t GenerateTexture(uint32_t a_width, uint32_t a_height, const unsigned char* a_data);
+    uint32_t GenerateTextureFromHandle(uint32_t a_handle);
     void DestroyTexture(uint32_t a_addr);
 
     MonoArray* LoadDAEAnimationClip(const std::filesystem::path& a_path) const;

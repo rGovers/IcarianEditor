@@ -11,7 +11,6 @@
 #include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "IO.h"
-#include "Logger.h"
 #include "Modals/ConfirmModal.h"
 #include "Modals/CreateAssemblyControlModal.h"
 #include "Modals/CreateDefTableModal.h"
@@ -359,7 +358,24 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 {
     bool ret = false;
 
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec2 curPos = ImGui::GetCursorScreenPos();
+    const ImVec2 spacing = style.ItemSpacing;
+
+    const float startXPos = curPos.x;
+    const float startYPos = curPos.y;
+
+    const float width = ImGui::GetColumnWidth() - spacing.x;
+    const float height = 170.0f + spacing.y;
+
+    IDEFER(ImGui::NextColumn());
+
     ImGui::BeginGroup();
+
+    const ImU32 rectColor = ImGui::GetColorU32(ImVec4(0.25f, 0.25f, 0.25f, 0.25f));
+
+    drawList->AddRectFilled(ImVec2(startXPos, startYPos), ImVec2(startXPos + width, startYPos + height), rectColor, 2.0f);
 
     const std::string fileName = a_path.stem().string();
     const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
@@ -373,7 +389,8 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     uint32_t size;
     const char* data;
-    m_assetLibrary->GetAsset(rPath, &size, &data);
+    e_AssetType type;
+    m_assetLibrary->GetAsset(rPath, &size, &data, &type);
 
     if (size > 0 && data != nullptr)
     {
@@ -417,9 +434,15 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
             
     ImGui::Text("%s", fileName.c_str());
 
-    ImGui::EndGroup();
+    if (type != AssetType_Null)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.75f, 0.75f));
+        IDEFER(ImGui::PopStyleColor());
+        
+        ImGui::Text("%s", AssetTypeStrings[type]);
+    }
 
-    ImGui::NextColumn();
+    ImGui::EndGroup();
 
     return ret;
 }
@@ -669,7 +692,7 @@ void AssetBrowserWindow::Update(double a_delta)
     {
         const float width = ImGui::GetWindowWidth();
 
-        ImGui::Columns(glm::max(1, (int)(width / (ItemWidth + 16.0f))));
+        ImGui::Columns(glm::max(1, (int)(width / (ItemWidth + 20.0f))));
 
         if (m_searchBuffer[0] == 0)
         {

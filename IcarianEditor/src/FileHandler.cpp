@@ -1,5 +1,6 @@
 #include "FileHandler.h"
 
+#include <ktx.h>
 #include <stb_image.h>
 
 #include "AssetLibrary.h"
@@ -136,7 +137,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     {
         const std::string name = a_path.filename().string();
 
-        auto iter = Instance->m_textureTex.find(name);
+        const auto iter = Instance->m_textureTex.find(name);
         if (iter != Instance->m_textureTex.end())
         {
             if (iter->second != nullptr)
@@ -161,11 +162,56 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
                 {
                     IDEFER(stbi_image_free(pixels));
 
-                    Texture* texture = new Texture(width, height, pixels);
+                    Texture* texture = Texture::CreateRGBA(width, height, pixels);
                     *a_texture = texture;
                     Instance->m_textureTex.emplace(name, texture);
                 }
                 else 
+                {
+                    Instance->m_textureTex.emplace(name, nullptr);
+                }
+            }
+        }
+    }
+    else if (ext == ".ktx2")
+    {
+        const std::string name = a_path.filename().string();
+
+        const auto iter = Instance->m_textureTex.find(name);
+        if (iter != Instance->m_textureTex.end())
+        {
+            if (iter->second != nullptr)
+            {
+                *a_texture = iter->second;
+            }
+        }
+        else 
+        {
+            uint32_t size;
+            const char* data;
+            Instance->m_assets->GetAsset(a_path, &size, &data);
+
+            if (size > 0 && data != nullptr)
+            {
+                ktxTexture2* ktxTex;
+                if (ktxTexture2_CreateFromMemory((ktx_uint8_t*)data, (ktx_size_t)size, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTex) == KTX_SUCCESS)
+                {
+                    IDEFER(ktxTexture_Destroy((ktxTexture*)ktxTex));
+
+                    if (ktxTexture2_NeedsTranscoding(ktxTex))
+                    {
+                        ktxTexture2_TranscodeBasis(ktxTex, KTX_TTF_BC3_RGBA, 0);
+                    }
+
+                    GLuint texHandle = 0;
+                    GLenum target;
+                    ktxTexture_GLUpload((ktxTexture*)ktxTex, &texHandle, &target, NULL);
+                    
+                    Texture* texture = new Texture(texHandle);
+                    *a_texture = texture;
+                    Instance->m_textureTex.emplace(name, texture);
+                }
+                else
                 {
                     Instance->m_textureTex.emplace(name, nullptr);
                 }
