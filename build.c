@@ -4,7 +4,7 @@
 
 #include "IcarianEngine/BuildBase.h"
 #include "IcarianEngine/deps/BuildDependencies.h"
-#include "IcarianEngine/FlareBase/BuildFlareBase.h"
+#include "IcarianEngine/IcarianCore/BuildIcarianCore.h"
 #include "IcarianEngine/IcarianCS/BuildIcarianCS.h"
 #include "IcarianEngine/IcarianNative/BuildIcarianNative.h"
 
@@ -168,8 +168,8 @@ int main(int a_argc, char** a_argv)
 
             free(dependencyProjects);
 
-            flareBaseProject = BuildFlareBaseProject(CBTRUE, targetPlatform, buildConfiguration);
-            CUBE_CProject_PrependPaths(&flareBaseProject, "./IcarianEngine/FlareBase/", CBTRUE);
+            flareBaseProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+            CUBE_CProject_PrependPaths(&flareBaseProject, "./IcarianEngine/IcarianCore/", CBTRUE);
             projects[offset++] = flareBaseProject;
 
             for (CBUINT32 i = 0; i < engineDependencyCount; ++i)
@@ -350,13 +350,13 @@ int main(int a_argc, char** a_argv)
 
     free(dependencyProjects);
 
-    PrintHeader("Building FlareBase");
+    PrintHeader("Building IcarianCore");
 
-    printf("Creating FlareBase project...\n");
-    flareBaseProject = BuildFlareBaseProject(CBTRUE, targetPlatform, buildConfiguration);
+    printf("Creating IcarianCore project...\n");
+    flareBaseProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
 
-    printf("Compiling FlareBase...\n");
-    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, jobThreads, &lines, &lineCount);
+    printf("Compiling IcarianCore...\n");
+    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
@@ -364,12 +364,12 @@ int main(int a_argc, char** a_argv)
 
     if (!ret)
     {
-        printf("Failed to compile FlareBase\n");
+        printf("Failed to compile IcarianCore\n");
 
         return 1;
     }
 
-    printf("FlareBase Compiled!\n");
+    printf("IcarianCore Compiled!\n");
 
     PrintHeader("Building IcarianCS");
 

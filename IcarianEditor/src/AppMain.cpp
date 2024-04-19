@@ -9,11 +9,11 @@
 #include <sstream>
 
 #include "AssetLibrary.h"
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "EditorConfig.h"
 #include "FileHandler.h"
-#include "Flare/IcarianAssert.h"
-#include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "Gizmos.h"
 #include "GUI.h"
@@ -36,8 +36,6 @@
 #include "Windows/SceneDefsWindow.h"
 #include "Windows/TimelineWindow.h"
 #include "Workspace.h"
-
-#include "Modals/ErrorModal.h"
 
 static AppMain* Instance = nullptr;
 

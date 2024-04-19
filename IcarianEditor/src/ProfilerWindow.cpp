@@ -2,7 +2,7 @@
 
 #include <implot.h>
 
-#include "Flare/IcarianDefer.h"
+#include "Core/IcarianDefer.h"
 #include "ProfilerData.h"
 
 static uint32_t GetParent(uint32_t a_index, const ProfileSnapshot& a_snapshot)

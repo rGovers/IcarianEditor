@@ -1,10 +1,10 @@
-#include "Flare/IcarianDefer.h"
 #include "Modals/CreateSciptableModal.h"
 
 #include <fstream>
 #include <imgui.h>
 
 #include "AppMain.h"
+#include "Core/IcarianDefer.h"
 #include "Modals/ErrorModal.h"
 #include "Project.h"
 #include "TemplateBuilder.h"

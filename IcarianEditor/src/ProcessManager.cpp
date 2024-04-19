@@ -1,5 +1,4 @@
 #include "ProcessManager.h"
-#include "Flare/IcarianDefer.h"
 
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
@@ -13,7 +12,8 @@
 #include <filesystem>
 #include <string>
 
-#include "Flare/IcarianAssert.h"
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 #include "ProfilerData.h"
 
@@ -98,11 +98,11 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     ProfilerData::Clear();
 
     m_captureInput = true;
-    m_cursorState = FlareBase::CursorState_Normal;
+    m_cursorState = CursorState_Normal;
 
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
 #if WIN32
-    const FlareBase::IPCPipe* serverPipe = FlareBase::IPCPipe::Create(GetAddr(PipeName).string());
+    const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(GetAddr(PipeName).string());
     if (serverPipe == nullptr)
     {
         Logger::Error("Failed to create IPC Pipe");
@@ -148,7 +148,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
     const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
 
-    if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
+    if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
     {
         Logger::Error("Failed to send resize message to IcarianEngine");
         Terminate();
@@ -160,7 +160,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 #else
     if (m_process == -1)
     {
-        const FlareBase::IPCPipe* serverPipe = FlareBase::IPCPipe::Create(GetAddr(PipeName).string());
+        const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(GetAddr(PipeName).string());
         if (serverPipe == nullptr)
         {
             Logger::Error("Failed to create IPC Pipe");
@@ -211,7 +211,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
             const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
 
-            if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
+            if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
             {
                 Logger::Error("Failed to send resize message to IcarianEngine");
                 Terminate();
@@ -229,7 +229,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
 void ProcessManager::PollMessage(bool a_blockError)
 {
-    std::queue<FlareBase::PipeMessage> messages;
+    std::queue<IcarianCore::PipeMessage> messages;
 
     if (!m_pipe->Receive(&messages))
     {
@@ -245,7 +245,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 
     while (!messages.empty())
     {
-        const FlareBase::PipeMessage msg = messages.front();
+        const IcarianCore::PipeMessage msg = messages.front();
         IDEFER(
         if (msg.Data != nullptr)
         {
@@ -255,7 +255,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 
         switch (msg.Type)
         {
-        case FlareBase::PipeMessageType_PushFrame:
+        case IcarianCore::PipeMessageType_PushFrame:
         {
             if (msg.Length == m_width * m_height * 4)
             {
@@ -265,7 +265,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             break;
         }
-        case FlareBase::PipeMessageType_FrameData:
+        case IcarianCore::PipeMessageType_FrameData:
         {
             const double delta = *(double*)(msg.Data + 0);
             const double time = *(double*)(msg.Data + 4);
@@ -282,13 +282,13 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             break;
         }
-        case FlareBase::PipeMessageType_SetCursorState:
+        case IcarianCore::PipeMessageType_SetCursorState:
         {
-            m_cursorState = *(FlareBase::e_CursorState*)msg.Data;
+            m_cursorState = *(e_CursorState*)msg.Data;
 
             break;
         }
-        case FlareBase::PipeMessageType_UpdateData:
+        case IcarianCore::PipeMessageType_UpdateData:
         {
             const double delta = *(double*)(msg.Data + 0);
             const double time = *(double*)(msg.Data + 4);
@@ -305,7 +305,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             break;
         }
-        case FlareBase::PipeMessageType_Message:
+        case IcarianCore::PipeMessageType_Message:
         {
             constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
 
@@ -335,13 +335,13 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             break;
         }
-        case FlareBase::PipeMessageType_ProfileScope:
+        case IcarianCore::PipeMessageType_ProfileScope:
         {
             ProfilerData::PushData(*(ProfileScope*)msg.Data);
 
             break;
         }
-        case FlareBase::PipeMessageType_Close:
+        case IcarianCore::PipeMessageType_Close:
         {
 #if WIN32
             m_processInfo.hProcess = INVALID_HANDLE_VALUE;
@@ -354,7 +354,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             return;
         }
-        case FlareBase::PipeMessageType_Null:
+        case IcarianCore::PipeMessageType_Null:
         {
             break;
         }
@@ -399,7 +399,7 @@ void ProcessManager::Update()
     // Do it this way so the editor does not get overwhelmed with frame data
     // Cause extreme lag if I do not throttle the push frames ~1 fps
     // IPCs are only so fast
-    if (!m_pipe->Send({ FlareBase::PipeMessageType_UnlockFrame }))
+    if (!m_pipe->Send({ IcarianCore::PipeMessageType_UnlockFrame }))
     {
         Logger::Error("Failed to send unlock frame message to IcarianEngine");
 
@@ -414,7 +414,7 @@ void ProcessManager::Update()
 
         const glm::ivec2 size = glm::ivec2((int)m_width, (int)m_height);
 
-        if (!m_pipe->Send({ FlareBase::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
+        if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
         {
             Logger::Error("Failed to send resize message to IcarianEngine");
 
@@ -428,7 +428,7 @@ void ProcessManager::Stop()
 {
     Logger::Message("Stopping IcarianEngine Instance");
 
-    if (!m_pipe->Send({ FlareBase::PipeMessageType_Close }))
+    if (!m_pipe->Send({ IcarianCore::PipeMessageType_Close }))
     {
         Logger::Error("Failed to send close message to IcarianEngine");
 
@@ -469,7 +469,7 @@ void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ FlareBase::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
+        if (!m_pipe->Send({ IcarianCore::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
         {
             Logger::Error("Failed to send cursor position message to IcarianEngine");
 
@@ -483,7 +483,7 @@ void ProcessManager::PushMouseState(unsigned char a_state)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ FlareBase::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state }))
+        if (!m_pipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state }))
         {
             Logger::Error("Failed to send mouse state message to IcarianEngine");
 
@@ -493,11 +493,11 @@ void ProcessManager::PushMouseState(unsigned char a_state)
         }
     }
 }
-void ProcessManager::PushKeyboardState(FlareBase::KeyboardState& a_state)
+void ProcessManager::PushKeyboardState(IcarianCore::KeyboardState& a_state)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ FlareBase::PipeMessageType_KeyboardState, FlareBase::KeyboardState::ElementCount, (char*)a_state.ToData() }))
+        if (!m_pipe->Send({ IcarianCore::PipeMessageType_KeyboardState, IcarianCore::KeyboardState::ElementCount, (char*)a_state.ToData() }))
         {
             Logger::Error("Failed to send keyboard state message to IcarianEngine");
 

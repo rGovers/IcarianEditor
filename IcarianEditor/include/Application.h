@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-#include "Flare/InputBindings.h"
+#include "EngineInputInteropStructures.h"
 
 enum e_Cursors
 {
@@ -51,7 +51,7 @@ public:
     glm::vec2 GetWindowSize() const;
     void SetWindowSize(const glm::vec2& a_size);
 
-    void SetCursorState(FlareBase::e_CursorState a_state);
+    void SetCursorState(e_CursorState a_state);
     void SetCursor(e_Cursors a_cursor);
 
     glm::vec2 GetCursorPos() const;

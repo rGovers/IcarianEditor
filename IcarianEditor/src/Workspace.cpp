@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-#include "Flare/IcarianDefer.h"
+#include "Core/IcarianDefer.h"
 #include "Runtime/RuntimeManager.h"
 #include "Windows/EditorWindow.h"
 
@@ -12,7 +12,7 @@ static Workspace* Instance = nullptr;
 
 #define WORKSPACE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
 
-WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION)
+WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
 Workspace::Workspace(RuntimeManager* a_runtime)
 {

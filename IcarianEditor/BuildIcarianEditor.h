@@ -32,7 +32,7 @@ const static char* TemplateBasePaths[] =
 
 const static CBUINT32 TemplateBasePathCount = sizeof(TemplateBasePaths) / sizeof(*TemplateBasePaths);
 
-CBBOOL WriteIcarianEditorShadersToHeader(const char* a_workingPath)
+static CBBOOL WriteIcarianEditorShadersToHeader(const char* a_workingPath)
 {
     CUBE_Path workingPath = CUBE_Path_CreateC(a_workingPath);
 
@@ -61,7 +61,7 @@ CBBOOL WriteIcarianEditorShadersToHeader(const char* a_workingPath)
     return ret;
 }
 
-CBBOOL WriteTemplateToHeader(const char* a_workingPath)
+static CBBOOL WriteTemplateToHeader(const char* a_workingPath)
 {
     CUBE_Path workingPath = CUBE_Path_CreateC(a_workingPath);
 
@@ -90,7 +90,7 @@ CBBOOL WriteTemplateToHeader(const char* a_workingPath)
     return ret;
 }
 
-CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_BuildConfiguration a_configuration)
+static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_BuildConfiguration a_configuration)
 {
     CUBE_CProject project = { 0 };
 
@@ -120,7 +120,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
 
-        "GLM_FORCE_QUAT_DATA_XYZW",
+        // "GLM_FORCE_QUAT_DATA_XYZW",
         "GLM_FORCE_RADIANS",
         "KHRONOS_STATIC",
         "LIBKTX",
@@ -134,7 +134,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         "include",
         "../EditorInterop",
         "../IcarianEngine/EngineInterop",
-        "../IcarianEngine/FlareBase/include",
+        "../IcarianEngine/IcarianCore/include",
         "../IcarianEngine/deps/CUBE/include",
         "../IcarianEngine/deps/flare-glfw/include",
         "../IcarianEngine/deps/flare-glm",
@@ -265,12 +265,15 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
     {
     case TargetPlatform_Windows:
     {
-        CUBE_CProject_AppendDefine(&project, "WIN32");
+        CUBE_CProject_AppendDefines(&project, 
+            "WIN32",
+            "_WIN32"
+        );
 
         CUBE_CProject_AppendSystemIncludePath(&project, "../IcarianEngine/deps/Mono/Windows/include");
 
         CUBE_CProject_AppendLibraries(&project,
-            "../IcarianEngine/FlareBase/build/FlareBase.lib",
+            "../IcarianEngine/IcarianCore/build/IcarianCore.lib",
 
             "../IcarianEngine/deps/flare-glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
@@ -299,7 +302,7 @@ CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_Bui
         CUBE_CProject_AppendSystemIncludePath(&project, "../IcarianEngine/deps/Mono/Linux/include/mono-2.0");
 
         CUBE_CProject_AppendLibraries(&project, 
-            "../IcarianEngine/FlareBase/build/libFlareBase.a",
+            "../IcarianEngine/IcarianCore/build/libIcarianCore.a",
 
             "../IcarianEngine/deps/flare-glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",

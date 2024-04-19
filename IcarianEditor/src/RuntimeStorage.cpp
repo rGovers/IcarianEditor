@@ -5,12 +5,13 @@
 #include <stb_image.h>
 
 #include "AssetLibrary.h"
-#include "Flare/ColladaLoader.h"
-#include "Flare/FBXLoader.h"
-#include "Flare/GLTFLoader.h"
-#include "Flare/IcarianAssert.h"
-#include "Flare/IcarianDefer.h"
-#include "Flare/OBJLoader.h"
+#include "Core/ColladaLoader.h"
+#include "Core/FBXLoader.h"
+#include "Core/GLTFLoader.h"
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
+#include "Core/OBJLoader.h"
+#include "Logger.h"
 #include "Model.h"
 #include "PixelShader.h"
 #include "Runtime/RuntimeManager.h"
@@ -265,7 +266,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::OBJLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::OBJLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
@@ -276,7 +277,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
@@ -287,7 +288,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
@@ -298,11 +299,13 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
+
+    Logger::Warning(std::string("Cannot find file") + str);
 
     return -1;
 }, MonoString* a_path)
@@ -325,7 +328,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
@@ -336,7 +339,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
@@ -347,7 +350,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
@@ -370,7 +373,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     data.Names = NULL;
     data.Parents = NULL;
 
-    std::vector<BoneData> bones;
+    std::vector<IcarianCore::BoneData> bones;
 
     AssetLibrary* library = Instance->GetLibrary();
     if (ext == ".dae")
@@ -379,7 +382,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::ColladaLoader_LoadBoneData(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadBoneData(dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -391,7 +394,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
 
             for (uint32_t i = 0; i < count; ++i)
             {
-                const BoneData& bone = bones[i];
+                const IcarianCore::BoneData& bone = bones[i];
 
                 MonoArray* bindPose = mono_array_new(domain, fClass, 16);
                 for (uint32_t j = 0; j < 16; ++j)
@@ -411,7 +414,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::FBXLoader_LoadBoneData(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadBoneData(dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -423,7 +426,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
 
             for (uint32_t i = 0; i < count; ++i)
             {
-                const BoneData& bone = bones[i];
+                const IcarianCore::BoneData& bone = bones[i];
 
                 MonoArray* bindPose = mono_array_new(domain, fClass, 16);
                 for (uint32_t j = 0; j < 16; ++j)
@@ -443,7 +446,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && FlareBase::GLTFLoader_LoadBones(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadBones(dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -455,7 +458,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
 
             for (uint32_t i = 0; i < count; ++i)
             {
-                const BoneData& bone = bones[i];
+                const IcarianCore::BoneData& bone = bones[i];
 
                 MonoArray* bindPose = mono_array_new(domain, fClass, 16);
                 for (uint32_t j = 0; j < 16; ++j)
@@ -804,14 +807,14 @@ MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_p
     const char* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
-    std::vector<ColladaAnimationData> animations;
-    if (size > 0 && dat != nullptr && FlareBase::ColladaLoader_LoadAnimationData(dat, size, &animations))
+    std::vector<IcarianCore::ColladaAnimationData> animations;
+    if (size > 0 && dat != nullptr && IcarianCore::ColladaLoader_LoadAnimationData(dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
         for (uint32_t i = 0; i < count; ++i)
         {
-            const ColladaAnimationData& animation = animations[i];
+            const IcarianCore::ColladaAnimationData& animation = animations[i];
 
             DAERAnimation animData;
             animData.Name = mono_string_new(domain, animation.Name.c_str());
@@ -820,7 +823,7 @@ MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_p
             animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
             for (uint32_t j = 0; j < frameCount; ++j)
             {
-                const ColladaAnimationFrame& frame = animation.Frames[j];
+                const IcarianCore::ColladaAnimationFrame& frame = animation.Frames[j];
 
                 DAERAnimationFrame animFrame;
                 animFrame.Time = frame.Time;
@@ -859,14 +862,14 @@ MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_p
     const char* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
-    std::vector<FBXAnimationData> animations;
-    if (size > 0 && dat != nullptr && FlareBase::FBXLoader_LoadAnimationData(dat, size, &animations))
+    std::vector<IcarianCore::FBXAnimationData> animations;
+    if (size > 0 && dat != nullptr && IcarianCore::FBXLoader_LoadAnimationData(dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
         for (uint32_t i = 0; i < count; ++i)
         {
-            const FBXAnimationData& animation = animations[i];
+            const IcarianCore::FBXAnimationData& animation = animations[i];
 
             FBXRAnimation animData;
             animData.Name = mono_string_new(domain, animation.Name.c_str());
@@ -876,7 +879,7 @@ MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_p
             animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
             for (uint32_t j = 0; j < frameCount; ++j)
             {
-                const FBXAnimationFrame& frame = animation.Frames[j];
+                const IcarianCore::FBXAnimationFrame& frame = animation.Frames[j];
 
                 FBXRAnimationFrame animFrame;
                 animFrame.Time = frame.Time;
@@ -906,14 +909,14 @@ MonoArray* RuntimeStorage::LoadGLTFAnimationClip(const std::filesystem::path& a_
     const char* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
-    std::vector<GLTFAnimationData> animations;
-    if (size > 0 && dat != nullptr && FlareBase::GLTFLoader_LoadAnimationData(dat, size, &animations))
+    std::vector<IcarianCore::GLTFAnimationData> animations;
+    if (size > 0 && dat != nullptr && IcarianCore::GLTFLoader_LoadAnimationData(dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
         for (uint32_t i = 0; i < count; ++i)
         {
-            const GLTFAnimationData& animation = animations[i];
+            const IcarianCore::GLTFAnimationData& animation = animations[i];
 
             GLTFRAnimation animData;
             animData.Name = mono_string_new(domain, animation.Name.c_str());
@@ -923,7 +926,7 @@ MonoArray* RuntimeStorage::LoadGLTFAnimationClip(const std::filesystem::path& a_
             animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
             for (uint32_t j = 0; j < frameCount; ++j)
             {
-                const GLTFAnimationFrame& frame = animation.Frames[j];
+                const IcarianCore::GLTFAnimationFrame& frame = animation.Frames[j];
 
                 GLTFRAnimationFrame animFrame;
                 animFrame.Time = frame.Time;

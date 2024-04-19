@@ -4,9 +4,9 @@
 #include <cstdint>
 #include <fstream>
 
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "EditorConfig.h"
-#include "Flare/IcarianAssert.h"
-#include "Flare/IcarianDefer.h"
 #include "IO.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"

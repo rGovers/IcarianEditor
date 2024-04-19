@@ -3,7 +3,7 @@
 #include <imgui.h>
 
 #include "AppMain.h"
-#include "Flare/InputBindings.h"
+#include "Core/InputBindings.h"
 #include "FlareImGui.h"
 #include "Modals/ErrorModal.h"
 #include "ProcessManager.h"
@@ -165,12 +165,12 @@ void GameWindow::Update(double a_delta)
 
     m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
 
-    const bool locked = m_processManager->GetCursorState() == FlareBase::CursorState_Locked;
+    const bool locked = m_processManager->GetCursorState() == CursorState_Locked;
     bool running = m_processManager->IsRunning();
 
     if (!running)
     {
-        m_app->SetCursorState(FlareBase::CursorState_Normal);
+        m_app->SetCursorState(CursorState_Normal);
     }
 
     // The oh fuck the app has taken input away button stop giving control
@@ -182,11 +182,11 @@ void GameWindow::Update(double a_delta)
 
         if (captureInput && locked)
         {
-            m_app->SetCursorState(FlareBase::CursorState_Locked);
+            m_app->SetCursorState(CursorState_Locked);
         }
         else
         {
-            m_app->SetCursorState(FlareBase::CursorState_Normal);
+            m_app->SetCursorState(CursorState_Normal);
         }
     }
 
@@ -201,7 +201,7 @@ void GameWindow::Update(double a_delta)
 
         if (locked)
         {
-            m_app->SetCursorState(FlareBase::CursorState_Locked);
+            m_app->SetCursorState(CursorState_Locked);
 
             const glm::vec2 cursorPos = m_app->GetCursorPos();
 
@@ -223,28 +223,28 @@ void GameWindow::Update(double a_delta)
         unsigned char mouseState = 0;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
-            mouseState |= 0b1 << FlareBase::MouseButton_Left;
+            mouseState |= 0b1 << MouseButton_Left;
         }
         if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
         {
-            mouseState |= 0b1 << FlareBase::MouseButton_Middle;
+            mouseState |= 0b1 << MouseButton_Middle;
         }
         if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
         {
-            mouseState |= 0b1 << FlareBase::MouseButton_Right;
+            mouseState |= 0b1 << MouseButton_Right;
         }
 
         m_processManager->PushMouseState(mouseState);
 
-        FlareBase::KeyboardState state;
-        for (unsigned int i = 0; i < FlareBase::KeyCode_Last; ++i)
+        IcarianCore::KeyboardState state;
+        for (unsigned int i = 0; i < KeyCode_Last; ++i)
         {
             const ImGuiKey key = GameKeyTable[i];
             if (key != ImGuiKey_None)
             {
                 if (ImGui::IsKeyDown(key))
                 {
-                    state.SetKey((FlareBase::e_KeyCode)i, true);
+                    state.SetKey((e_KeyCode)i, true);
                 }
             }
         }

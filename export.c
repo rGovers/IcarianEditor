@@ -5,7 +5,7 @@
 #include "IcarianEngine/BuildBase.h"
 
 #include "IcarianEngine/deps/BuildDependencies.h"
-#include "IcarianEngine/FlareBase/BuildFlareBase.h"
+#include "IcarianEngine/IcarianCore/BuildIcarianCore.h"
 #include "IcarianEngine/IcarianCS/BuildIcarianCS.h"
 #include "IcarianEngine/IcarianNative/BuildIcarianNative.h"
 
@@ -62,37 +62,40 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
     dependencyProjects = BuildDependencies(&dependencyProjectCount, a_platform, BuildConfiguration_Release);
     for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
     {
-        printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
-
-        CUBE_Path workingDirectory = CUBE_Path_CombineC(a_enginePath, dependencyProjects[i].WorkingDirectory);
-        CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
-
-        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, a_jobThreads, &lines, &lineCount);
-
-        CUBE_String_Destroy(&workingDirectoryStr);
-        CUBE_Path_Destroy(&workingDirectory);
-
-        FlushLines(&lines, &lineCount);
-
-        if (!ret)
+        if (dependencyProjects[i].Export)
         {
-            printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
+            printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
 
-            return CBFALSE;
+            CUBE_Path workingDirectory = CUBE_Path_CombineC(a_enginePath, dependencyProjects[i].WorkingDirectory);
+            CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
+
+            ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, a_jobThreads, &lines, &lineCount);
+
+            CUBE_String_Destroy(&workingDirectoryStr);
+            CUBE_Path_Destroy(&workingDirectory);
+
+            FlushLines(&lines, &lineCount);
+
+            if (!ret)
+            {
+                printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
+
+                return CBFALSE;
+            }
+
+            printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
         }
-
-        printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
 
         CUBE_CProject_Destroy(&dependencyProjects[i].Project);
     }
 
     free(dependencyProjects);
 
-    flareBaseProject = BuildFlareBaseProject(CBTRUE, a_platform, BuildConfiguration_Release);
+    flareBaseProject = BuildIcarianCoreProject(CBTRUE, a_platform, BuildConfiguration_Release);
 
-    printf("Compiling FlareBase...\n");
+    printf("Compiling IcarianCore...\n");
 
-    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/FlareBase", CBNULL, a_jobThreads, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/IcarianCore", CBNULL, a_jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
@@ -100,11 +103,11 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
 
     if (!ret)
     {
-        printf("Failed to compile FlareBase\n");
+        printf("Failed to compile IcarianCore\n");
 
         return CBFALSE;
     }
-    printf("Compiled FlareBase\n");
+    printf("Compiled IcarianCore\n");
 
     dependencyProjects = BuildIcarianNativeDependencies(&dependencyProjectCount, a_platform, BuildConfiguration_Release);
     for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
@@ -250,6 +253,8 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/etc/", "build/BuildFiles/Linux/bin/etc/", CBTRUE);
 
     CUBE_Path_Destroy(&icarianEnginePath);
+
+    printf("Done!\n");
 
     return 0;
 }

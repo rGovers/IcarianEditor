@@ -5,10 +5,10 @@
 
 #include "AppMain.h"
 #include "AssetLibrary.h"
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "FileHandler.h"
-#include "Flare/IcarianAssert.h"
-#include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "IO.h"
 #include "Modals/ConfirmModal.h"

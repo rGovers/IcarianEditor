@@ -1,7 +1,7 @@
 #include "Model.h"
 
-#include "Flare/ColladaLoader.h"
-#include "Flare/OBJLoader.h"
+#include "Core/ColladaLoader.h"
+#include "Core/OBJLoader.h"
 #include "Logger.h"
 
 #include "EngineModelInteropStructures.h"
@@ -99,11 +99,11 @@ Model* Model::FromFile(const std::filesystem::path& a_path)
 
     if (ext == ".dae")
     {
-        FlareBase::ColladaLoader_LoadFile(a_path, &vertices, &indices, &radius);
+        IcarianCore::ColladaLoader_LoadFile(a_path, &vertices, &indices, &radius);
     }
     else if (ext == ".obj")
     {
-        FlareBase::OBJLoader_LoadFile(a_path, &vertices, &indices, &radius);
+        IcarianCore::OBJLoader_LoadFile(a_path, &vertices, &indices, &radius);
     }
 
     const uint32_t vertexCount = (uint32_t)vertices.size();

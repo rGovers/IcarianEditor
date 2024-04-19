@@ -1,7 +1,7 @@
 #include "RenderCommand.h"
 
-#include "Flare/IcarianAssert.h"
-#include "Flare/IcarianDefer.h"
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "Gizmos.h"
 #include "Logger.h"
 #include "Model.h"

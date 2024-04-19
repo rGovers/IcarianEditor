@@ -3,10 +3,11 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "Flare/WindowsHeaders.h"
 #include "Logger.h"
 
 #ifdef WIN32
+#include "Core/WindowsHeaders.h"
+
 #include <shlobj.h>
 #endif
 

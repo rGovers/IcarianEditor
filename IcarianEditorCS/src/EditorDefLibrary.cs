@@ -1,5 +1,6 @@
 using IcarianEngine;
 using IcarianEngine.Definitions;
+using IcarianEngine.Mod;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -286,7 +287,6 @@ namespace IcarianEditor
         public static IEnumerable<T> GenerateDefs<T>() where T : Def
         {
             Type type = typeof(T);
-            string typeName = type.ToString();
 
             foreach (DefData defData in s_defs)
             {
@@ -295,9 +295,14 @@ namespace IcarianEditor
                     continue;
                 }
 
-                string defTypeName = defData.Type;
+                Type defType = ModControl.GetTypeValue(defData.Type, true);
+                // To ensure stuff still works if there is an error in end user code
+                if (defType == null)
+                {
+                    continue;
+                }
 
-                if (defTypeName == typeName || DefintionNamespace + defTypeName == typeName)
+                if (type == defType || defType.IsSubclassOf(type))
                 {
                     yield return GenerateDef<T>(defData.Name);
                 }

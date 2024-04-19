@@ -146,15 +146,6 @@ namespace IcarianEditor.Properties
 
                 break;
             }
-            case string val:
-            {
-                if (GUI.RStringField(a_name, ref val, (string)a_normVal))
-                {
-                    a_obj = val;
-                }
-
-                break;
-            }
             default:
             {
                 if (a_type == typeof(Def) || a_type.IsSubclassOf(typeof(Def)))
@@ -187,6 +178,15 @@ namespace IcarianEditor.Properties
 
                             break;
                         }
+                    }
+                }
+                else if (a_type == typeof(string))
+                {
+                    // C# cannot figure out strings again so cannot use pattern matching has to be Type
+                    string val = (string)a_obj;
+                    if (GUI.RStringField(a_name, ref val, (string)a_normVal))
+                    {
+                        a_obj = val;
                     }
                 }
                 else if (a_type.IsSubclassOf(typeof(Enum)))
@@ -314,8 +314,16 @@ namespace IcarianEditor.Properties
                                 continue;
                             }
 
+                            Type fieldType = field.FieldType;
+
                             object val = field.GetValue(a_obj);
-                            object normObj = Activator.CreateInstance(a_type);
+                            object normObj = null;
+                            // Fucking strings cant use Activator
+                            ConstructorInfo constructor = fieldType.GetConstructor(Type.EmptyTypes);
+                            if (constructor != null)
+                            {
+                                normObj = constructor.Invoke(null);
+                            }
 
                             ShowFields($"{a_name}.{field.Name}", ref val, field.GetValue(normObj), field.FieldType);
 

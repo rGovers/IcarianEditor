@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 
+#include "Core/IcarianDefer.h"
 #include "EditorConfig.h"
-#include "Flare/IcarianDefer.h"
 #include "Logger.h"
 
 static constexpr const char* EditorConfigTabNames[] =

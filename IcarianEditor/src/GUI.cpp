@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <string>
 
+#include "Core/IcarianDefer.h"
 #include "Datastore.h"
-#include "Flare/IcarianDefer.h"
 #include "FlareImGui.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
@@ -281,13 +281,21 @@ static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_
     if (ImGui::BeginCombo(("##V_" + str).c_str(), selectedStr))
     {
         IDEFER(ImGui::EndCombo());
+        
+        static char buffer[4096] = { 0 };
+        ImGui::InputText(("Search##VS_" + str).c_str(), buffer, sizeof(buffer) - 1);
 
         for (uint32_t i = 0; i < size; ++i)
         {
-            const bool selected = i == *a_selected;
-
             char* selectableStr = mono_string_to_utf8(mono_array_get(a_list, MonoString*, i));
             IDEFER(mono_free(selectableStr));
+
+            if (buffer[0] != 0 && strstr(selectableStr, buffer) == 0)
+            {
+                continue;
+            }
+
+            const bool selected = i == *a_selected;
 
             STACK_G_ID(std::string(str) + "[" + std::to_string(i) + "]");
             if (ImGui::Selectable(selectableStr, selected))

@@ -4,9 +4,9 @@
 #include <stb_image.h>
 
 #include "AssetLibrary.h"
+#include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "EditorConfig.h"
-#include "Flare/IcarianDefer.h"
 #include "IO.h"
 #include "Texture.h"
 #include "Workspace.h"

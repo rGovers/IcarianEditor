@@ -2,7 +2,7 @@
 
 #include <stb_image.h>
 
-#include "Flare/IcarianAssert.h"
+#include "Core/IcarianAssert.h"
 #include "Logger.h"
 
 static void ErrorCallback(int a_error, const char* a_description)
@@ -91,23 +91,23 @@ Application::~Application()
     glfwTerminate();
 }
 
-void Application::SetCursorState(FlareBase::e_CursorState a_state)
+void Application::SetCursorState(e_CursorState a_state)
 {
     switch (a_state) 
     {
-    case FlareBase::CursorState_Normal:
+    case CursorState_Normal:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
         break;
     }
-    case FlareBase::CursorState_Hidden:
+    case CursorState_Hidden:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
         break;
     }
-    case FlareBase::CursorState_Locked:
+    case CursorState_Locked:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
