@@ -1,8 +1,10 @@
 #include "Runtime/RuntimeStorage.h"
 
+#define STBI_NO_STDIO
+#include <stb_image.h>
+
 #include <cstring>
 #include <ktx.h>
-#include <stb_image.h>
 
 #include "AssetLibrary.h"
 #include "Core/ColladaLoader.h"
@@ -126,7 +128,7 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     program.VertexStride = a_vertexStride;
     program.CullingMode = (e_CullMode)a_cullMode;
     program.PrimitiveMode = (e_PrimitiveMode)a_primitiveMode;
-    program.EnableColorBlending = (uint8_t)a_enableColorBlending;
+    program.ColorBlendMode = (e_MaterialBlendMode)a_colorBlendMode;
     program.RenderLayer = a_renderLayer;
     program.Data = nullptr;
     program.Flags = 0;
@@ -193,7 +195,7 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     }
 
     return Instance->GenerateRenderProgram(program);
-}, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, MonoArray* a_shaderInputs, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_enableColorBlending, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, MonoArray* a_shadowShaderInputs, uint32_t a_uboSize, void* a_uboBuffer)
+}, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, MonoArray* a_shaderInputs, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, MonoArray* a_shadowShaderInputs, uint32_t a_uboSize, void* a_uboBuffer)
 RUNTIME_FUNCTION(void, Material, DestroyProgram, 
 {
     RenderProgram program = Instance->GetRenderProgram(a_addr);

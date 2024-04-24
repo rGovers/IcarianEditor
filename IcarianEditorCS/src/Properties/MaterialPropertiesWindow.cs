@@ -29,8 +29,8 @@ namespace IcarianEditor.Properties
             GUI.EnumField("Primitive Mode", ref def.PrimitiveMode);
             GUI.Tooltip("Primitive Mode", "Which primitive to use when rendering.");
 
-            GUI.Checkbox("Enable Color Blending", ref def.EnableColorBlending);
-            GUI.Tooltip("Enable Color Blending", "Enables color blending.");
+            GUI.EnumField("Color Blend Mode", ref def.ColorBlendMode);
+            GUI.Tooltip("Color Blend Mode", "The blending mode of the material");
 
             GUI.BitField("Render Layer", ref def.RenderLayer, 32);
             GUI.Tooltip("Render Layer", "Used to determine if it will be rendered by a camera in a matching layer. Binary bit based.");
