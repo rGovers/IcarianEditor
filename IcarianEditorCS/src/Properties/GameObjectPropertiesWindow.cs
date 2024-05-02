@@ -87,7 +87,7 @@ namespace IcarianEditor.Properties
                     {
                         m_axisAngle = new Vector4(axisAngle.XYZ, axisAngle.W * Mathf.DegToRad);
 
-                        float mag = m_axisAngle.Magnitude;
+                        float mag = m_axisAngle.XYZ.Magnitude;
                         if (mag > 0)
                         {
                             def.Rotation = Quaternion.FromAxisAngle(m_axisAngle.XYZ / mag, m_axisAngle.W);
@@ -104,7 +104,7 @@ namespace IcarianEditor.Properties
                 {
                     if (GUI.RVec4Field("Axis Angle", ref m_axisAngle, Vector4.UnitY))
                     {
-                        float mag = m_axisAngle.Magnitude;
+                        float mag = m_axisAngle.XYZ.Magnitude;
                         if (mag > 0)
                         {
                             def.Rotation = Quaternion.FromAxisAngle(m_axisAngle.XYZ / mag, m_axisAngle.W);

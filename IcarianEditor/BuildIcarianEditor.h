@@ -212,7 +212,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "src/RuntimeStorage.cpp",
         "src/SceneDefsWindow.cpp",
         "src/SerializeAssetsLoadingTask.cpp",
-        "src/ShaderGenerator.cpp",
+        "src/Shader.cpp",
         "src/ShaderProgram.cpp",
         "src/ShaderStorage.cpp",
         "src/ShaderStorageObject.cpp",

@@ -131,13 +131,15 @@ void EditorWindow::Draw()
     const glm::mat4 trans = transMat * rotMat;
     const glm::mat4 view = glm::inverse(trans);
 
-    CameraShaderBuffer camBuffer;
-    camBuffer.View = view;
-    camBuffer.Proj = proj;
-    camBuffer.InvView = trans;
-    camBuffer.InvProj = invProj;
-    camBuffer.ViewProj = proj * view;
-
+    const IcarianCore::ShaderCameraBuffer camBuffer =
+    {
+        .View = view,
+        .Proj = proj,
+        .InvView = trans,
+        .InvProj = invProj,
+        .ViewProj = proj * view
+    };
+    
     RenderCommand::PushCameraBuffer(camBuffer);
     Gizmos::SetMatrices(view, proj);
 

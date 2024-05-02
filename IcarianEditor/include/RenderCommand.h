@@ -9,11 +9,12 @@
 
 class RuntimeManager;
 class RuntimeStorage;
+class Shader;
 class ShaderProgram;
 class ShaderStorageObject;
 class UniformBuffer;
 
-#include "ShaderBuffers.h"
+#include "Core/ShaderBuffers.h"
 
 struct RBoneData
 {
@@ -44,6 +45,8 @@ private:
 
     RenderCommand(RuntimeStorage* a_storage);
     
+    static void BindBuffers(const Shader* a_shader);
+
 protected:
 
 public:
@@ -56,7 +59,7 @@ public:
     static void BindMaterial(uint32_t a_materialAddr);
     static void DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr);
 
-    static void PushCameraBuffer(const CameraShaderBuffer& a_buffer);
+    static void PushCameraBuffer(const IcarianCore::ShaderCameraBuffer& a_buffer);
 
     static uint32_t GenerateSkeletonBuffer();
     static void PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose, const glm::mat4& a_invBindPose);

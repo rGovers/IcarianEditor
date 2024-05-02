@@ -92,85 +92,6 @@ namespace IcarianEditor.Properties
                 GUI.Unindent();
             }
 
-            show = GUI.ArrayView("Shader Buffers", out addValue);
-            GUI.Tooltip("Shader Buffer", "Used to determine input values for shaders.");
-
-            if (addValue)
-            {
-                if (def.ShaderBuffers == null)
-                {
-                    def.ShaderBuffers = new List<ShaderBufferInput>();
-                }
-
-                def.ShaderBuffers.Add(new ShaderBufferInput());
-            }
-
-            if (show && def.ShaderBuffers != null)
-            {
-                GUI.Indent();
-                GUI.PushID("ShaderBuffers");
-
-                for (int i = 0; i < def.ShaderBuffers.Count; ++i)
-                {
-                    ShaderBufferInput input = def.ShaderBuffers[i];
-                    GUI.PushID($"[{i}]");
-
-                    if (GUI.Button("-"))
-                    {
-                        def.ShaderBuffers.RemoveAt(i);
-                        --i;
-
-                        GUI.PopID();
-
-                        continue;
-                    }
-
-                    GUI.SameLine();
-
-                    if (GUI.StructView($"Shader Buffer[{i}]"))
-                    {
-                        GUI.Indent();
-
-                        GUI.EnumField("Buffer Type", ref input.BufferType);
-                        switch (input.BufferType)
-                        {
-                        case ShaderBufferType.PModelBuffer:
-                        case ShaderBufferType.PUIBuffer:
-                        case ShaderBufferType.PShadowLightBuffer:
-                        {
-                            break;
-                        }
-                        default:
-                        {
-                            uint slot = input.Slot;
-                            if (GUI.RUIntField("Slot", ref slot, 0))
-                            {
-                                input.Slot = (byte)slot;
-                            }
-                            uint set = input.Set;
-                            if (GUI.RUIntField("Set", ref set, 0))
-                            {
-                                input.Set = (byte)set;
-                            }
-
-                            break;
-                        }
-                        }
-                        
-                        GUI.EnumField("Shader Slot", ref input.ShaderSlot);
-
-                        def.ShaderBuffers[i] = input;
-
-                        GUI.Unindent();
-                    }
-
-                    GUI.PopID();
-                }
-
-                GUI.PopID();
-                GUI.Unindent();
-            }
-
             show = GUI.ArrayView("Vertex Attributes", out addValue);
 
             if (addValue)
@@ -244,88 +165,6 @@ namespace IcarianEditor.Properties
             GUI.StringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath);
             GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the vertex shader file to be used for shadows.");
 
-            if (!string.IsNullOrWhiteSpace(def.ShadowVertexShaderPath))
-            {
-                show = GUI.ArrayView("Shadow Vertex Attributes", out addValue);
-                GUI.Tooltip("Shadow Vertex Attribute", "Used to determine input values for shaders.");
-
-                if (addValue)
-                {
-                    if (def.ShadowShaderBuffers == null)
-                    {
-                        def.ShadowShaderBuffers = new List<ShaderBufferInput>();
-                    }
-
-                    def.ShadowShaderBuffers.Add(new ShaderBufferInput());
-                }
-
-                if (show && def.ShadowShaderBuffers != null)
-                {
-                    GUI.Indent();
-                    GUI.PushID("ShadowShaderBuffers");
-
-                    for (int i = 0; i < def.ShadowShaderBuffers.Count; ++i)
-                    {
-                        ShaderBufferInput input = def.ShadowShaderBuffers[i];
-                        GUI.PushID($"[{i}]");
-
-                        if (GUI.Button("-"))
-                        {
-                            def.ShadowShaderBuffers.RemoveAt(i);
-                            --i;
-
-                            GUI.PopID();
-
-                            continue;
-                        }
-
-                        GUI.SameLine();
-
-                        if (GUI.StructView($"Shadow Shader Buffer[{i}]"))
-                        {
-                            GUI.Indent();
-
-                            GUI.EnumField("Buffer Type", ref input.BufferType);
-                            switch (input.BufferType)
-                            {
-                            case ShaderBufferType.PModelBuffer:
-                            case ShaderBufferType.PUIBuffer:
-                            case ShaderBufferType.PShadowLightBuffer:
-                            {
-                                break;
-                            }
-                            default:
-                            {
-                                uint slot = input.Slot;
-                                if (GUI.RUIntField("Slot", ref slot, 0))
-                                {
-                                    input.Slot = (byte)slot;
-                                }
-                                uint set = input.Set;
-                                if (GUI.RUIntField("Set", ref set, 0))
-                                {
-                                    input.Set = (byte)set;
-                                }
-
-                                break;
-                            }
-                            }
-
-                            GUI.EnumField("Shader Slot", ref input.ShaderSlot);
-
-                            def.ShadowShaderBuffers[i] = input;
-
-                            GUI.Unindent();
-                        }
-
-                        GUI.PopID();
-                    }
-
-                    GUI.PopID();
-                    GUI.Unindent();
-                }
-            }
-
             Type uboType = def.UniformBufferType;
             if (uboType != null)
             {
@@ -376,7 +215,6 @@ namespace IcarianEditor.Properties
                             }
                         }
                         
-
                         if (value == null)
                         {
                             continue;

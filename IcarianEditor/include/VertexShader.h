@@ -1,24 +1,18 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <string>
+#include <string_view>
 
-class VertexShader
+#include "Shader.h"
+
+class VertexShader : public Shader
 {
 private:
-    GLuint m_handle;
-    
-    VertexShader();
+    VertexShader(GLuint a_handle, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
     
 protected:
 
 public:
-    ~VertexShader();
+    virtual ~VertexShader();
 
-    static VertexShader* GenerateShader(const std::string_view& a_str);
-
-    inline GLuint GetHandle() const
-    {
-        return m_handle;
-    }
+    static VertexShader* GenerateShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs = nullptr, uint32_t a_inputCount = 0);
 };

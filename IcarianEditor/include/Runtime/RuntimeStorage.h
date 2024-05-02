@@ -41,14 +41,14 @@ public:
         return m_assets;
     }
 
-    uint32_t GenerateVertexShader(const std::string_view& a_str);
+    uint32_t GenerateVertexShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
     void DestroyVertexShader(uint32_t a_addr);
     inline VertexShader* GetVertexShader(uint32_t a_addr) const
     {
         return m_vertexShaders[a_addr];
     }
 
-    uint32_t GeneratePixelShader(const std::string_view& a_str);
+    uint32_t GeneratePixelShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
     void DestroyPixelShader(uint32_t a_addr);
     inline PixelShader* GetPixelShader(uint32_t a_addr) const
     {

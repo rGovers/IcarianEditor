@@ -1,19 +1,20 @@
 #include "PixelShader.h"
 
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 
-PixelShader::PixelShader()
+PixelShader::PixelShader(GLuint a_handle, const ShaderBufferInput* a_inputs, uint32_t a_inputCount) : Shader(a_handle, a_inputs, a_inputCount)
 {
-    
+
 }
 PixelShader::~PixelShader()
 {
-    glDeleteShader(m_handle);
+    
 }
 
-PixelShader* PixelShader::GenerateShader(const std::string_view& a_str)
+PixelShader* PixelShader::GenerateShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
 {
-    GLuint handle = glCreateShader(GL_FRAGMENT_SHADER);
+    const GLuint handle = glCreateShader(GL_FRAGMENT_SHADER);
 
     const char* d = a_str.data();
     const GLint len = (GLint)a_str.size();
@@ -29,17 +30,13 @@ PixelShader* PixelShader::GenerateShader(const std::string_view& a_str)
         glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &logSize);
 
         char* buffer = new char[logSize];
+        IDEFER(delete[] buffer);
         glGetShaderInfoLog(handle, (GLsizei)logSize, NULL, buffer);
 
         Logger::Error(buffer);
 
-        delete[] buffer;
-
         return nullptr;
     }
 
-    PixelShader* s = new PixelShader();
-    s->m_handle = handle;
-
-    return s;
+    return new PixelShader(handle, a_inputs, a_inputCount);
 }

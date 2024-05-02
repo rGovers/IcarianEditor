@@ -9,6 +9,7 @@
 #include "AssetLibrary.h"
 #include "Core/ColladaLoader.h"
 #include "Core/FBXLoader.h"
+#include "Core/FlareShader.h"
 #include "Core/GLTFLoader.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
@@ -17,7 +18,6 @@
 #include "Model.h"
 #include "PixelShader.h"
 #include "Runtime/RuntimeManager.h"
-#include "ShaderGenerator.h"
 #include "ShaderStorage.h"
 #include "Texture.h"
 #include "VertexShader.h"
@@ -73,17 +73,17 @@ RUNTIME_FUNCTION(uint32_t, VertexShader, GenerateFromFile,
         const char* dat;
         library->GetAsset(p, &size, &dat);
 
-        const std::string s = GLSL_FromFShader(std::string_view(dat, size));
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view(dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
+        if (s.empty())
+        {
+            Logger::Error("Failed to parse vertex shader: " + error);
 
-        return Instance->GenerateVertexShader(s);
-    }
-    else if (ext == ".vert")
-    {
-        uint32_t size; 
-        const char* dat;
-        library->GetAsset(p, &size, &dat);
+            return -1;
+        }
 
-        return Instance->GenerateVertexShader(dat);
+        return Instance->GenerateVertexShader(s, inputs.data(), (uint32_t)inputs.size());
     }
 
     return -1;
@@ -103,17 +103,17 @@ RUNTIME_FUNCTION(uint32_t, PixelShader, GenerateFromFile,
         const char* dat;
         library->GetAsset(p, &size, &dat);
 
-        const std::string s = GLSL_FromFShader(std::string_view(dat, size));
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view(dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
+        if (s.empty())
+        {
+            Logger::Error("Failed to parse pixel shader: " + error);
 
-        return Instance->GeneratePixelShader(s);
-    }
-    else if (ext == ".pix" || ext == ".frag")
-    {
-        uint32_t size; 
-        const char* dat;
-        library->GetAsset(p, &size, &dat);
+            return -1;
+        }
 
-        return Instance->GeneratePixelShader(dat);
+        return Instance->GeneratePixelShader(s, inputs.data(), (uint32_t)inputs.size());
     }
 
     return -1;
@@ -149,38 +149,6 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
         program.VertexAttributes = nullptr;
     }
 
-    if (a_shaderInputs != NULL)
-    {
-        program.ShaderBufferInputCount = (uint16_t)mono_array_length(a_shaderInputs);
-        program.ShaderBufferInputs = new ShaderBufferInput[program.ShaderBufferInputCount];
-
-        for (uint16_t i = 0; i < program.ShaderBufferInputCount; ++i)
-        {
-            program.ShaderBufferInputs[i] = mono_array_get(a_shaderInputs, ShaderBufferInput, i);
-        }
-    }
-    else
-    {
-        program.ShaderBufferInputCount = 0;
-        program.ShaderBufferInputs = nullptr;
-    }
-
-    if (a_shadowShaderInputs != NULL)
-    {
-        program.ShadowShaderBufferInputCount = (uint16_t)mono_array_length(a_shadowShaderInputs);
-        program.ShadowShaderBufferInputs = new ShaderBufferInput[program.ShadowShaderBufferInputCount];
-
-        for (uint16_t i = 0; i < program.ShadowShaderBufferInputCount; ++i)
-        {
-            program.ShadowShaderBufferInputs[i] = mono_array_get(a_shadowShaderInputs, ShaderBufferInput, i);
-        }
-    }
-    else
-    {
-        program.ShadowShaderBufferInputCount = 0;
-        program.ShadowShaderBufferInputs = nullptr;
-    }
-
     if (a_uboBuffer != NULL)
     {
         program.UBODataSize = a_uboSize;
@@ -195,7 +163,7 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     }
 
     return Instance->GenerateRenderProgram(program);
-}, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, MonoArray* a_shaderInputs, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, MonoArray* a_shadowShaderInputs, uint32_t a_uboSize, void* a_uboBuffer)
+}, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, uint32_t a_uboSize, void* a_uboBuffer)
 RUNTIME_FUNCTION(void, Material, DestroyProgram, 
 {
     RenderProgram program = Instance->GetRenderProgram(a_addr);
@@ -205,11 +173,6 @@ RUNTIME_FUNCTION(void, Material, DestroyProgram,
         if (program.VertexAttributes != nullptr)
         {
             delete[] program.VertexAttributes;
-        }
-
-        if (program.ShaderBufferInputs != nullptr)
-        {
-            delete[] program.ShaderBufferInputs;
         }
 
         if (program.UBOData != NULL)
@@ -608,9 +571,9 @@ void RuntimeStorage::Clear()
     m_samplers.clear();
 }
 
-uint32_t RuntimeStorage::GenerateVertexShader(const std::string_view& a_str)
+uint32_t RuntimeStorage::GenerateVertexShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
 {
-    VertexShader* vShader = VertexShader::GenerateShader(a_str);
+    VertexShader* vShader = VertexShader::GenerateShader(a_str, a_inputs, a_inputCount);
     if (vShader == nullptr)
     {
         return -1;
@@ -637,9 +600,9 @@ void RuntimeStorage::DestroyVertexShader(uint32_t a_addr)
     m_vertexShaders[a_addr] = nullptr;
 }
 
-uint32_t RuntimeStorage::GeneratePixelShader(const std::string_view& a_str)
+uint32_t RuntimeStorage::GeneratePixelShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
 {
-    PixelShader* pShader = PixelShader::GenerateShader(a_str);
+    PixelShader* pShader = PixelShader::GenerateShader(a_str, a_inputs, a_inputCount);
     if (pShader == nullptr)
     {
         return -1;
@@ -666,18 +629,16 @@ void RuntimeStorage::DestroyPixelShader(uint32_t a_addr)
     m_pixelShaders[a_addr] = nullptr;
 }
 
-uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
+static void SetRenderBuffers(const Shader* a_shader, const RenderProgram& a_program)
 {
-    RenderProgram program = a_program;
+    ShaderStorage* storage = (ShaderStorage*)a_program.Data;
 
-    ShaderStorage* storage = new ShaderStorage(this);
-    program.Data = storage;
-
-    for (uint32_t i = 0; i < a_program.ShaderBufferInputCount; ++i)
+    const uint32_t inputCount = a_shader->GetInputCount();
+    for (uint32_t i = 0; i < inputCount; ++i)
     {
-        const ShaderBufferInput& input = a_program.ShaderBufferInputs[i];
+        const ShaderBufferInput input = a_shader->GetInput(i);
 
-        switch (input.BufferType)
+        switch (input.BufferType) 
         {
         case ShaderBufferType_UserUBO:
         {
@@ -685,7 +646,30 @@ uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
 
             break;
         }
+        default:
+        {
+            break;
         }
+        }
+    }
+}
+uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
+{
+    RenderProgram program = a_program;
+
+    ShaderStorage* storage = new ShaderStorage(this);
+    program.Data = storage;
+
+    const VertexShader* vShader = GetVertexShader(program.VertexShader);
+    if (vShader != nullptr)
+    {
+        SetRenderBuffers(vShader, program);
+    }
+    
+    const PixelShader* pShader = GetPixelShader(program.PixelShader);
+    if (pShader != nullptr)
+    {
+        SetRenderBuffers(pShader, program);
     }
 
     const uint32_t programCount = (uint32_t)m_renderPrograms.size();

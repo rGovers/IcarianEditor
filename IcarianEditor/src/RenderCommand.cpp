@@ -5,12 +5,14 @@
 #include "Gizmos.h"
 #include "Logger.h"
 #include "Model.h"
+#include "PixelShader.h"
 #include "Runtime/RuntimeManager.h"
 #include "Runtime/RuntimeStorage.h"
 #include "ShaderProgram.h"
 #include "ShaderStorage.h"
 #include "ShaderStorageObject.h"
 #include "UniformBuffer.h"
+#include "VertexShader.h"
 
 #include "EngineMaterialInteropStructures.h"
 
@@ -100,9 +102,9 @@ RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 
     m_boundShader = -1;
 
-    CameraShaderBuffer cameraBuffer;
-    ModelShaderBuffer modelBuffer;
-    BoneShaderBuffer boneBuffer;
+    IcarianCore::ShaderCameraBuffer cameraBuffer;
+    IcarianCore::ShaderModelBuffer modelBuffer;
+    IcarianCore::ShaderBoneBuffer boneBuffer;
 
     m_cameraBuffer = new UniformBuffer(&cameraBuffer, sizeof(cameraBuffer));
     m_transformBuffer = new UniformBuffer(&modelBuffer, sizeof(modelBuffer));
@@ -156,6 +158,40 @@ void RenderCommand::Destroy()
     }
 }
 
+void RenderCommand::BindBuffers(const Shader* a_shader)
+{
+    const uint32_t count = a_shader->GetInputCount();
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const ShaderBufferInput input = a_shader->GetInput(i);
+
+        switch (input.BufferType)
+        {
+        case ShaderBufferType_CameraBuffer:
+        {
+            glBindBufferBase(GL_UNIFORM_BUFFER, input.Slot, Instance->m_cameraBuffer->GetHandle());
+
+            break;
+        }
+        case ShaderBufferType_SSModelBuffer:
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_transformBatchBuffer->GetHandle());
+
+            break;
+        }
+        case ShaderBufferType_PModelBuffer:
+        {
+            glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
+
+            break;
+        }
+        default:
+        {
+            continue;
+        }
+        }
+    }
+}
 void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 {
     const RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
@@ -167,13 +203,13 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
         return;
     }
 
+    VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
+    PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
+
     ShaderProgram* shader = nullptr;
     const auto iter = Instance->m_shaders.find(a_materialAddr);
     if (iter == Instance->m_shaders.end())
     {
-        VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
-        PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
-
         shader = ShaderProgram::GenerateProgram(vShader, pShader);
         if (shader == nullptr)
         {
@@ -222,36 +258,8 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
     }
     }
 
-    for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
-    {
-        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
-
-        switch (input.BufferType)
-        {
-        case ShaderBufferType_CameraBuffer:
-        {
-            glBindBufferBase(GL_UNIFORM_BUFFER, input.Slot, Instance->m_cameraBuffer->GetHandle());
-
-            break;
-        }
-        case ShaderBufferType_SSModelBuffer:
-        {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_transformBatchBuffer->GetHandle());
-
-            break;
-        }
-        case ShaderBufferType_PModelBuffer:
-        {
-            glBindBufferBase(GL_UNIFORM_BUFFER, 64, Instance->m_transformBuffer->GetHandle());
-
-            break;
-        }
-        default:
-        {
-            continue;
-        }
-        }
-    }
+    BindBuffers(vShader);
+    BindBuffers(pShader);
 
     ShaderStorage* storage = (ShaderStorage*)program.Data;
     if (storage != nullptr)
@@ -261,15 +269,24 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 
     Instance->m_boundShader = a_materialAddr;
 }
-void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr)
-{
-    if (a_modelAddr == -1)
-    {
-        Logger::Warning("IcarianEditor: DrawModel null model");
 
-        return;
+static bool IsBatched(const Shader* a_shader)
+{
+    const uint32_t inputCount = a_shader->GetInputCount();
+    for (uint32_t i = 0; i < inputCount; ++i) 
+    {
+        const ShaderBufferInput input = a_shader->GetInput(i);
+
+        if (input.BufferType == ShaderBufferType_SSModelBuffer) 
+        {
+            return true;
+        }
     }
 
+    return false;
+}
+void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr)
+{
     if (Instance->m_boundShader == -1)
     {
         Logger::Warning("IcarianEditor: DrawModel unbound material");
@@ -277,30 +294,42 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
         return;
     }
 
-    Model* model = Instance->m_storage->GetModel(a_modelAddr);
+    if (a_modelAddr == -1)
+    {
+        Logger::Warning("IcarianEditor: DrawModel null model");
+
+        return;
+    }
+
+    const Model* model = Instance->m_storage->GetModel(a_modelAddr);
     if (model == nullptr)
     {
         Logger::Warning("IcarianEditor: DrawModel invalid model address");
 
         return;
     }
-    RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
+    const RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 
-    ModelShaderBuffer buffer;
-    buffer.Model = a_transform;
-    buffer.InvModel = glm::inverse(a_transform);
+    const IcarianCore::ShaderModelBuffer buffer =
+    {
+        .Model = a_transform,
+        .InvModel = glm::inverse(a_transform)
+    };
 
     // TODO: Write to batch buffer if batched
     bool batched = false;
-    for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
-    {
-        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
 
-        if (input.BufferType == ShaderBufferType_SSModelBuffer)
+    const VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
+    if (vShader != nullptr && IsBatched(vShader))
+    {
+        batched = true;
+    }
+    else
+    {
+        const PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
+        if (pShader != nullptr && IsBatched(pShader))
         {
             batched = true;
-
-            break;
         }
     }
 
@@ -355,9 +384,9 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
     glDrawElements(GL_TRIANGLES, (GLsizei)model->GetIndexCount(), GL_UNSIGNED_INT, NULL);
 }
 
-void RenderCommand::PushCameraBuffer(const CameraShaderBuffer& a_camera)
+void RenderCommand::PushCameraBuffer(const IcarianCore::ShaderCameraBuffer& a_camera)
 {
-    Instance->m_cameraBuffer->WriteBuffer(&a_camera, sizeof(CameraShaderBuffer));
+    Instance->m_cameraBuffer->WriteBuffer(&a_camera, sizeof(IcarianCore::ShaderCameraBuffer));
 }
 
 uint32_t RenderCommand::GenerateSkeletonBuffer()
@@ -413,6 +442,21 @@ static glm::mat4 GetBoneTransform(const SkeletonData& a_skeleton, uint32_t a_bon
 
     return transform;
 }
+
+static void BindSkeletonObject(const Shader* a_shader, const ShaderStorageObject* a_skeletonBuffer)
+{
+    const uint32_t inputCount = a_shader->GetInputCount();
+    for (uint32_t i = 0; i < inputCount; ++i) 
+    {
+        const ShaderBufferInput input = a_shader->GetInput(i);
+        if (input.BufferType == ShaderBufferType_SSBoneBuffer) 
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, a_skeletonBuffer->GetHandle());
+
+            return;
+        }
+    }
+}
 void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
 {
     if (a_addr >= Instance->m_skeletonData.size())
@@ -432,23 +476,21 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
     for (uint32_t i = 0; i < count; ++i)
     {
         transforms[i] = GetBoneTransform(data, i) * data.Bones[i].InvBind;
-        // transforms[i] = data.Bones[i].Transform * data.Bones[i].InvBind;
     }
 
     Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
 
     const RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 
-    for (uint32_t i = 0; i < program.ShaderBufferInputCount; ++i)
+    const VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
+    if (vShader != nullptr) 
     {
-        const ShaderBufferInput& input = program.ShaderBufferInputs[i];
-
-        if (input.BufferType == ShaderBufferType_SSBoneBuffer)
-        {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, input.Slot, Instance->m_skeletonBuffer->GetHandle());
-
-            break;
-        }
+        BindSkeletonObject(vShader, Instance->m_skeletonBuffer);
+    }
+    const PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
+    if (pShader != nullptr)
+    {
+        BindSkeletonObject(pShader, Instance->m_skeletonBuffer);
     }
 }
 
@@ -467,7 +509,6 @@ void RenderCommand::DrawBones(uint32_t a_addr, const glm::mat4& a_transform)
             const RBoneData& parentBone = data.Bones[parent];
 
             transform = parentBone.Transform * transform;
-            // transform = transform * parentBone.Transform;
 
             parent = parentBone.Parent;
         }

@@ -1,24 +1,18 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <string>
+#include <string_view>
 
-class PixelShader
+#include "Shader.h"
+
+class PixelShader : public Shader
 {
-private:
-    GLuint m_handle;
-    
-    PixelShader();
+private:    
+    PixelShader(GLuint a_handle, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
     
 protected:
 
 public:
     ~PixelShader();
 
-    inline GLuint GetHandle() const
-    {
-        return m_handle;
-    }
-
-    static PixelShader* GenerateShader(const std::string_view& a_str);
+    static PixelShader* GenerateShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs = nullptr, uint32_t a_inputCount = 0);
 };

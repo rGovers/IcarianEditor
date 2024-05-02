@@ -1,19 +1,20 @@
 #include "VertexShader.h"
 
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 
-VertexShader::VertexShader()
+VertexShader::VertexShader(GLuint a_handle, const ShaderBufferInput* a_inputs, uint32_t a_inputCount) : Shader(a_handle, a_inputs, a_inputCount)
 {
     
 }
 VertexShader::~VertexShader()
 {
-    glDeleteShader(m_handle);
+    
 }
 
-VertexShader* VertexShader::GenerateShader(const std::string_view& a_str)
+VertexShader* VertexShader::GenerateShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
 {
-    GLuint handle = glCreateShader(GL_VERTEX_SHADER);
+    const GLuint handle = glCreateShader(GL_VERTEX_SHADER);
 
     const char* d = a_str.data();
     const GLint len = (GLint)a_str.size();
@@ -29,17 +30,13 @@ VertexShader* VertexShader::GenerateShader(const std::string_view& a_str)
         glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &logSize);
 
         char* buffer = new char[logSize];
+        IDEFER(delete[] buffer);
         glGetShaderInfoLog(handle, (GLsizei)logSize, NULL, buffer);
 
         Logger::Error(buffer);
 
-        delete[] buffer;
-
         return nullptr;
     }
 
-    VertexShader* s = new VertexShader();
-    s->m_handle = handle;
-
-    return s;
+    return new VertexShader(handle, a_inputs, a_inputCount);
 }
