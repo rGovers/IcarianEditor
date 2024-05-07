@@ -9,18 +9,6 @@
 
 static bool IDirectoryExplorer(const std::list<std::filesystem::path>& a_dirs, std::filesystem::path* a_path)
 {
-    if (a_path->has_parent_path() && *a_path != "/")
-    {
-        if (ImGui::Selectable(".."))
-        {
-            *a_path = a_path->parent_path();
-
-            return false;
-        }
-
-        ImGui::NextColumn();
-    }
-
     const Texture* folderTex = Datastore::GetTexture("Textures/WindowIcons/WindowIcon_AssetBrowser.png");
 
     for (const std::filesystem::path& dir : a_dirs)

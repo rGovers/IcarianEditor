@@ -5,29 +5,30 @@
 
 class RuntimeManager;
 
+#define ASSETTYPE_TABLE(F) \
+    F(About) \
+    F(Assembly) \
+    F(Def) \
+    F(Texture) \
+    F(Model) \
+    F(Scene) \
+    F(Scribe) \
+    F(Script) \
+    F(Other)
+
+#define ASSETTYPE_ENUM_DEFINITION(name) AssetType_##name,
+#define ASSETTYPE_STRING_DEFINITION(name) #name,
+
 enum e_AssetType
 {
     AssetType_Null = -1,
-    AssetType_About,
-    AssetType_Assembly,
-    AssetType_Def,
-    AssetType_Model,
-    AssetType_Scene,
-    AssetType_Scribe,
-    AssetType_Script,
-    AssetType_Other
+    
+    ASSETTYPE_TABLE(ASSETTYPE_ENUM_DEFINITION)
 };
 
 constexpr static const char* AssetTypeStrings[] = 
 {
-    "About",
-    "Assembly",
-    "Def",
-    "Model",
-    "Scene",
-    "Scribe",
-    "Script",
-    "Other"
+    ASSETTYPE_TABLE(ASSETTYPE_STRING_DEFINITION)
 };
 
 struct Asset
@@ -59,6 +60,9 @@ public:
 
     void Refresh(const std::filesystem::path& a_workingDir);
     void BuildDirectory(const std::filesystem::path& a_path) const;
+
+    e_AssetType GetAssetType(const std::filesystem::path& a_path);
+    e_AssetType GetAssetType(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path);
 
     void GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type = nullptr);
     void GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type = nullptr);

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <functional>
 #include <list>
+#include <stack>
 
 enum e_FileDialogStatus
 {
@@ -24,20 +25,22 @@ private:
     static constexpr uint32_t BufferSize = 4096;
     static constexpr float DirectoryExplorerWidth = 150.0f;
 
-    uint32_t                         m_filterIndex;  
-    uint32_t                         m_filterCount;
-    char**                           m_filters;
+    uint32_t                          m_filterIndex;  
+    uint32_t                          m_filterCount;
+    char**                            m_filters;
+ 
+    bool                              m_directoryExplorer;
+    glm::vec2                         m_size;
+ 
+    std::filesystem::path             m_path;
+    std::stack<std::filesystem::path> m_prevPaths;
+    std::string                       m_name;
 
-    bool                             m_directoryExplorer;
-    glm::vec2                        m_size;
-
-    std::filesystem::path            m_path;
-    std::string                      m_name;
-
-    std::list<std::filesystem::path> m_dirs;
-    std::list<std::filesystem::path> m_files;
+    std::list<std::filesystem::path>  m_dirs;
+    std::list<std::filesystem::path>  m_files;
 
     void Refresh();
+    void SetPath(const std::filesystem::path& a_path);
 
 protected:
 

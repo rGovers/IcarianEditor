@@ -29,7 +29,7 @@ namespace IcarianEditor.Properties
 
     public class PropertiesEditorWindow
     {
-        static void ShowFields(string a_name, ref object a_obj, object a_normVal, Type a_type)
+        static void ShowFields(string a_name, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
         {
             switch (a_obj)
             {
@@ -184,6 +184,20 @@ namespace IcarianEditor.Properties
                 {
                     // C# cannot figure out strings again so cannot use pattern matching has to be Type
                     string val = (string)a_obj;
+
+                    foreach (Attribute a in a_attributes)
+                    {
+                        if (a is EditorPathStringAttribute path)
+                        {
+                            if (GUI.RPathStringField(a_name, ref val, (string)a_normVal))
+                            {
+                                a_obj = val;
+                            }
+
+                            return;
+                        }
+                    }
+
                     if (GUI.RStringField(a_name, ref val, (string)a_normVal))
                     {
                         a_obj = val;
@@ -227,7 +241,7 @@ namespace IcarianEditor.Properties
                         for (int i = 0; i < len; ++i)
                         {
                             object o = a.GetValue(i);
-                            ShowFields($"[{i}]", ref o, eNVal, eType);
+                            ShowFields($"[{i}]", ref o, eNVal, eType, a_attributes);
                             a.SetValue(o, i);
                         }
 
@@ -281,7 +295,7 @@ namespace IcarianEditor.Properties
 
                             GUI.SameLine();
 
-                            ShowFields($"[{index++}]", ref oVal, gNVal, gType);
+                            ShowFields($"[{index++}]", ref oVal, gNVal, gType, a_attributes);
 
                             method.Invoke(nObj, new object[] { oVal });
 
@@ -325,7 +339,10 @@ namespace IcarianEditor.Properties
                                 normObj = constructor.Invoke(null);
                             }
 
-                            ShowFields($"{a_name}.{field.Name}", ref val, field.GetValue(normObj), field.FieldType);
+                            List<Attribute> atts = new List<Attribute>(a_attributes);
+                            atts.AddRange(field.GetCustomAttributes());
+
+                            ShowFields($"{a_name}.{field.Name}", ref val, field.GetValue(normObj), field.FieldType, atts);
 
                             field.SetValue(a_obj, val);
                         }
@@ -368,14 +385,18 @@ namespace IcarianEditor.Properties
 
                 object val = field.GetValue(a_object);
 
-                ShowFields(field.Name, ref val, field.GetValue(normObj), field.FieldType);
+                IEnumerable<Attribute> attributes = field.GetCustomAttributes();
+
+                ShowFields(field.Name, ref val, field.GetValue(normObj), field.FieldType, attributes);
  
                 field.SetValue(a_object, val);
 
-                EditorTooltipAttribute tooltip = field.GetCustomAttribute<EditorTooltipAttribute>();
-                if (tooltip != null)
+                foreach (Attribute a in attributes)
                 {
-                    GUI.Tooltip(fName, tooltip.Tooltip);
+                    if (a is EditorTooltipAttribute tooltip)
+                    {
+                        GUI.Tooltip(fName, tooltip.Tooltip);
+                    }
                 }
             }
         }

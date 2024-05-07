@@ -18,9 +18,9 @@ namespace IcarianEditor.Properties
                 return;
             }
 
-            GUI.StringField("Vertex Shader Path", ref def.VertexShaderPath);
+            GUI.PathStringField("Vertex Shader Path", ref def.VertexShaderPath);
             GUI.Tooltip("Vertex Shader Path", "Path relative to the project for the vertex shader file to be used.");
-            GUI.StringField("Pixel Shader Path", ref def.PixelShaderPath);
+            GUI.PathStringField("Pixel Shader Path", ref def.PixelShaderPath);
             GUI.Tooltip("Pixel Shader Path", "Path relative to the project for the pixel shader file to be used.");
 
             GUI.EnumField("Culling Mode", ref def.CullingMode);
@@ -76,7 +76,7 @@ namespace IcarianEditor.Properties
                         GUI.Indent();
 
                         GUI.RUIntField("Slot", ref input.Slot, uint.MaxValue);
-                        GUI.StringField("Path", ref input.Path);
+                        GUI.PathStringField("Path", ref input.Path);
                         GUI.EnumField("Address Mode", ref input.AddressMode);
                         GUI.EnumField("Filter Mode", ref input.FilterMode);
 
@@ -162,7 +162,7 @@ namespace IcarianEditor.Properties
                 GUI.Unindent();
             }
 
-            GUI.StringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath);
+            GUI.PathStringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath);
             GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the vertex shader file to be used for shadows.");
 
             Type uboType = def.UniformBufferType;

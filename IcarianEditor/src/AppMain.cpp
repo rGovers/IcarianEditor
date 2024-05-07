@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 #include <ImGuizmo.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 #include <implot.h>
 #include <string>
 #include <sstream>

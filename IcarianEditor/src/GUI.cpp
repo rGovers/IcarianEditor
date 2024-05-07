@@ -258,6 +258,40 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetString,
     return M_GUI_GetString(a_str, a_value);
 }, MonoString* a_str, MonoString* a_value)
 
+RUNTIME_FUNCTION(MonoString*, GUI, GetPathString, 
+{
+    char buffer[BufferSize];
+
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    char* value = mono_string_to_utf8(a_value);
+    IDEFER(mono_free(value));
+
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    ImGui::BeginGroup();
+    IDEFER(ImGui::EndGroup());
+
+    if (FlareImGui::ImageButton(("##F_" + str).c_str(), "Textures/WindowIcons/WindowIcon_AssetBrowser.png", { 16.0f, 16.0f }))
+    {
+        Logger::Message("Test");
+    }
+
+    ImGui::SameLine();
+
+    strncpy(buffer, value, BufferSize - 1);
+    if (ImGui::InputText(("##V_" + str).c_str(), buffer, BufferSize))
+    {
+        return mono_string_new(mono_domain_get(), buffer);
+    }
+
+    return NULL;
+
+}, MonoString* a_str, MonoString* a_value)
+
 // MSVC workaround
 static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
 {
@@ -554,6 +588,7 @@ void GUI::Init(RuntimeManager* a_runtime)
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetColor);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetString);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetPathString);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetStringList);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ResetButton);

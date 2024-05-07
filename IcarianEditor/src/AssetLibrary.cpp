@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <mono/metadata/appdomain.h>
+#include <mono/metadata/object.h>
+#include <mono/metadata/object-forward.h>
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
@@ -10,9 +13,6 @@
 #include "IO.h"
 #include "Logger.h"
 #include "Runtime/RuntimeManager.h"
-#include "mono/metadata/appdomain.h"
-#include "mono/metadata/object-forward.h"
-#include "mono/metadata/object.h"
 
 #include "EditorDefLibraryInterop.h"
 #include "EditorSceneInterop.h"
@@ -45,7 +45,7 @@ AssetLibrary::~AssetLibrary()
 }
 
 template<typename T>
-static T ToWInt(const unsigned char* a_data)
+constexpr static T ToWInt(const unsigned char* a_data)
 {
     constexpr uint32_t Size = sizeof(T);
 
@@ -60,7 +60,7 @@ static T ToWInt(const unsigned char* a_data)
 
 // Microsoft magic bullshit
 // Reference: https://learn.microsoft.com/en-us/cpp/dotnet/how-to-determine-if-an-image-is-native-or-clr?view=msvc-170
-static bool IsManagedAssembly(const unsigned char* a_data, const uint32_t a_length)
+constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_length)
 {
     if (a_length < 64)
     {
@@ -130,6 +130,10 @@ static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::pa
             else if (ext == ".iscene")
             {
                 asset.AssetType = AssetType_Scene;
+            }
+            else if (ext == ".png" || ext == ".ktx2")
+            {
+                asset.AssetType = AssetType_Texture;
             }
             else if (ext == ".dae" || ext == ".fbx" || ext == ".obj")
             {
@@ -511,6 +515,7 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
             break;
         }
         case AssetType_Model:
+        case AssetType_Texture:
         case AssetType_Other:
         {
             const std::filesystem::path p = a_path / "Core" / "Assets" / asset.Path;
@@ -537,6 +542,25 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
         }
         }
     }
+}
+
+e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_path)
+{
+    for (const Asset& a : m_assets)
+    {
+        if (a_path == a.Path)
+        {
+            return a.AssetType;
+        }
+    }
+
+    return AssetType_Null;
+}
+e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_workingPath, const std::filesystem::path& a_path)
+{
+    const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
+
+    return GetAssetType(rPath);
 }
 
 void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type)

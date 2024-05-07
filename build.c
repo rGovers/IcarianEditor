@@ -6,6 +6,7 @@
 #include "IcarianEngine/deps/BuildDependencies.h"
 #include "IcarianEngine/IcarianCore/BuildIcarianCore.h"
 #include "IcarianEngine/IcarianCS/BuildIcarianCS.h"
+#include "IcarianEngine/IcarianModManager/BuildIcarianModManager.h"
 #include "IcarianEngine/IcarianNative/BuildIcarianNative.h"
 
 #include "IcarianEditor/BuildIcarianEditor.h"
@@ -16,9 +17,10 @@ int main(int a_argc, char** a_argv)
     e_TargetPlatform targetPlatform;
     e_BuildConfiguration buildConfiguration;
 
-    CUBE_CProject flareBaseProject;
+    CUBE_CProject icarianCoreProject;
     CUBE_CSProject icarianCSProject;
     CUBE_CProject icarianNativeProject;
+    CUBE_CProject icarianModManagerProject;
     CUBE_CSProject icarianEditorCSProject;
     CUBE_CProject icarianEditorProject;
 
@@ -155,7 +157,7 @@ int main(int a_argc, char** a_argv)
             dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
             engineDependencies = BuildIcarianNativeDependencies(&engineDependencyCount, targetPlatform, buildConfiguration);
             
-            CBUINT32 finalCount = dependencyProjectCount + engineDependencyCount + 3;
+            CBUINT32 finalCount = dependencyProjectCount + engineDependencyCount + 4;
             CUBE_CProject* projects = malloc(sizeof(CUBE_CProject) * finalCount);
             offset = 0;
             for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
@@ -168,9 +170,9 @@ int main(int a_argc, char** a_argv)
 
             free(dependencyProjects);
 
-            flareBaseProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
-            CUBE_CProject_PrependPaths(&flareBaseProject, "./IcarianEngine/IcarianCore/", CBTRUE);
-            projects[offset++] = flareBaseProject;
+            icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+            CUBE_CProject_PrependPaths(&icarianCoreProject, "./IcarianEngine/IcarianCore/", CBTRUE);
+            projects[offset++] = icarianCoreProject;
 
             for (CBUINT32 i = 0; i < engineDependencyCount; ++i)
             {
@@ -185,6 +187,10 @@ int main(int a_argc, char** a_argv)
             icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
             CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
             projects[offset++] = icarianNativeProject;
+
+            icarianModManagerProject = BuildIcarianModManagerProject(targetPlatform, buildConfiguration);
+            CUBE_CProject_PrependPaths(&icarianModManagerProject, "./IcarianEngine/IcarianModManager", CBTRUE);
+            projects[offset++] = icarianModManagerProject;
 
             icarianEditorProject = BuildIcarianEditorProject(targetPlatform, buildConfiguration);
             CUBE_CProject_PrependPaths(&icarianEditorProject, "./IcarianEditor", CBTRUE);
@@ -353,14 +359,14 @@ int main(int a_argc, char** a_argv)
     PrintHeader("Building IcarianCore");
 
     printf("Creating IcarianCore project...\n");
-    flareBaseProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+    icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
 
     printf("Compiling IcarianCore...\n");
-    ret = CUBE_CProject_MultiCompile(&flareBaseProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount);
+    ret = CUBE_CProject_MultiCompile(&icarianCoreProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);
 
-    CUBE_CProject_Destroy(&flareBaseProject);
+    CUBE_CProject_Destroy(&icarianCoreProject);
 
     if (!ret)
     {
@@ -538,6 +544,7 @@ int main(int a_argc, char** a_argv)
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor.exe", "build/IcarianEditor.exe");
         CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative.exe", "build/IcarianNative.exe");
+        // CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager.exe", "build/IcarianModManager.exe");
 
         CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/mono-2.0-sgen.dll", "build/mono-2.0-sgen.dll");
         CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/MonoPosixHelper.dll", "build/MonoPosixHelper.dll");
@@ -552,6 +559,7 @@ int main(int a_argc, char** a_argv)
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor", "build/IcarianEditor");
         CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative", "build/IcarianNative");
+        // CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager", "build/IcarianModManager");
 
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/lib", "build/lib", CBTRUE);
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/etc", "build/etc", CBTRUE);
@@ -559,6 +567,7 @@ int main(int a_argc, char** a_argv)
 
         CUBE_IO_CHMODC("build/IcarianEditor", 0755);
         CUBE_IO_CHMODC("build/IcarianNative", 0755);
+        // CUBE_IO_CHMODC("build/IcarianModManager", 0755);
 
         CUBE_IO_CHMODC("build/bin/mono", 0755);
         CUBE_IO_CHMODC("build/bin/csc", 0755);

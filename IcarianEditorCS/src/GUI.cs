@@ -39,6 +39,8 @@ namespace IcarianEditor
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static string GetString(string a_label, string a_str);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static string GetPathString(string a_label, string a_str);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetStringList(string a_label, string[] a_strings, IntPtr a_selected);
@@ -592,6 +594,52 @@ namespace IcarianEditor
             {
                 a_str = ret;
                 
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool RPathStringField(string a_label, ref string a_str, string a_default = null)
+        {
+            if (a_str == null)
+            {
+                a_str = string.Empty;
+            }
+            if (a_default == null)
+            {
+                a_default = string.Empty;
+            }
+
+            bool ret = false;
+            if (a_str != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_str = a_default;
+                    ret = true;
+                }
+            }
+
+            if (PathStringField(a_label, ref a_str))
+            {
+                ret = true;
+            }
+
+            return ret;
+        }
+        public static bool PathStringField(string a_label, ref string a_str)
+        {
+            if (a_str == null)
+            {
+                a_str = string.Empty;
+            }
+
+            string ret = GetPathString(a_label, a_str);
+            if (ret != null)
+            {
+                a_str = ret;
+
                 return true;
             }
 

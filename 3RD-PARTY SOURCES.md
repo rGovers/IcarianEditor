@@ -1,5 +1,7 @@
 # Dependencies
 
+Engine 3rd party sources can be found in the IcarianEngine submodule
+
 ## Internal
 
 ### glad
@@ -8,11 +10,6 @@ Original Project:
 https://glad.dav1d.de/
 
 https://github.com/Dav1dde/glad
-
-### Dear ImGui
-Original Project:
-
-https://github.com/ocornut/imgui
 
 ### ImPlot
 Original Project:

@@ -1,14 +1,15 @@
 #include "FileDialogBlock.h"
 
+#include <cstring>
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "FileDialog.h"
 #include "FlareImGui.h"
 #include "IO.h"
-#include "imgui.h"
 #include "Texture.h"
-
-#include <cstring>
 
 FileDialogBlock::FileDialogBlock(const glm::vec2& a_size, bool a_directoryExplorer, uint32_t a_filterCount, const char* const* a_filters)
 {
@@ -77,6 +78,27 @@ void FileDialogBlock::Refresh()
         FileDialog::GenerateFileDirs(&m_dirs, &m_files, m_path);
     }
 }
+void FileDialogBlock::SetPath(const std::filesystem::path& a_path)
+{
+    if (std::filesystem::exists(m_path))
+    {
+        if (m_prevPaths.empty())
+        {
+            m_prevPaths.emplace(m_path);
+        }
+        else if (m_prevPaths.top() != m_path)
+        {
+            m_prevPaths.emplace(m_path);
+        }
+    }
+
+    m_path = a_path;
+}
+
+static bool IsRootPath(const std::filesystem::path& a_path)
+{
+    return !a_path.has_parent_path() || a_path == "/";
+}
 
 e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outPath, std::string* a_outString, BlockCallback a_blockCallback)
 {
@@ -85,10 +107,11 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
     char buffer[BufferSize];
 
     const std::string pathStr = m_path.string();
-    const uint32_t pathLen = (uint32_t)pathStr.length();
-    if (pathLen > BufferSize)
+    const uint32_t pathLen = (uint32_t)pathStr.size();
+    const bool tooLong = pathLen >= BufferSize;
+    if (tooLong)
     {
-        m_path = IO::GetHomePath();
+        SetPath(IO::GetHomePath());
 
         return FileDialogStatus_Error;
     }
@@ -97,18 +120,97 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
     {
         buffer[i] = pathStr[i];
     }
-    buffer[pathLen] = 0;
+    buffer[pathLen] = 0;    
 
+    {
+        const bool disableBack = m_prevPaths.empty();
+
+        if (disableBack)
+        {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, style.Alpha * 0.5f);
+        }
+
+        IDEFER(
+        if (disableBack)
+        {
+            ImGui::PopItemFlag();
+            ImGui::PopStyleVar();
+        });
+
+        if (FlareImGui::ImageButton("Back", "Textures/Icons/Icon_Back.png", { 16.0f, 16.0f }))
+        {
+            const std::filesystem::path p = m_prevPaths.top();
+            m_prevPaths.pop();
+
+            m_path = p;
+
+            Refresh();
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            IDEFER(ImGui::EndTooltip());
+
+            ImGui::Text("%s", "Back");
+        }
+
+        ImGui::SameLine();
+    }
+
+    {
+        const bool disableUp = IsRootPath(m_path);
+
+        if (disableUp)
+        {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, style.Alpha * 0.5f);
+        }
+
+        IDEFER(
+        if (disableUp)
+        {
+            ImGui::PopItemFlag();
+            ImGui::PopStyleVar();
+        });
+
+        if (FlareImGui::ImageButton("Up", "Textures/Icons/Icon_Up.png", { 16.0f, 16.0f }))
+        {
+            SetPath(m_path.parent_path());
+
+            Refresh();
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            IDEFER(ImGui::EndTooltip());
+
+            ImGui::Text("%s", "Up Level");
+        }
+
+        ImGui::SameLine();
+    }
+    
     if (FlareImGui::ImageButton("Refresh", "Textures/Icons/Icon_Reset.png", { 16.0f, 16.0f }))
     {
         Refresh();   
     }
 
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        IDEFER(ImGui::EndTooltip());
+        
+        ImGui::Text("%s", "Refresh");
+    }
+
     ImGui::SameLine();
 
-    if (ImGui::InputText("Path", buffer, BufferSize))
+    if (ImGui::InputText("Path", buffer, BufferSize, ImGuiInputTextFlags_EnterReturnsTrue))
     {
-        m_path = buffer;
+        SetPath(buffer);
 
         Refresh();
     }
@@ -141,9 +243,10 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
             {
                 const std::string str = drive.string();
 
-                if (ImGui::Selectable(str.c_str(), m_path == drive))
+                const bool selected = m_path == drive;
+                if (ImGui::Selectable(str.c_str(), selected))
                 {
-                    m_path = drive;
+                    SetPath(drive);
 
                     Refresh();
                 }
@@ -169,9 +272,10 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
                     ImGui::SameLine();
                 }
 
-                if (ImGui::Selectable(filename.c_str(), m_path == specialDirectory))
+                const bool selected = m_path == specialDirectory;
+                if (ImGui::Selectable(filename.c_str(), selected))
                 {
-                    m_path = specialDirectory;
+                    SetPath(specialDirectory);
 
                     Refresh();
                 }
@@ -183,10 +287,13 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
 
     size.x -= DirectoryExplorerWidth + style.FramePadding.x;
 
+    const std::filesystem::path oldPath = m_path;
     if (m_directoryExplorer)
     {
         if (!FileDialog::DirectoryExplorer(m_dirs, &m_path, size))
         {
+            m_prevPaths.emplace(oldPath);
+
             Refresh();
         }
     }
@@ -203,6 +310,8 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
 
         if (!FileDialog::FileExplorer(m_dirs, m_files, &m_path, &m_name, filter, size))
         {
+            m_prevPaths.emplace(oldPath);
+
             Refresh();
         }
     }

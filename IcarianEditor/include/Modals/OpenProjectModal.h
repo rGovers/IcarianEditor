@@ -4,7 +4,6 @@
 
 #include <filesystem>
 #include <functional>
-#include <list>
 
 class AppMain;
 class FileDialogBlock;
