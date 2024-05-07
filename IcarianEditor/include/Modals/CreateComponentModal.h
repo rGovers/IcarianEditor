@@ -7,7 +7,7 @@
 class AppMain;
 class Project;
 
-class CreateRigidBodyScriptModal : public Modal
+class CreateComponentModal : public Modal
 {
 private:
     static constexpr uint32_t BufferSize = 2048;
@@ -19,11 +19,11 @@ private:
 
     char                  m_name[BufferSize];
 
-protected:
+protected: 
 
 public:
-    CreateRigidBodyScriptModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path);
-    virtual ~CreateRigidBodyScriptModal();
+    CreateComponentModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path);
+    virtual ~CreateComponentModal();
 
     virtual bool Update();
 };

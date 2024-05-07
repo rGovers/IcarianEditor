@@ -1,0 +1,33 @@
+#version 450
+
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec4 color;
+layout(location = 3) in vec2 texCoord;
+layout(location = 4) in vec4 boneWeights;
+layout(location = 5) in ivec4 boneIndices;
+
+#!structure(CameraBuffer, 0, camBuffer)
+#!pushbuffer(PModelBuffer, modelBuffer)
+#!structure(SSBoneBuffer, 1, boneBuffer)
+
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec3 fragNormal;
+layout(location = 2) out vec2 fragTexCoord;
+
+void main()
+{
+    // Basic skinned vertex shader
+    mat4 boneTransformA = boneBuffer.objects[boneIndices.x].BoneMatrix;
+    mat4 boneTransformB = boneBuffer.objects[boneIndices.y].BoneMatrix;
+    mat4 boneTransformC = boneBuffer.objects[boneIndices.z].BoneMatrix;
+    mat4 boneTransformD = boneBuffer.objects[boneIndices.w].BoneMatrix;
+
+    mat4 boneTransform = boneTransformA * boneWeights.x + boneTransformB * boneWeights.y + boneTransformC * boneWeights.z + boneTransformD * boneWeights.w;
+
+    gl_Position = cameraBuffer.ViewProj * modelBuffer.Model * boneTransform * position;
+
+    fragColor = color;
+    fragNormal = normal;
+    fragTexCoord = texCoord;
+}

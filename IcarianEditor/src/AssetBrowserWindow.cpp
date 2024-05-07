@@ -13,11 +13,10 @@
 #include "IO.h"
 #include "Modals/ConfirmModal.h"
 #include "Modals/CreateAssemblyControlModal.h"
+#include "Modals/CreateComponentModal.h"
 #include "Modals/CreateDefTableModal.h"
 #include "Modals/CreateFileModal.h"
-#include "Modals/CreateRigidBodyScriptModal.h"
 #include "Modals/CreateSciptableModal.h"
-#include "Modals/CreateTriggerBodyScriptModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
 #include "Templates.h"
@@ -75,7 +74,7 @@ void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
 {
     const DirectoryNode& node = m_fileTree[a_index];
 
-    const uint32_t count = node.Children.size();
+    const uint32_t count = (uint32_t)node.Children.size();
 
     const std::string strID = "##" + std::to_string(a_index);
     const std::string buttonID = strID + "Button";
@@ -91,7 +90,6 @@ void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
     else
     {
         ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
-        
     }
     IDEFER(
     {
@@ -215,6 +213,8 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
 
         if (ImGui::BeginMenu("Script"))
         {
+            IDEFER(ImGui::EndMenu());
+
             if (ImGui::MenuItem("Assembly Control"))
             {
                 m_app->PushModal(new CreateAssemblyControlModal(m_app, m_project, a_path));
@@ -222,19 +222,14 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
 
             ImGui::Separator();
 
+            if (ImGui::MenuItem("Component"))
+            {
+                m_app->PushModal(new CreateComponentModal(m_app, m_project, a_path));
+            }
+
             if (ImGui::MenuItem("Scriptable"))
             {
                 m_app->PushModal(new CreateScriptableModal(m_app, m_project, a_path));
-            }
-
-            if (ImGui::MenuItem("Rigid Body"))
-            {
-                m_app->PushModal(new CreateRigidBodyScriptModal(m_app, m_project, a_path));
-            }
-
-            if (ImGui::MenuItem("Trigger Body"))
-            {
-                m_app->PushModal(new CreateTriggerBodyScriptModal(m_app, m_project, a_path));
             }
 
             ImGui::Separator();
@@ -243,17 +238,50 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
             {
                 m_app->PushModal(new CreateDefTableModal(m_app, m_project, a_path));   
             }
+        }
 
-            ImGui::EndMenu();
+        if (ImGui::BeginMenu("Shader"))
+        {
+            IDEFER(ImGui::EndMenu());
+
+            if (ImGui::MenuItem("Vertex Shader"))
+            {
+                constexpr uint32_t Length = sizeof(VertexShaderTemplate) / sizeof(*VertexShaderTemplate);
+
+                m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, VertexShaderTemplate, Length - 1, "New Vertex Shader", ".fvert"));
+            }
+
+            if (ImGui::MenuItem("Skinned Vertex Shader"))
+            {
+                constexpr uint32_t Length = sizeof(SkinnedVertexShaderTemplate) / sizeof(*SkinnedVertexShaderTemplate);
+
+                m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SkinnedVertexShaderTemplate, Length - 1, "New Skinned Vertex Shader", ".fvert"));
+            }
+
+            if (ImGui::MenuItem("Shadow Vertex Shader"))
+            {
+                constexpr uint32_t Length = sizeof(ShadowVertexShaderTemplate) / sizeof(*ShadowVertexShaderTemplate);
+
+                m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, ShadowVertexShaderTemplate, Length - 1, "New Shadow Vertex Shader", ".fvert"));
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Pixel Shader"))
+            {
+                constexpr uint32_t Length = sizeof(PixelShaderTemplate) / sizeof(*PixelShaderTemplate);
+
+                m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, PixelShaderTemplate, Length - 1, "New Pixel Shader", ".fpix"));
+            }
         }
 
         ImGui::Separator();
 
         if (ImGui::MenuItem("Scene"))
         {
-            constexpr uint32_t Length = sizeof(SceneTemplate) / sizeof(*SceneTemplate);
+            constexpr uint32_t Length = sizeof(SceneTemplate) / sizeof(*SceneTemplate) - 1;
 
-            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length, "New Scene", ".iscene"));
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length - 1, "New Scene", ".iscene"));
         }
 
         ImGui::EndMenu();

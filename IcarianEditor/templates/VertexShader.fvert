@@ -1,0 +1,24 @@
+#version 450
+
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec4 color;
+layout(location = 3) in vec2 texCoord;
+
+#!structure(CameraBuffer, 0, camBuffer)
+#!structure(SSModelBuffer, 1, modelBuffer)
+
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec3 fragNormal;
+layout(location = 2) out vec2 fragTexCoord;
+
+void main()
+{
+    // Basic vertex shader
+    mat4 modelMat = #!instancedstructure(modelBuffer).Model;
+    gl_Position = camBuffer.ViewProj * modelMat * position;
+
+    fragColor = color;
+    fragNormal = normal;
+    fragTexCoord = texCoord;
+}

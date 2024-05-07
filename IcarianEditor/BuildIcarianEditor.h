@@ -22,12 +22,15 @@ const static CBUINT32 IcarianEditorShaderBasePathCount = sizeof(IcarianEditorSha
 const static char* TemplateBasePaths[] = 
 {
     "templates/About.xml",
+    "templates/Scene.iscene",
     "templates/AssemblyControl.cs",
     "templates/DefTable.cs",
-    "templates/RigidBody.cs",
-    "templates/Scene.iscene",
+    "templates/Component.cs",
     "templates/Scriptable.cs",
-    "templates/TriggerBody.cs"
+    "templates/VertexShader.fvert",
+    "templates/SkinnedVertexShader.fvert",
+    "templates/ShadowVertexShader.fvert",
+    "templates/PixelShader.fpix",
 };
 
 const static CBUINT32 TemplateBasePathCount = sizeof(TemplateBasePaths) / sizeof(*TemplateBasePaths);
@@ -170,12 +173,11 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "src/ConsoleWindow.cpp",
         "src/CopyBuildLibraryLoadingTask.cpp",
         "src/CreateAssemblyControlModal.cpp",
+        "src/CreateComponentModal.cpp",
         "src/CreateDefTableModal.cpp",
         "src/CreateFileModal.cpp",
         "src/CreateProjectModal.cpp",
-        "src/CreateRigidBodyScriptModal.cpp",
         "src/CreateScriptableModal.cpp",
-        "src/CreateTriggerBodyScriptModal.cpp",
         "src/Datastore.cpp",
         "src/EditorConfig.cpp",
         "src/EditorConfigModal.cpp",

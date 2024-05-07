@@ -1,25 +1,24 @@
-#include "Modals/CreateRigidBodyScriptModal.h"
+#include "Modals/CreateComponentModal.h"
 
 #include <fstream>
 #include <imgui.h>
 
 #include "AppMain.h"
-#include "Core/IcarianDefer.h"
 #include "Modals/ErrorModal.h"
 #include "Project.h"
 #include "TemplateBuilder.h"
 #include "Templates.h"
 
-CreateRigidBodyScriptModal::CreateRigidBodyScriptModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path) : Modal("Create Rigid Body Script")
+CreateComponentModal::CreateComponentModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path) : Modal("Create Component")
 {
     m_app     = a_app;
     m_project = a_project;
 
-    m_path = a_path;
+    m_path    = a_path;
 
-    memset(m_name, 0, BufferSize);
+    m_name[0] = 0;
 }
-CreateRigidBodyScriptModal::~CreateRigidBodyScriptModal()
+CreateComponentModal::~CreateComponentModal()
 {
 
 }
@@ -37,7 +36,7 @@ static bool IsAlphaNumeric(const std::string_view& a_str)
     return true;
 }
 
-bool CreateRigidBodyScriptModal::Update()
+bool CreateComponentModal::Update()
 {
     ImGui::InputText("Name", m_name, BufferSize);
 
@@ -67,24 +66,22 @@ bool CreateRigidBodyScriptModal::Update()
 
         const std::string projectName = m_project->GetName();
 
-        const std::string str = TemplateBuilder::GenerateFromTemplate(RigidBodyTemplate, projectName, m_name);
+        const std::string str = TemplateBuilder::GenerateFromTemplate(ComponentTemplate, projectName, m_name);
 
         std::ofstream file = std::ofstream(path, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            // ICARIAN_DEFER_closeOFile(file);
-            IDEFER(file.close());
             file.write(str.c_str(), str.length());
 
             m_project->SetRefresh(true);
 
             return false;
         }
-        else 
+        else
         {
-            m_app->PushModal(new ErrorModal("Failed to create file!"));
+            m_app->PushModal(new ErrorModal("Failed to create component!"));
         }
-    }
+    }   
 
     ImGui::SameLine();
 
