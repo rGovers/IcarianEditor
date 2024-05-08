@@ -4,7 +4,6 @@
 #include <stb_image.h>
 
 #include <cstring>
-#include <ktx.h>
 
 #include "AssetLibrary.h"
 #include "Core/ColladaLoader.h"
@@ -14,6 +13,7 @@
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Core/OBJLoader.h"
+#include "KtxHelpers.h"
 #include "Logger.h"
 #include "Model.h"
 #include "PixelShader.h"
@@ -486,11 +486,27 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
                     ktxTexture2_TranscodeBasis(ktxTex, KTX_TTF_BC3_RGBA, 0);
                 }
 
-                GLuint texHandle = 0;
-                GLenum target;
-                ktxTexture_GLUpload((ktxTexture*)ktxTex, &texHandle, &target, NULL);
+                GLuint handle;
+                glGenTextures(1, &handle);
+                glBindTexture(GL_TEXTURE_2D, handle);
                 
-                return Instance->GenerateTextureFromHandle((uint32_t)texHandle);
+                const GLenum glInternalFormat = GLInternalFormatFromKtxVkFormat(ktxTex->vkFormat);
+                
+                if (ktxTex->isCompressed)
+                {
+                    const GLsizei size = (GLsizei)ktxTexture_GetImageSize((ktxTexture*)ktxTex, 0);
+
+                    glCompressedTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, ktxTex->baseWidth, ktxTex->baseHeight, 0, size, ktxTex->pData);
+                }
+                else 
+                {
+                    const GLenum glFormat = GLFormatFromKtxVkFormat(ktxTex->vkFormat);
+                    const GLenum glType = GLTypeFromKtxVkFormat(ktxTex->vkFormat);
+
+                    glTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, ktxTex->baseWidth, ktxTex->baseHeight, 0, glFormat, glType, ktxTex->pData);
+                }
+                
+                return Instance->GenerateTextureFromHandle((uint32_t)handle);
             }
         }
     }

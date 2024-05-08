@@ -299,8 +299,6 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
             "../IcarianEngine/deps/miniz/build/miniz.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxc.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxcpp.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxglc.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxglcpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
             "../IcarianEngine/deps/OpenFBX/build/OpenFBXLibDeflate.lib"
@@ -328,18 +326,10 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
             "../IcarianEngine/deps/miniz/build/libminiz.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxc.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxcpp.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxglc.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxglcpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
             "../IcarianEngine/deps/OpenFBX/build/libOpenFBXLibDeflate.a"
         );
 
-        // Seems KTX fails loading GL functions with Nvidia GPUs so need to link manually
-        // Only fixes on some distros seem to be waiting on a proper fix
-        // Using clang also seems to break it for some reason
-        // Known issue and am waiting on a fix
-        // TODO: Remove when fixed
-        CUBE_CProject_AppendReference(&project, "GL");
         CUBE_CProject_AppendReference(&project, "m");
         CUBE_CProject_AppendReference(&project, "stdc++");
         CUBE_CProject_AppendReference(&project, "z");

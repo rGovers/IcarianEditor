@@ -129,13 +129,7 @@ FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, Runt
 }
 FileHandler::~FileHandler()
 {
-    for (auto iter = m_textureTex.begin(); iter != m_textureTex.end(); ++iter)
-    {
-        if (iter->second != nullptr)
-        {
-            delete iter->second;
-        }
-    }
+    
 }
 
 void FileHandler::Init(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace)

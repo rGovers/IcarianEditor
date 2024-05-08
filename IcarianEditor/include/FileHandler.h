@@ -26,7 +26,6 @@ private:
     RuntimeStorage*                               m_storage;
 
     std::unordered_map<std::string, Texture*>     m_extTex;
-    std::unordered_map<std::string, Texture*>     m_textureTex;
     std::unordered_map<std::string, FileCallback> m_extOpenCallback;
     std::unordered_map<std::string, FileCallback> m_extDragCallback;
 

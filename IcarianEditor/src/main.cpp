@@ -5,6 +5,9 @@
 #include <stb_image.h>
 
 #define CUBE_IMPLEMENTATION
+#ifndef NDEBUG
+#define CUBE_PRINT_COMMANDS
+#endif
 #include "CUBE/CUBE.h"
 
 #include "AppMain.h"

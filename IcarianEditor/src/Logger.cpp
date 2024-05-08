@@ -27,7 +27,7 @@ void Logger::Message(const std::string_view& a_string, bool a_editor, bool a_pri
 {
     if (a_print)
     {
-        std::cout << "FL: " << a_string << "\n";
+        std::cout << "ILM: " << a_string << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
@@ -39,7 +39,7 @@ void Logger::Warning(const std::string_view& a_string, bool a_editor, bool a_pri
 {
     if (a_print)
     {
-        std::cout << "FL: " << a_string << "\n";
+        std::cout << "ILW: " << a_string << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
@@ -51,7 +51,7 @@ void Logger::Error(const std::string_view& a_string, bool a_editor, bool a_print
 {
     if (a_print)
     {
-        std::cout << "FL: " << a_string << "\n";
+        std::cout << "ILE: " << a_string << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
