@@ -544,7 +544,6 @@ int main(int a_argc, char** a_argv)
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor.exe", "build/IcarianEditor.exe");
         CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative.exe", "build/IcarianNative.exe");
-        // CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager.exe", "build/IcarianModManager.exe");
 
         CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/mono-2.0-sgen.dll", "build/mono-2.0-sgen.dll");
         CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/MonoPosixHelper.dll", "build/MonoPosixHelper.dll");
@@ -556,10 +555,11 @@ int main(int a_argc, char** a_argv)
         break;
     }
     case TargetPlatform_Linux:
+    case TargetPlatform_LinuxClang:
+    case TargetPlatform_LinuxZig:
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor", "build/IcarianEditor");
         CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative", "build/IcarianNative");
-        // CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager", "build/IcarianModManager");
 
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/lib", "build/lib", CBTRUE);
         CUBE_IO_CopyDirectoryC("IcarianEngine/deps/Mono/Linux/etc", "build/etc", CBTRUE);
@@ -567,7 +567,6 @@ int main(int a_argc, char** a_argv)
 
         CUBE_IO_CHMODC("build/IcarianEditor", 0755);
         CUBE_IO_CHMODC("build/IcarianNative", 0755);
-        // CUBE_IO_CHMODC("build/IcarianModManager", 0755);
 
         CUBE_IO_CHMODC("build/bin/mono", 0755);
         CUBE_IO_CHMODC("build/bin/csc", 0755);

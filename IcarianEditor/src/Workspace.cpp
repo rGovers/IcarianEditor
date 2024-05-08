@@ -73,6 +73,8 @@ void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, co
 {
     const std::u32string str = a_path.u32string();
 
-    ImGui::Text(a_path.string().c_str());
+    const std::string pathStr = a_path.string();
+
+    ImGui::Text("%s", pathStr.c_str());
     ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size() * sizeof(char32_t));
 }

@@ -19,46 +19,48 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
     CUBE_CSProject_AppendIncludePath(&project, "../EditorInterop");
     CUBE_CSProject_AppendIncludePath(&project, "../IcarianEngine/EngineInterop");
 
-    CUBE_CSProject_AppendSource(&project, "src/AnimationMaster.cs");
-    CUBE_CSProject_AppendSource(&project, "src/ColliderRenderer.cs");
-    CUBE_CSProject_AppendSource(&project, "src/EditorConfig.cs");
-    CUBE_CSProject_AppendSource(&project, "src/EditorDefLibrary.cs");
-    CUBE_CSProject_AppendSource(&project, "src/EditorScene.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Gizmos.cs");
-    CUBE_CSProject_AppendSource(&project, "src/GUI.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Program.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Workspace.cs");
+    CUBE_CSProject_AppendSources(&project, 
+        "src/AnimationMaster.cs",
+        "src/ColliderRenderer.cs",
+        "src/EditorConfig.cs",
+        "src/EditorDefLibrary.cs",
+        "src/EditorScene.cs",
+        "src/FileHandler.cs",
+        "src/Gizmos.cs",
+        "src/GUI.cs",
+        "src/Program.cs",
+        "src/Workspace.cs",
 
-    CUBE_CSProject_AppendSource(&project, "src/Editor/EditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/MeshRendererEditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/PhysicsBodyEditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/RigidBodyEditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/SkeletonAnimatorEditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/SkinnedMeshRendererEditorDisplay.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Editor/TriggerBodyEditorDisplay.cs");
+        "src/Editor/EditorDisplay.cs",
+        "src/Editor/MeshRendererEditorDisplay.cs",
+        "src/Editor/PhysicsBodyEditorDisplay.cs",
+        "src/Editor/RigidBodyEditorDisplay.cs",
+        "src/Editor/SkeletonAnimatorEditorDisplay.cs",
+        "src/Editor/SkinnedMeshRendererEditorDisplay.cs",
+        "src/Editor/TriggerBodyEditorDisplay.cs",
 
-    CUBE_CSProject_AppendSource(&project, "src/Modals/AddComponentModal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/ConfirmModal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/CreateSceneDefModal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/DeleteSceneObjectModal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/GUIGetDefSelectorModal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/Modal.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Modals/NewSceneObjectModal.cs");
+        "src/Modals/AddComponentModal.cs",
+        "src/Modals/ConfirmModal.cs",
+        "src/Modals/CreateSceneDefModal.cs",
+        "src/Modals/DeleteSceneObjectModal.cs",
+        "src/Modals/GUIGetDefSelectorModal.cs",
+        "src/Modals/Modal.cs",
+        "src/Modals/NewSceneObjectModal.cs",
 
-    CUBE_CSProject_AppendSource(&project, "src/Properties/CameraPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/DirectionalLightPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/GameObjectPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/LightPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/MaterialPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/PointLightPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/PropertiesEditorWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/SelectionObjectPropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Properties/SpotLightPropertiesWindow.cs");
-
-    CUBE_CSProject_AppendSource(&project, "src/Windows/EditorWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Windows/HierarchyWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Windows/PropertiesWindow.cs");
-    CUBE_CSProject_AppendSource(&project, "src/Windows/SceneDefsWindow.cs");
+        "src/Properties/CameraPropertiesWindow.cs",
+        "src/Properties/DirectionalLightPropertiesWindow.cs",
+        "src/Properties/GameObjectPropertiesWindow.cs",
+        "src/Properties/LightPropertiesWindow.cs",
+        "src/Properties/MaterialPropertiesWindow.cs",
+        "src/Properties/PointLightPropertiesWindow.cs",
+        "src/Properties/PropertiesEditorWindow.cs",
+        "src/Properties/SelectionObjectPropertiesWindow.cs",
+        "src/Properties/SpotLightPropertiesWindow.cs",
+        "src/Windows/EditorWindow.cs",
+        "src/Windows/HierarchyWindow.cs",
+        "src/Windows/PropertiesWindow.cs",
+        "src/Windows/SceneDefsWindow.cs"
+    );
 
     CUBE_CSProject_AppendReference(&project, "../IcarianEngine/IcarianCS/build/IcarianCS.dll");
 

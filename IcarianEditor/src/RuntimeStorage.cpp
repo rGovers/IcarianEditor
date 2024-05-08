@@ -20,6 +20,7 @@
 #include "Runtime/RuntimeManager.h"
 #include "ShaderStorage.h"
 #include "Texture.h"
+#include "TextureSampler.h"
 #include "VertexShader.h"
 
 #include "EngineSkeletonInteropStructures.h"
@@ -43,11 +44,10 @@ static RuntimeStorage* Instance = nullptr;
     \
     F(void, IcarianEngine.Rendering, Texture, DestroyTexture, { Instance->DestroyTexture(a_addr); }, uint32_t a_addr) \
     \
-    /* Have not had to but I dont not believe there is a way to seperate the texture and sampler in OpenGL */ \
-    F(uint32_t, IcarianEngine.Rendering, TextureSampler, GenerateTextureSampler, { return a_texture; }, uint32_t a_texture, uint32_t a_filter, uint32_t a_addressMode) \
+    F(uint32_t, IcarianEngine.Rendering, TextureSampler, GenerateTextureSampler, { return Instance->GenerateTextureSampler(a_texture, (e_TextureFilter)a_filter, (e_TextureAddress)a_addressMode); }, uint32_t a_texture, uint32_t a_filter, uint32_t a_addressMode) \
     F(uint32_t, IcarianEngine.Rendering, TextureSampler, GenerateRenderTextureSampler, { return 0; }, uint32_t a_renderTexture, uint32_t a_textureIndex, uint32_t a_filter, uint32_t a_addressMode) \
     F(uint32_t, IcarianEngine.Rendering, TextureSampler, GenerateRenderTextureDepthSampler, { return 0; }, uint32_t a_renderTexture, uint32_t a_filter, uint32_t a_addressMode) \
-    F(void, IcarianEngine.Rendering, TextureSampler, DestroySampler, { }, uint32_t a_addr) \
+    F(void, IcarianEngine.Rendering, TextureSampler, DestroySampler, { Instance->DestroyTextureSampler(a_addr); }, uint32_t a_addr) \
     \
     F(void, IcarianEngine.Rendering, Model, DestroyModel, { Instance->DestroyModel(a_addr); }, uint32_t a_addr) \
     \
@@ -549,6 +549,15 @@ void RuntimeStorage::Clear()
     }
     m_textures.clear();
 
+    for (const TextureSamplerBuffer& sampler : m_samplers)
+    {
+        if (sampler.Data != nullptr)
+        {
+            delete (TextureSampler*)sampler.Data;
+        }
+    }
+    m_samplers.clear();
+
     for (const VertexShader* v : m_vertexShaders)
     {
         if (v != nullptr)
@@ -692,7 +701,7 @@ void RuntimeStorage::SetProgramTexture(uint32_t a_addr, uint32_t a_slot, uint32_
     const RenderProgram& program = m_renderPrograms[a_addr];
 
     ShaderStorage* storage = (ShaderStorage*)program.Data;
-    storage->SetTexture(a_slot, m_textures[a_textureAddr]);
+    storage->SetTexture(a_slot, a_textureAddr);
 }
 void RuntimeStorage::DestroyRenderProgram(uint32_t a_addr)
 {
@@ -776,6 +785,40 @@ void RuntimeStorage::DestroyTexture(uint32_t a_addr)
 {
     delete m_textures[a_addr];
     m_textures[a_addr] = nullptr;
+}
+
+uint32_t RuntimeStorage::GenerateTextureSampler(uint32_t a_texture, e_TextureFilter a_filter, e_TextureAddress a_address)
+{
+    TextureSampler* sampler = TextureSampler::CreateSampler(a_filter, a_address);
+    const TextureSamplerBuffer buffer = 
+    {
+        .Addr = a_texture,
+        .Slot = 0,
+        .TextureMode = TextureMode_Texture,
+        .FilterMode = a_filter,
+        .AddressMode = a_address,
+        .Data = sampler
+    };
+
+    const uint32_t samplerCount = (uint32_t)m_samplers.size();
+    for (uint32_t i = 0; i < samplerCount; ++i)
+    {
+        if (m_samplers[i].Data == nullptr)
+        {
+            m_samplers[i] = buffer;
+
+            return i;
+        }
+    }
+
+    m_samplers.emplace_back(buffer);
+
+    return samplerCount;
+}
+void RuntimeStorage::DestroyTextureSampler(uint32_t a_addr)
+{
+    delete (TextureSampler*)m_samplers[a_addr].Data;
+    m_samplers[a_addr].Data = nullptr;
 }
 
 MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_path) const

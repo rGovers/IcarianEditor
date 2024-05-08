@@ -23,6 +23,7 @@ namespace IcarianEditor
         static void Update(double a_delta)
         {
             AnimationMaster.Update(a_delta);
+            FileHandler.Update();
         }
 
         static void Unload()
@@ -30,6 +31,7 @@ namespace IcarianEditor
             AssetLibrary.ClearAssets();
             EditorDefLibrary.Clear();
             AnimationMaster.Destroy();
+            FileHandler.Clear();
         }
         
         // On Windows seems to need a main function and be executable to work

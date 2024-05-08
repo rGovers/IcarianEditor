@@ -410,7 +410,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     FileHandler::FileCallback* openCallback;
     FileHandler::FileCallback* dragCallback;
-    Texture* tex;
+    GLuint tex;
     FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
 
     FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);

@@ -17,7 +17,7 @@ ErrorModal::~ErrorModal()
 
 bool ErrorModal::Update()
 {
-    ImGui::Text(m_error.c_str());
+    ImGui::Text("%s", m_error.c_str());
 
     if (ImGui::Button("OK"))
     {

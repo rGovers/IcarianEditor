@@ -3,6 +3,7 @@
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
+#include <glad/glad.h>
 #include <imgui.h>
 #include <string_view>
 
@@ -21,6 +22,7 @@ namespace FlareImGui
     bool Image(const char* a_path, const ImVec2& a_size);
     bool Image(const std::string_view& a_path, const glm::vec2& a_size);
 
+    bool ImageButton(GLuint a_texture, const glm::vec2& a_size, bool a_background = true);
     bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background = true);
     bool ImageButton(const char* a_label, const char* a_path, const ImVec2& a_size, bool a_background = true);
     bool ImageButton(const std::string_view& a_label, const std::string_view& a_path, const glm::vec2& a_size, bool a_background = true);

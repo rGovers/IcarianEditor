@@ -134,30 +134,36 @@ namespace FlareImGui
         return Image(a_path.data(), { a_size.x, a_size.y });
     }
 
-    bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background)
+    bool ImageButton(GLuint a_texture, const glm::vec2& a_size, bool a_background)
     {
-        ImGuiStyle& style = ImGui::GetStyle();
-
-        const ImVec4 color = style.Colors[ImGuiCol_Button];
-        const ImVec4 aColor = style.Colors[ImGuiCol_ButtonActive];
-
         if (!a_background)
         {
-            style.Colors[ImGuiCol_Button] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-            style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
         }
+        IDEFER(
+        if (!a_background)
+        {   
+            ImGui::PopStyleColor(2);
+        });
 
         bool ret = false;
 
-        if (a_texture != nullptr)
+        if (a_texture != -1)
         {
-            ret = ImGui::ImageButton(TexToImHandle(a_texture), { a_size.x, a_size.y });
+            ret = ImGui::ImageButton((ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
         }
 
-        style.Colors[ImGuiCol_Button] = color;
-        style.Colors[ImGuiCol_ButtonActive] = aColor;
-
         return ret;
+    }
+    bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background)
+    {
+        if (a_texture == nullptr)
+        {
+            return ImageButton(-1, a_size, a_background);
+        }
+
+        return ImageButton(a_texture->GetHandle(), a_size, a_background);
     }
     bool ImageButton(const char* a_label, const char* a_path, const ImVec2& a_size, bool a_background)
     {

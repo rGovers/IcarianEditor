@@ -1,6 +1,8 @@
 #include "ShaderStorage.h"
 
+#include "Runtime/RuntimeStorage.h"
 #include "Texture.h"
+#include "TextureSampler.h"
 #include "UniformBuffer.h"
 
 ShaderStorage::ShaderStorage(RuntimeStorage* a_runtimeStorage)
@@ -25,8 +27,13 @@ void ShaderStorage::Bind()
     {
         const TextureBinding& binding = m_texBindings[i];
 
+        const TextureSamplerBuffer buffer = m_storage->GetSamplerBuffer(binding.Sampler);
+        const Texture* tex = m_storage->GetTexture(buffer.Addr);
+        const TextureSampler* sampler = (TextureSampler*)buffer.Data;
+
         glActiveTexture(GL_TEXTURE0 + i);
-        glBindTexture(GL_TEXTURE_2D, binding.Tex->GetHandle());
+        glBindTexture(GL_TEXTURE_2D, tex->GetHandle());
+        glBindSampler(i, sampler->GetHandle());
         glUniform1i((GLint)binding.Slot, (GLint)i);
     }
 
@@ -36,14 +43,14 @@ void ShaderStorage::Bind()
     }
 }
 
-void ShaderStorage::SetTexture(uint32_t a_slot, Texture* a_texture)
+void ShaderStorage::SetTexture(uint32_t a_slot, uint32_t a_sampler)
 {
     const uint32_t size = (uint32_t)m_texBindings.size();
     for (uint32_t i = 0; i < size; ++i)
     {
         if (m_texBindings[i].Slot == a_slot)
         {
-            m_texBindings[i].Tex = a_texture;
+            m_texBindings[i].Sampler = a_sampler;
 
             return;
         }
@@ -52,7 +59,7 @@ void ShaderStorage::SetTexture(uint32_t a_slot, Texture* a_texture)
     const TextureBinding binding =
     {
         .Slot = a_slot,
-        .Tex = a_texture
+        .Sampler = a_sampler
     };
 
     m_texBindings.emplace_back(binding);

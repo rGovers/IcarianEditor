@@ -219,6 +219,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "src/ShaderStorageObject.cpp",
         "src/TemplateBuilder.cpp",
         "src/Texture.cpp",
+        "src/TextureSampler.cpp",
         "src/TimelineWindow.cpp",
         "src/UniformBuffer.cpp",
         "src/VertexShader.cpp",
@@ -245,7 +246,14 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         // CUBE_CProject_AppendCFlag(&project, "-mavx2");
         CUBE_CProject_AppendCFlag(&project, "-msse4.2");
 
-        CUBE_CProject_AppendCFlag(&project, "-march=x86-64-v2");
+        if (a_targetPlatform == TargetPlatform_LinuxZig)
+        {
+            CUBE_CProject_AppendCFlag(&project, "-march=x86_64_v2");
+        }
+        else
+        {
+            CUBE_CProject_AppendCFlag(&project, "-march=x86-64-v2");
+        }
 
         CUBE_CProject_AppendCFlag(&project, "-g");
         CUBE_CProject_AppendCFlag(&project, "-O3");
@@ -258,7 +266,14 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         // CUBE_CProject_AppendCFlag(&project, "-mavx2");
         CUBE_CProject_AppendCFlag(&project, "-msse4.2");
 
-        CUBE_CProject_AppendCFlag(&project, "-march=x86-64-v2");
+        if (a_targetPlatform == TargetPlatform_LinuxZig)
+        {
+            CUBE_CProject_AppendCFlag(&project, "-march=x86_64_v2");
+        }
+        else
+        {
+            CUBE_CProject_AppendCFlag(&project, "-march=x86-64-v2");
+        }
 
         CUBE_CProject_AppendCFlag(&project, "-O3");
 

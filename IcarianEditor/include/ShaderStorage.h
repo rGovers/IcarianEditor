@@ -4,13 +4,12 @@
 #include <vector>
 
 class RuntimeStorage;
-class Texture;
 class UniformBuffer;
 
 struct TextureBinding
 {
     uint32_t Slot;
-    Texture* Tex;
+    uint32_t Sampler;
 };
 
 class ShaderStorage
@@ -31,6 +30,6 @@ public:
 
     void Bind();
 
-    void SetTexture(uint32_t a_slot, Texture* a_texture);
+    void SetTexture(uint32_t a_slot, uint32_t a_sampler);
     void SetUserUBO(uint32_t a_slot, const void* a_object, uint32_t a_size);
 };

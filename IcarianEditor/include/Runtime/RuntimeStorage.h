@@ -77,6 +77,17 @@ public:
     uint32_t GenerateTexture(uint32_t a_width, uint32_t a_height, const unsigned char* a_data);
     uint32_t GenerateTextureFromHandle(uint32_t a_handle);
     void DestroyTexture(uint32_t a_addr);
+    inline Texture* GetTexture(uint32_t a_addr) const
+    {
+        return m_textures[a_addr];
+    }
+
+    uint32_t GenerateTextureSampler(uint32_t a_texture, e_TextureFilter a_filter, e_TextureAddress a_address);
+    void DestroyTextureSampler(uint32_t a_addr);
+    inline TextureSamplerBuffer GetSamplerBuffer(uint32_t a_addr) const
+    {
+        return m_samplers[a_addr];
+    }
 
     MonoArray* LoadDAEAnimationClip(const std::filesystem::path& a_path) const;
     MonoArray* LoadFBXAnimationClip(const std::filesystem::path& a_path) const;
