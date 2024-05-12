@@ -70,12 +70,12 @@ RUNTIME_FUNCTION(uint32_t, VertexShader, GenerateFromFile,
     if (ext == ".fvert")
     {
         uint32_t size; 
-        const char* dat;
+        const uint8_t* dat;
         library->GetAsset(p, &size, &dat);
 
         std::string error;
         std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view(dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
         if (s.empty())
         {
             Logger::Error("Failed to parse vertex shader: " + error);
@@ -100,12 +100,12 @@ RUNTIME_FUNCTION(uint32_t, PixelShader, GenerateFromFile,
     if (ext == ".fpix" || ext == ".ffrag")
     {
         uint32_t size;
-        const char* dat;
+        const uint8_t* dat;
         library->GetAsset(p, &size, &dat);
 
         std::string error;
         std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view(dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
         if (s.empty())
         {
             Logger::Error("Failed to parse pixel shader: " + error);
@@ -227,44 +227,44 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
     AssetLibrary* library = Instance->GetLibrary();
     if (ext == ".obj")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::OBJLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::OBJLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
     else if (ext == ".dae")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
     else if (ext == ".fbx")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
     }
     else if (ext == ".glb" || ext == ".gltf")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
         }
@@ -289,33 +289,33 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
     AssetLibrary* library = Instance->GetLibrary();
     if (ext == ".dae")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
     }
     else if (ext == ".fbx")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
     }
     else if (ext == ".glb" || ext == ".gltf")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadSkinnedData(dat, size, &vertices, &indices, &radius))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
         {
             return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
         }
@@ -343,11 +343,11 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     AssetLibrary* library = Instance->GetLibrary();
     if (ext == ".dae")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadBoneData(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadBoneData((char*)dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -375,11 +375,11 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     }
     else if (ext == ".fbx")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadBoneData(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadBoneData((char*)dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -407,11 +407,11 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     }
     else if (ext == ".glb" || ext == ".gltf")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadBones(dat, size, &bones))
+        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadBones((char*)dat, size, &bones))
         {
             MonoDomain* domain = mono_domain_get();
             MonoClass* fClass = mono_get_single_class();
@@ -452,7 +452,7 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
     AssetLibrary* library = Instance->GetLibrary();
     if (ext == ".png")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
@@ -470,7 +470,7 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
     }
     else if (ext == ".ktx2")
     {
-        const char* dat;
+        const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
 
@@ -849,11 +849,11 @@ MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_p
     MonoClass* floatClass = mono_get_single_class();
 
     uint32_t size;
-    const char* dat;
+    const uint8_t* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
     std::vector<IcarianCore::ColladaAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::ColladaLoader_LoadAnimationData(dat, size, &animations))
+    if (size > 0 && dat != nullptr && IcarianCore::ColladaLoader_LoadAnimationData((char*)dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
@@ -904,11 +904,11 @@ MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_p
     ICARIAN_ASSERT(animationFrameClass != NULL);
 
     uint32_t size;
-    const char* dat;
+    const uint8_t* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
     std::vector<IcarianCore::FBXAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::FBXLoader_LoadAnimationData(dat, size, &animations))
+    if (size > 0 && dat != nullptr && IcarianCore::FBXLoader_LoadAnimationData((char*)dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
@@ -951,11 +951,11 @@ MonoArray* RuntimeStorage::LoadGLTFAnimationClip(const std::filesystem::path& a_
     ICARIAN_ASSERT(animationFrameClass != NULL);
 
     uint32_t size;
-    const char* dat;
+    const uint8_t* dat;
     m_assets->GetAsset(a_path, &size, &dat);
 
     std::vector<IcarianCore::GLTFAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::GLTFLoader_LoadAnimationData(dat, size, &animations))
+    if (size > 0 && dat != nullptr && IcarianCore::GLTFLoader_LoadAnimationData((char*)dat, size, &animations))
     {
         const uint32_t count = (uint32_t)animations.size();
         data = mono_array_new(domain, animationDataClass, (uintptr_t)count);

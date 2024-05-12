@@ -676,9 +676,11 @@ namespace IcarianEditor
         }
         public static bool DefField<T>(string a_label, ref T a_def, bool a_useSceneDefs = false) where T : Def
         {
+            string id = $"{GetCurrentID()}: {a_label}";
+
             foreach (DefVal val in s_defValues)
             {
-                if (val.Input == a_label)
+                if (val.Input == id)
                 {
                     a_def = val.Def as T;
                     s_defValues.Remove(val);
@@ -707,7 +709,7 @@ namespace IcarianEditor
 
             if (dispatch)
             {
-                new GUIGetDefSelectorModal<T>(a_label, a_def, a_useSceneDefs);
+                new GUIGetDefSelectorModal<T>(id, a_def, a_useSceneDefs);
             }
 
             if (ret != null)

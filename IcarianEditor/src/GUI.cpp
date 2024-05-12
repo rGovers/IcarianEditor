@@ -275,7 +275,7 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetPathString,
     ImGui::BeginGroup();
     IDEFER(ImGui::EndGroup());
 
-    if (FlareImGui::ImageButton(("##F_" + str).c_str(), "Textures/WindowIcons/WindowIcon_AssetBrowser.png", { 16.0f, 16.0f }))
+    if (FlareImGui::ImageButton(("##F_" + str).c_str(), "Textures/WindowIcons/WindowIcon_AssetBrowser.png", { 16.0f, 16.0f }, false))
     {
         Logger::Message("Test");
     }

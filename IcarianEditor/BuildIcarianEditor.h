@@ -201,6 +201,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "src/MonoProjectGenerator.cpp",
         "src/OpenProjectModal.cpp",
         "src/PixelShader.cpp",
+        "src/ProjectConfigModal.cpp",
         "src/ProcessManager.cpp",
         "src/ProfilerData.cpp",
         "src/ProfilerWindow.cpp",
@@ -228,7 +229,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     );
 
     // Used for style editor window
-    // CUBE_CProject_AppendSource(&project, "lib/imgui/imgui_demo.cpp");
+    // CUBE_CProject_AppendSource(&project, "../IcarianEngine/deps/imgui/imgui_demo.cpp");
 
     CUBE_CProject_AppendCFlag(&project, "-std=c++17");
 
@@ -297,8 +298,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/flare-glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxc.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxcpp.lib",
+            "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
+            "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
             "../IcarianEngine/deps/OpenFBX/build/OpenFBXLibDeflate.lib"
@@ -324,8 +325,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/flare-glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxc.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxcpp.a",
+            "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
+            "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
             "../IcarianEngine/deps/OpenFBX/build/libOpenFBXLibDeflate.a"
         );

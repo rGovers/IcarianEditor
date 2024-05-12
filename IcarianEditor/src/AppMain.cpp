@@ -19,6 +19,7 @@
 #include "GUI.h"
 #include "Modals/CreateProjectModal.h"
 #include "Modals/EditorConfigModal.h"
+#include "Modals/ProjectConfigModal.h"
 #include "Modals/RuntimeModal.h"
 #include "ProcessManager.h"
 #include "ProfilerData.h"
@@ -394,9 +395,14 @@ void AppMain::Update(double a_delta, double a_time)
                 {
                     m_modals.emplace_back(new EditorConfigModal());
                 }
+
+                if (ImGui::MenuItem("Project Config", nullptr, nullptr, validProject))
+                {
+                    m_modals.emplace_back(new ProjectConfigModal(m_project));
+                }
             }
 
-            if (ImGui::BeginMenu("Windows"))
+            if (ImGui::BeginMenu("Windows", validProject))
             {
                 IDEFER(ImGui::EndMenu());
 
@@ -740,6 +746,7 @@ void AppMain::Update(double a_delta, double a_time)
         RenderCommand::Clear();
 
         const std::filesystem::path path = m_project->GetPath(); 
+        const std::filesystem::path cachePath = m_project->GetCachePath();
         const std::string pathStr = path.string();
         const std::string projectName = m_project->GetName();
 
@@ -751,7 +758,7 @@ void AppMain::Update(double a_delta, double a_time)
         m_rStorage->Clear();
 
         m_assets->Refresh(path);
-        m_assets->BuildDirectory(path / ".cache");
+        m_assets->BuildDirectory(cachePath, m_project);
 
         for (Window* wind : m_windows)
         {

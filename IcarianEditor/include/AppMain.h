@@ -53,7 +53,7 @@ private:
 
     bool                 m_focused;
 
-    unsigned char        m_windowActions;
+    uint8_t              m_windowActions;
 
     std::vector<bool>    m_runtimeModalState;
 

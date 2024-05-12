@@ -69,7 +69,7 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
 
     m_runtime->ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
 }
-void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, const char* a_data)
+void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, const uint8_t* a_data)
 {
     const std::u32string str = a_path.u32string();
 

@@ -20,7 +20,7 @@ FileHandler* Instance = nullptr;
 
 FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
 
@@ -47,7 +47,7 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
     }
 }
 
-static void OpenShader(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+static void OpenShader(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
 
@@ -68,7 +68,7 @@ static void OpenShader(const std::filesystem::path& a_path, const std::filesyste
     }
 }
 
-static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
@@ -88,12 +88,12 @@ static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path,
     }
     }
 }
-static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     a_workspace->SetScene(a_relativePath);
 }
 
-static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const char* a_data)
+static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     a_workspace->PushDef(a_relativePath, a_size, a_data);
 }

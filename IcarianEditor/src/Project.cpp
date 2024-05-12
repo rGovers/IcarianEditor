@@ -6,6 +6,7 @@
 
 #include "AppMain.h"
 #include "AssetLibrary.h"
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 #include "Modals/BuildProjectModal.h"
 #include "Modals/CreateProjectModal.h"
@@ -42,24 +43,18 @@ Project::Project(AppMain* a_app, AssetLibrary* a_assetLibrary, Workspace* a_work
     m_workspace = a_workspace;
 
     m_shouldRefresh = false;
+
+    m_projectFlags = 0;
 }
 Project::~Project()
 {
 
 }
 
-void Project::NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name)
+void Project::SaveProjectFile() const
 {
-    m_path = a_path;
-    m_name = std::string(a_name);
-
-    GenerateDirs(m_path);
-    
-    std::filesystem::path path = m_path / m_name;
-    if (!path.has_extension())
-    {
-        path += ".icproj";
-    }
+    const std::filesystem::path projectFilePath = GetProjectFilePath();
+    const std::string projectFilePathStr = projectFilePath.string();
 
     tinyxml2::XMLDocument doc;
     doc.InsertEndChild(doc.NewDeclaration());
@@ -77,11 +72,60 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
     versionElement->InsertEndChild(versionMinorElement);
     versionMinorElement->SetText(ICARIANEDITOR_VERSION_MINOR);
 
-    doc.SaveFile(path.string().c_str());
+    tinyxml2::XMLElement* versionPatchElement = doc.NewElement("Patch");
+    versionElement->InsertEndChild(versionPatchElement);
+    versionPatchElement->SetText(ICARIANEDITOR_VERSION_PATCH);
 
-    m_shouldRefresh = true;
+    tinyxml2::XMLElement* flags = doc.NewElement("Flags");
+    rootElement->InsertEndChild(flags);
 
-    const std::string assemblyControlName = std::string(a_name) + "AssemblyControl";
+    tinyxml2::XMLElement* convertKtx = doc.NewElement("ConvertKTX");
+    flags->InsertEndChild(convertKtx);
+    convertKtx->SetText(ConvertKTX());
+
+    doc.SaveFile(projectFilePathStr.c_str());
+}
+
+void Project::ReloadProjectFile()
+{
+    const std::filesystem::path projectFilePath = GetProjectFilePath();
+    const std::string projectFilePathStr = projectFilePath.string();
+
+    tinyxml2::XMLDocument doc;
+    doc.LoadFile(projectFilePathStr.c_str());
+
+    const tinyxml2::XMLElement* rootElement = doc.FirstChildElement("Project");
+    for (const tinyxml2::XMLElement* element = rootElement->FirstChildElement(); element != nullptr; element = element->NextSiblingElement())
+    {
+        const char* name = element->Name();
+
+        if (strcmp(name, "Flags") == 0)
+        {
+            for (const tinyxml2::XMLElement* flagsElement = element->FirstChildElement(); flagsElement != nullptr; flagsElement = flagsElement->NextSiblingElement())
+            {
+                const char* name = flagsElement->Name();
+
+                if (strcmp(name, "ConvertKTX") == 0)
+                {
+                    SetConvertKTX(flagsElement->BoolText());
+                }
+            }   
+        }
+    }
+}
+
+void Project::NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name)
+{
+    m_path = a_path;
+    m_name = std::string(a_name);
+
+    GenerateDirs(m_path);
+    
+    SaveProjectFile();
+
+    IDEFER(m_shouldRefresh = true);
+
+    const std::string assemblyControlName = m_name + "AssemblyControl";
 
     std::ofstream assemblyControlStream = std::ofstream(m_path / "Project" / (assemblyControlName + ".cs"));
     if (assemblyControlStream.good() && assemblyControlStream.is_open())
@@ -120,9 +164,11 @@ void Project::OpenCallback(const std::filesystem::path& a_path, const std::strin
         m_name = std::string(a_name, 0, extPos);
     }
 
-    GenerateDirs(m_path);
+    IDEFER(m_shouldRefresh = true);
 
-    m_shouldRefresh = true;
+    ReloadProjectFile();
+
+    GenerateDirs(m_path);
 }
 
 void Project::New()
@@ -143,7 +189,9 @@ void Project::Save() const
     {
         Logger::Message("Save Project");
 
-        m_assetLibrary->Serialize(m_path);
+        m_assetLibrary->Serialize(this);
+
+        SaveProjectFile();
     }
     else
     {

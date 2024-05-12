@@ -1,17 +1,22 @@
 #include "AssetLibrary.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <glad/glad.h>
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/object.h>
 #include <mono/metadata/object-forward.h>
+#include <stb_image.h>
+#include <thread>
+#include <tinyxml2.h>
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "EditorConfig.h"
 #include "IO.h"
+#include "KtxHelpers.h"
 #include "Logger.h"
+#include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
 #include "EditorDefLibraryInterop.h"
@@ -182,13 +187,13 @@ static void ReadAssets(std::vector<Asset>* a_assets, const std::filesystem::path
             file.clear();
             file.seekg(0, std::ios::beg);
 
-            asset.Data = new char[asset.Size];
-            file.read(asset.Data, (std::streamsize)asset.Size);
+            asset.Data = new uint8_t[asset.Size];
+            file.read((char*)asset.Data, (std::streamsize)asset.Size);
         }
     }
 }
 
-void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, char* a_data)
+void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
     {
@@ -214,7 +219,7 @@ void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size
     ICARIAN_ASSERT_MSG(0, "Def not found");
 }
 
-void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_size, char* a_data)
+void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
     {
@@ -292,11 +297,11 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         return;
     }
 
-    std::vector<const char*> defAssets;
+    std::vector<const uint8_t*> defAssets;
     std::vector<uint32_t> defSizes;
     std::vector<std::filesystem::path> defPaths;
 
-    std::vector<const char*> sceneAssets;
+    std::vector<const uint8_t*> sceneAssets;
     std::vector<uint32_t> sceneSizes;
     std::vector<std::filesystem::path> scenePaths;
 
@@ -383,105 +388,119 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
     m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":LoadScenes(byte[][],string[])", sceneArgs);
 }
 
-void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
+static bool ShouldWriteFile(const std::filesystem::path& a_path, const std::filesystem::file_time_type& a_modifiedTime)
+{   
+    if (!std::filesystem::exists(a_path))
+    {
+        return true;
+    }
+
+    if (std::filesystem::last_write_time(a_path) < a_modifiedTime)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+static void WriteData(const std::filesystem::path& a_path, const uint8_t* a_data, uint32_t a_size, const std::filesystem::file_time_type& a_modifiedTime)
 {
+    const std::filesystem::path dir = a_path.parent_path();
+    if (!std::filesystem::exists(dir))
+    {
+        std::filesystem::create_directories(dir);
+    }
+
+    if (ShouldWriteFile(a_path, a_modifiedTime))
+    {
+        std::ofstream file = std::ofstream(a_path, std::ios_base::binary);
+        if (file.good() && file.is_open()) 
+        {
+            file.write((char*)a_data, (std::streamsize)a_size);
+        } 
+        else 
+        {
+            Logger::Warning("Failed writing file: " + a_path.string());
+        }
+    }
+}
+
+constexpr static ktx_uint32_t VKFormatFromSTBIChannels(int a_channelCount)
+{
+    switch (a_channelCount)
+    {
+    case 1:
+    {
+        return KTX_VKFORMAT_R8_UNORM;
+    }
+    case 2:
+    {
+        return KTX_VKFORMAT_R8G8_UNORM;
+    }
+    case 3:
+    {
+        return KTX_VKFORMAT_R8G8B8_UNORM;
+    }
+    case 4:
+    {
+        return KTX_VKFORMAT_R8G8B8A8_UNORM;
+    }
+    }
+
+    ICARIAN_ASSERT(0);
+
+    return KTX_VKFORMAT_R8_SNORM;
+}
+
+void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Project* a_project) const
+{
+    std::vector<FileAlias> fileAliases;
+
     for (const Asset& asset : m_assets)
     {
         switch (asset.AssetType)
         {
         case AssetType_About:
         {
-            const std::filesystem::path p = a_path / "Core" / "about.xml";
-
-            std::filesystem::create_directories(p.parent_path());
-
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
-            {
-                file.write(asset.Data, asset.Size);
-
-                file.close();
-            }
-            else
-            {
-                Logger::Warning("Failed writing about: " + p.string());
-            }
+            WriteData(a_path / "Core" / "about.xml", asset.Data, asset.Size, asset.ModifiedTime);
 
             break;
         }
         case AssetType_Assembly:
         {
-            const std::filesystem::path fileName = asset.Path.filename();
+            const std::filesystem::path filename = asset.Path.filename();
             const std::filesystem::path ext = asset.Path.extension();
             std::filesystem::path p;
 
             if (ext == ".dll" && IsManagedAssembly((unsigned char*)asset.Data, asset.Size))
             {
-                p = a_path / "Core" / "Assemblies" / fileName;
+                p = a_path / "Core" / "Assemblies" / filename;
             }
             else
             {
-                p = a_path / "Core" / "Assemblies" / "Native" / fileName;
+                p = a_path / "Core" / "Assemblies" / "Native" / filename;
             }
 
-            std::filesystem::create_directories(p.parent_path());
-
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
-            {
-                file.write(asset.Data, asset.Size);
-
-                file.close();
-            }
-            else
-            {
-                Logger::Warning("Failed to write assembly: " + p.string());
-            }
+            WriteData(p, asset.Data, asset.Size, asset.ModifiedTime);
 
             break;
         }
         case AssetType_Def:
         {
             std::filesystem::path p = a_path / "Core" / "Defs" / asset.Path;
-            
+
             if (asset.Path.begin()->string() == "Defs")
             {
                 p = a_path / "Core" / asset.Path;
             }
 
-            std::filesystem::create_directories(p.parent_path());
-
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
-            {
-                file.write(asset.Data, asset.Size);
-
-                file.close();
-            }
-            else
-            {
-                Logger::Warning("Failed writing build def: " + p.string());
-            }
+            WriteData(p, asset.Data, asset.Size, asset.ModifiedTime);
 
             break;
         }
         case AssetType_Scene:
         {
-            std::filesystem::path p = a_path / "Core" / "Scenes" / asset.Path.filename();
-
-            std::filesystem::create_directories(p.parent_path());
-
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
-            {
-                file.write(asset.Data, asset.Size);
-
-                file.close();
-            }
-            else
-            {
-                Logger::Warning("Failed to write scene: " + p.string());
-            }
+            WriteData(a_path / "Core" / "Scenes" / asset.Path.filename(), asset.Data, asset.Size, asset.ModifiedTime);
 
             break;
         }
@@ -498,41 +517,97 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
                 p = a_path / "Core" / asset.Path;
             }
 
-            std::filesystem::create_directories(p.parent_path());
+            WriteData(p, asset.Data, asset.Size, asset.ModifiedTime);
 
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
+            break;
+        }
+        case AssetType_Texture:
+        {
+            const std::filesystem::path basePath = a_path / "Core" / "Assets" / asset.Path;
+            const std::filesystem::path ext = asset.Path.extension();
+
+            if (a_project->ConvertKTX() && ext != ".ktx2")
             {
-                file.write(asset.Data, asset.Size);
+                const std::filesystem::path filename = basePath.stem();
+                const std::filesystem::path dir = basePath.parent_path();
 
-                file.close();
+                const std::filesystem::path assetPath = asset.Path.parent_path();
+                const std::string ktxFileName = filename.string() + ".ktx2";
+
+                const std::filesystem::path writePath = dir / ktxFileName;
+                if (ShouldWriteFile(writePath, asset.ModifiedTime))
+                {
+                    if (!std::filesystem::exists(dir))
+                    {
+                        std::filesystem::create_directories(dir);
+                    }
+
+                    if (ext == ".png")
+                    {
+                        int width;
+                        int height;
+                        int channels;
+                        stbi_uc* data = stbi_load_from_memory((stbi_uc*)asset.Data, (int)asset.Size, &width, &height, &channels, 0);
+                        if (data != NULL)
+                        {
+                            IDEFER(stbi_image_free(data));
+
+                            const uint64_t size = (uint64_t)width * height * channels;
+
+                            ktxTextureCreateInfo createInfo = 
+                            {
+                                .vkFormat = VKFormatFromSTBIChannels(channels),
+                                .baseWidth = (ktx_uint32_t)width,
+                                .baseHeight = (ktx_uint32_t)height,
+                                .baseDepth = 1,
+                                .numDimensions = 2,
+                                .numLevels = 1,
+                                .numLayers = 1,
+                                .numFaces = 1,
+                                .generateMipmaps = KTX_TRUE
+                            };
+
+                            ktxTexture2* ktxTex;
+                            ktxTexture2_Create(&createInfo, KTX_TEXTURE_CREATE_ALLOC_STORAGE, &ktxTex);
+                            IDEFER(ktxTexture_Destroy((ktxTexture*)ktxTex));
+
+                            ICARIAN_ASSERT_R(ktxTexture_SetImageFromMemory((ktxTexture*)ktxTex, 0, 0, 0, data, (ktx_size_t)size) == KTX_SUCCESS);
+
+                            ktxBasisParams basisParam =  { 0 };
+                            basisParam.structSize = sizeof(basisParam);
+                            basisParam.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL;
+                            basisParam.threadCount = std::thread::hardware_concurrency() / 2;
+
+                            ICARIAN_ASSERT_R(ktxTexture2_CompressBasisEx(ktxTex, &basisParam) == KTX_SUCCESS);
+
+                            ktx_uint8_t* ktxDat;
+                            ktx_size_t ktxDatSize;
+                            ICARIAN_ASSERT_R(ktxTexture_WriteToMemory((ktxTexture*)ktxTex, &ktxDat, &ktxDatSize) == KTX_SUCCESS);
+
+                            WriteData(writePath, (uint8_t*)ktxDat, (uint32_t)ktxDatSize, asset.ModifiedTime);
+                        }
+                    }
+                }
+
+                const FileAlias alias =
+                {
+                    .SourceFile = asset.Path,
+                    .AliasFile = assetPath / ktxFileName
+                };
+
+                fileAliases.emplace_back(alias);
             }
             else
             {
-                Logger::Warning("Failed writing scribe file: " + p.string());
+                WriteData(basePath, asset.Data, asset.Size, asset.ModifiedTime);
             }
 
             break;
         }
         case AssetType_Model:
-        case AssetType_Texture:
         case AssetType_Other:
         {
-            const std::filesystem::path p = a_path / "Core" / "Assets" / asset.Path;
-
-            std::filesystem::create_directories(p.parent_path());
-            
-            std::ofstream file = std::ofstream(p, std::ios_base::binary);
-            if (file.good() && file.is_open())
-            {
-                file.write(asset.Data, asset.Size);
-
-                file.close();
-            }
-            else
-            {
-                Logger::Warning("Failed writing asset: " + p.string());
-            }
+            WriteData(a_path / "Core" / "Assets" / asset.Path, asset.Data, asset.Size, asset.ModifiedTime);
 
             break;
         }
@@ -541,6 +616,36 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path) const
             Logger::Warning("Invalid Asset: " + asset.Path.string());
         }
         }
+    }
+
+    if (!fileAliases.empty())
+    {
+        tinyxml2::XMLDocument doc;
+        doc.InsertEndChild(doc.NewDeclaration());
+        tinyxml2::XMLElement* rootElement = doc.NewElement("AliasList");
+        doc.InsertEndChild(rootElement);
+
+        for (const FileAlias& a : fileAliases)
+        {
+            tinyxml2::XMLElement* aliasElement = doc.NewElement("Alias");
+            rootElement->InsertEndChild(aliasElement);
+
+            const std::string srcStr = a.SourceFile.string();
+            const std::string dstStr = a.AliasFile.string();
+
+            tinyxml2::XMLElement* sourceElement = doc.NewElement("Source");
+            aliasElement->InsertEndChild(sourceElement);
+            sourceElement->SetText(srcStr.c_str());
+
+            tinyxml2::XMLElement* destinationElement = doc.NewElement("Destination");
+            aliasElement->InsertEndChild(destinationElement);
+            destinationElement->SetText(dstStr.c_str());
+        }
+
+        const std::filesystem::path aliasPath = a_path / "Core" / "alias.xml";
+        const std::string aliasPathStr = aliasPath.string();
+
+        doc.SaveFile(aliasPathStr.c_str());
     }
 }
 
@@ -563,7 +668,7 @@ e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_workingPat
     return GetAssetType(rPath);
 }
 
-void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type)
+void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type)
 {
     *a_size = 0;
     *a_data = nullptr;
@@ -587,33 +692,23 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
         }
     }
 }
-void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const char** a_data, e_AssetType* a_type)
+void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type)
 {
     const std::filesystem::path rPath = IO::GetRelativePath(a_workingDir, a_path);
 
     GetAsset(rPath, a_size, a_data, a_type);
 }
 
-void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir)
+void AssetLibrary::Serialize(const Project* a_project)
 {
-    std::vector<Asset> defs;
-
-    for (const Asset& asset : m_assets)
-    {
-        if (asset.AssetType == AssetType_Def)
-        {
-            defs.emplace_back(asset);
-        }
-    }
-
-    const std::filesystem::path pPath = a_workingDir / "Project";
+    const std::filesystem::path pPath = a_project->GetProjectPath();
 
     m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":SerializeDefs()", nullptr);
     m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
 
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
-    for (const Asset& a : m_assets)
+    for (Asset& a : m_assets)
     {
         const std::filesystem::path p = pPath / a.Path;
 
@@ -622,6 +717,8 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir)
         switch (type) 
         {
         case AssetType_Script:
+        case AssetType_Model:
+        case AssetType_Texture:
         {
             continue;
         }
@@ -643,37 +740,9 @@ void AssetLibrary::Serialize(const std::filesystem::path& a_workingDir)
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
-            file.write(a.Data, a.Size);
-        }
-    }
-
-    const std::filesystem::file_time_type time = std::filesystem::file_time_type::clock::now();
-
-    for (Asset& asset : m_assets)
-    {
-        const e_AssetType type = asset.AssetType;
-
-        switch (type)
-        {
-        case AssetType_Script:
-        {
-            continue;
-        }
-        case AssetType_Def:
-        {
-            if (defEditor != DefEditor_Editor)
-            {
-                continue;
-            }
-
-            break;
-        }
-        default:
-        {
-            break;
-        }
+            file.write((char*)a.Data, a.Size);
         }
 
-        asset.ModifiedTime = time;
+        a.ModifiedTime = std::filesystem::file_time_type::clock::now();
     }
 }

@@ -97,7 +97,7 @@ bool BuildProjectModal::Update()
         {
             new GenerateConfigLoadingTask(path, name, "Vulkan"),
             new BuildLoadingTask(path, m_exportOptions[m_selectedExport], m_project),
-            new SerializeAssetsLoadingTask(path, m_library),
+            new SerializeAssetsLoadingTask(path, m_project, m_library),
             new CopyBuildLibraryLoadingTask(path, name, m_exportOptions[m_selectedExport])
         };
 

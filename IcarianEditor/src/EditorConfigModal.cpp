@@ -178,7 +178,7 @@ void EditorConfigModal::ExternalToolsTab()
 
 bool EditorConfigModal::Update()
 {
-    if (ImGui::BeginChild("##Tabs", ImVec2(100.0f, 240.0f), true))
+    if (ImGui::BeginChild("##Tabs", ImVec2(100.0f, 230.0f)))
     {
         IDEFER(ImGui::EndChild());
 
@@ -226,7 +226,6 @@ bool EditorConfigModal::Update()
         }
     }
     
-
     if (ImGui::Button("Apply"))
     {
         EditorConfig::Serialize();

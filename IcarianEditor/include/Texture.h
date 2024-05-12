@@ -8,7 +8,6 @@ class Texture
 private:
     GLuint m_handle;
 
-
 protected:
 
 public:

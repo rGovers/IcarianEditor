@@ -416,7 +416,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
     FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
 
     uint32_t size;
-    const char* data;
+    const uint8_t* data;
     e_AssetType type;
     m_assetLibrary->GetAsset(rPath, &size, &data, &type);
 

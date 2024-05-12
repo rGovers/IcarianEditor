@@ -16,7 +16,7 @@ class Workspace;
 class FileHandler
 {
 public:
-    using FileCallback = std::function<void(const std::filesystem::path&, const std::filesystem::path&, uint32_t, const char*)>;
+    using FileCallback = std::function<void(const std::filesystem::path&, const std::filesystem::path&, uint32_t, const uint8_t*)>;
 
 private:
     FileTextureHandle                             m_runtimeTexHandle;
