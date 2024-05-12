@@ -208,7 +208,12 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
 
     ImGui::SameLine();
 
-    if (ImGui::InputText("Path", buffer, BufferSize, ImGuiInputTextFlags_EnterReturnsTrue))
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", "Path");
+
+    ImGui::SameLine();
+
+    if (ImGui::InputText("##Path", buffer, BufferSize, ImGuiInputTextFlags_EnterReturnsTrue))
     {
         SetPath(buffer);
 
@@ -230,8 +235,8 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
         ImGui::BeginGroup();
         IDEFER(ImGui::EndGroup());
 
-        const float upperHeight = size.y * 0.25f - style.FramePadding.y;
-        const float lowerHeight = size.y * 0.75f;
+        const float upperHeight = size.y * 0.4f - style.FramePadding.y;
+        const float lowerHeight = size.y * 0.6f;
 
         if (ImGui::BeginChild("Drives", { DirectoryExplorerWidth, upperHeight }))
         {  
@@ -340,7 +345,12 @@ e_FileDialogStatus FileDialogBlock::ShowFileDialog(std::filesystem::path* a_outP
     }
     buffer[nameLen] = 0;
 
-    if (ImGui::InputText("Name", buffer, BufferSize))
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", "Name");
+
+    ImGui::SameLine();
+
+    if (ImGui::InputText("##Name", buffer, BufferSize))
     {
         m_name = buffer;
     }

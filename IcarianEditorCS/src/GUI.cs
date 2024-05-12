@@ -108,6 +108,11 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetCtrlModifier();
 
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetBeginChild(string a_label, Vector2 a_size);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void EndChild();
+
         struct DefVal
         {
             public string Input;
@@ -129,6 +134,11 @@ namespace IcarianEditor
             {
                 return GetCtrlModifier() != 0;
             }
+        }
+
+        public static bool BeginChild(string a_label, Vector2 a_size)
+        {
+            return GetBeginChild(a_label, a_size) != 0;
         }
 
         public static bool Button(string a_label)

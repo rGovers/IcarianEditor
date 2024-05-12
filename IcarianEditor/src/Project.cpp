@@ -116,8 +116,8 @@ void Project::ReloadProjectFile()
 
 void Project::NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
-    m_path = a_path;
     m_name = std::string(a_name);
+    m_path = a_path / m_name;
 
     GenerateDirs(m_path);
     

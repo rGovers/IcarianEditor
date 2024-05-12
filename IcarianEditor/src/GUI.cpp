@@ -545,6 +545,18 @@ RUNTIME_FUNCTION(void, GUI, Separator,
     ImGui::Separator();
 })
 
+RUNTIME_FUNCTION(uint32_t, GUI, GetBeginChild, 
+{
+    char* str = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(str));
+
+    return (uint32_t)ImGui::BeginChild(str, { a_size.x, a_size.y });
+}, MonoString* a_str, glm::vec2 a_size)
+RUNTIME_FUNCTION(void, GUI, EndChild, 
+{
+    ImGui::EndChild();
+})
+
 RUNTIME_FUNCTION(uint32_t, GUI, GetShiftModifier, 
 {
     return (uint32_t)(ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift));
@@ -628,6 +640,9 @@ void GUI::Init(RuntimeManager* a_runtime)
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetShiftModifier);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCtrlModifier);
+
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetBeginChild);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndChild);
     }
 }
 void GUI::Destroy()

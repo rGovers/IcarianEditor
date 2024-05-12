@@ -643,9 +643,7 @@ void AssetBrowserWindow::Update(double a_delta)
         pIndex = m_fileTree[pIndex].Parent;
     }
 
-    const ImVec2 contentRegion = ImGui::GetContentRegionAvail();
-
-    if (ImGui::BeginChild("##FolderView", { 200.0f, contentRegion.y }))
+    if (ImGui::BeginChild("##FolderView", { 200.0f, 0.0f }))
     {
         TraverseFolderTree(0);
     }
@@ -670,8 +668,13 @@ void AssetBrowserWindow::Update(double a_delta)
 
     ImGui::SameLine();
 
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", "Search");
+
+    ImGui::SameLine();
+
     ImGui::SetNextItemWidth(128.0f);
-    ImGui::InputText("Search", m_searchBuffer, SearchBufferSize);
+    ImGui::InputText("##Search", m_searchBuffer, SearchBufferSize);
 
     ImGui::SameLine();
 
