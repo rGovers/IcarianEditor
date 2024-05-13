@@ -649,6 +649,22 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
     }
 }
 
+std::vector<std::filesystem::path> AssetLibrary::GetAssetPathWithExtension(const std::string_view& a_ext)
+{
+    std::vector<std::filesystem::path> paths; 
+
+    for (const Asset& a : m_assets)
+    {
+        const std::filesystem::path ext = a.Path.extension();
+        if (ext == a_ext)
+        {
+            paths.emplace_back(a.Path);
+        }
+    }
+
+    return paths;
+}
+
 e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_path)
 {
     for (const Asset& a : m_assets)
