@@ -68,6 +68,8 @@ public:
     void Refresh(const std::filesystem::path& a_workingDir);
     void BuildDirectory(const std::filesystem::path& a_path, const Project* a_project) const;
 
+    std::vector<std::filesystem::path> GetAssetPathWithExtension(const std::string_view& a_ext);
+
     e_AssetType GetAssetType(const std::filesystem::path& a_path);
     e_AssetType GetAssetType(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path);
 

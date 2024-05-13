@@ -189,6 +189,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "src/FlareImGui.cpp",
         "src/GameWindow.cpp",
         "src/GenerateConfigLoadingTask.cpp",
+        "src/GetAssetModal.cpp",
         "src/Gizmos.cpp",
         "src/GUI.cpp",
         "src/HierarchyWindow.cpp",

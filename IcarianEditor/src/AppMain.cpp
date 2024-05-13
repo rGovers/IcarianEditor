@@ -213,7 +213,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     RenderCommand::Init(m_runtime, m_rStorage);
     Gizmos::Init(m_runtime);
-    GUI::Init(m_runtime);
+    GUI::Init(this, m_runtime, m_assets);
 
     FileHandler::Init(m_assets, m_runtime, m_rStorage, m_workspace);
     

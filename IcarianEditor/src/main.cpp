@@ -29,10 +29,8 @@ int main(int a_argc, char* a_argv[])
 
     srand(time(NULL));
 
-    Application* app = new AppMain();
-    app->Run();
-
-    delete app;
+    AppMain app;
+    app.Run();
 
     return 0;
 }

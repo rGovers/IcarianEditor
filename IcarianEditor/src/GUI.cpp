@@ -3,10 +3,11 @@
 #include <glm/glm.hpp>
 #include <string>
 
+#include "AppMain.h"
 #include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "FlareImGui.h"
-#include "Logger.h"
+#include "Modals/GetAssetModal.h"
 #include "Runtime/RuntimeManager.h"
 #include "Texture.h"
 
@@ -277,7 +278,33 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetPathString,
 
     if (FlareImGui::ImageButton(("##F_" + str).c_str(), "Textures/WindowIcons/WindowIcon_AssetBrowser.png", { 16.0f, 16.0f }, false))
     {
-        Logger::Message("Test");
+        const uint32_t extensionCount = (uint32_t)mono_array_length(a_extensions);
+
+        char** extensions = new char*[extensionCount];
+        memset(extensions, 0, extensionCount * sizeof(char*));
+        IDEFER(
+        {
+            for (uint32_t i = 0; i < extensionCount; ++i)
+            {
+                if (extensions[i] != NULL)
+                {
+                    mono_free(extensions[i]);
+                }
+            }
+
+            delete[] extensions;
+        });
+
+        for (uint32_t i = 0; i < extensionCount; ++i)
+        {
+            MonoString* str = mono_array_get(a_extensions, MonoString*, i);
+            if (str != NULL)
+            {
+                extensions[i] = mono_string_to_utf8(str);
+            }
+        }
+
+        Instance->OpenAssetPathModal(extensions, extensionCount);
     }
 
     ImGui::SameLine();
@@ -288,9 +315,14 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetPathString,
         return mono_string_new(mono_domain_get(), buffer);
     }
 
-    return NULL;
+    const std::string pStr = Instance->GetPathString();
+    if (!pStr.empty())
+    {
+        return mono_string_new(mono_domain_get(), pStr.c_str());
+    }
 
-}, MonoString* a_str, MonoString* a_value)
+    return NULL;
+}, MonoString* a_str, MonoString* a_value, MonoArray* a_extensions)
 
 // MSVC workaround
 static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
@@ -316,15 +348,15 @@ static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_
     {
         IDEFER(ImGui::EndCombo());
         
-        static char buffer[4096] = { 0 };
-        ImGui::InputText(("Search##VS_" + str).c_str(), buffer, sizeof(buffer) - 1);
+        static char Buffer[4096] = { 0 };
+        ImGui::InputText(("Search##VS_" + str).c_str(), Buffer, sizeof(Buffer) - 1);
 
         for (uint32_t i = 0; i < size; ++i)
         {
             char* selectableStr = mono_string_to_utf8(mono_array_get(a_list, MonoString*, i));
             IDEFER(mono_free(selectableStr));
 
-            if (buffer[0] != 0 && strstr(selectableStr, buffer) == 0)
+            if (Buffer[0] != 0 && strstr(selectableStr, Buffer) == NULL)
             {
                 continue;
             }
@@ -566,8 +598,10 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetCtrlModifier,
     return (uint32_t)(ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
 })
 
-GUI::GUI(RuntimeManager* a_runtime)
+GUI::GUI(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets)
 {
+    m_app = a_app;
+    m_assets = a_assets;
     m_runtime = a_runtime;
 }
 GUI::~GUI()
@@ -575,11 +609,11 @@ GUI::~GUI()
     
 }
 
-void GUI::Init(RuntimeManager* a_runtime)
+void GUI::Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets)
 {
     if (Instance == nullptr)
     {
-        Instance = new GUI(a_runtime);
+        Instance = new GUI(a_app, a_runtime, a_assets);
         
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetButton);
 
@@ -652,6 +686,59 @@ void GUI::Destroy()
         delete Instance;
         Instance = nullptr;
     }
+}
+
+class PathAssetModalData : public GetAssetModalData
+{
+private:
+    GUI*        m_gui;
+    std::string m_id;
+
+protected:
+
+public:
+    PathAssetModalData(GUI* a_gui, const std::string_view& a_id)
+    {
+        m_gui = a_gui;
+        m_id = a_id;
+    }
+
+    virtual void Confirm(const std::filesystem::path& a_path)
+    {
+        const PathString str =
+        {
+            .IDStr = m_id,
+            .Path = a_path.string()
+        };
+
+        m_gui->PushPathString(str);
+    }
+};
+
+void GUI::OpenAssetPathModal(char* const* a_extensions, uint32_t a_extensionCount)
+{
+    PathAssetModalData* data = new PathAssetModalData(this, GetID());
+
+    m_app->PushModal(new GetAssetModal(a_extensions, a_extensionCount, m_assets, data));
+}
+
+std::string GUI::GetPathString()
+{
+    const std::string id = GetID();
+
+    for (auto iter = m_pathStrings.begin(); iter != m_pathStrings.end(); ++iter)
+    {
+        if (iter->IDStr == id)
+        {
+            const std::string path = iter->Path;
+
+            m_pathStrings.erase(iter);
+
+            return path;
+        }   
+    }
+
+    return std::string();
 }
 
 void GUI::SetWidth(float a_width)

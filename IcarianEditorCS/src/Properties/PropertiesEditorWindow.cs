@@ -189,7 +189,7 @@ namespace IcarianEditor.Properties
                     {
                         if (a is EditorPathStringAttribute path)
                         {
-                            if (GUI.RPathStringField(a_name, ref val, (string)a_normVal))
+                            if (GUI.RPathStringField(a_name, ref val, path.Extensions, (string)a_normVal))
                             {
                                 a_obj = val;
                             }

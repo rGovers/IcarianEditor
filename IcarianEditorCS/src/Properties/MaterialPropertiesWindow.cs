@@ -1,3 +1,4 @@
+using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using IcarianEngine.Rendering;
@@ -18,9 +19,9 @@ namespace IcarianEditor.Properties
                 return;
             }
 
-            GUI.PathStringField("Vertex Shader Path", ref def.VertexShaderPath);
+            GUI.PathStringField("Vertex Shader Path", ref def.VertexShaderPath, Extensions.VertexShaderExtensions);
             GUI.Tooltip("Vertex Shader Path", "Path relative to the project for the vertex shader file to be used.");
-            GUI.PathStringField("Pixel Shader Path", ref def.PixelShaderPath);
+            GUI.PathStringField("Pixel Shader Path", ref def.PixelShaderPath, Extensions.PixelShaderExtensions);
             GUI.Tooltip("Pixel Shader Path", "Path relative to the project for the pixel shader file to be used.");
 
             GUI.EnumField("Culling Mode", ref def.CullingMode);
@@ -76,7 +77,7 @@ namespace IcarianEditor.Properties
                         GUI.Indent();
 
                         GUI.RUIntField("Slot", ref input.Slot, uint.MaxValue);
-                        GUI.PathStringField("Path", ref input.Path);
+                        GUI.PathStringField("Path", ref input.Path, Extensions.TextureExtensions);
                         GUI.EnumField("Address Mode", ref input.AddressMode);
                         GUI.EnumField("Filter Mode", ref input.FilterMode);
 
@@ -162,7 +163,7 @@ namespace IcarianEditor.Properties
                 GUI.Unindent();
             }
 
-            GUI.PathStringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath);
+            GUI.PathStringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath, Extensions.VertexShaderExtensions);
             GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the vertex shader file to be used for shadows.");
 
             Type uboType = def.UniformBufferType;
