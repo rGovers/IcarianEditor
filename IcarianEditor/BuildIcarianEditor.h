@@ -118,7 +118,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
     CUBE_CProject_AppendDefines(&project,
         "ICARIANEDITOR_VERSION_MAJOR=2024",
-        "ICARIANEDITOR_VERSION_MINOR=0",
+        "ICARIANEDITOR_VERSION_MINOR=1",
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",

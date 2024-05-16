@@ -173,6 +173,11 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     {
     case AssetType_Texture:
     {
+        if (!Instance->m_runtime->IsBuilt())
+        {
+            break;
+        }
+
         MonoDomain* domain = Instance->m_runtime->GetEditorDomain();
 
         const std::string pathString = a_path.u8string();

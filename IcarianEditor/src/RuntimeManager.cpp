@@ -141,6 +141,9 @@ static bool FlushOutput(CUBE_String** a_line, CBUINT32* a_lineCount)
     for (CBUINT32 i = 0; i < *a_lineCount; ++i)
     {
         const std::string str = std::string((*a_line)[i].Data);
+#ifndef NDEBUG
+        Logger::Message(str);
+#endif
 
         if (str.find("Build FAILED") != std::string::npos)
         {
@@ -194,11 +197,15 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
 
     const std::filesystem::path cwd = std::filesystem::current_path();
     const std::filesystem::path icarianCSPath = cwd / "IcarianCS.dll";
+    const std::string icarianCSPathStr = icarianCSPath.string();
     const std::filesystem::path icarianEditorCSPath = cwd / "IcarianEditorCS.dll";
+    const std::string icarianEditorCSPathStr = icarianEditorCSPath.string();
 
     const std::filesystem::path cscPath = IO::GetCSCPath();
+    const std::string cscPathStr = cscPath.string();
 
     const std::filesystem::path cachePath = a_path / ".cache";
+    const std::string cachePathStr = cachePath.string();
     const std::filesystem::path projectPath = a_path / "Project";
     const std::filesystem::path projectFile = cachePath / (std::string(a_name) + ".csproj");
     const std::filesystem::path assemblyPath = std::filesystem::path("Core") / "Assemblies";
@@ -251,9 +258,9 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         CUBE_CSProject_AppendSource(&project, absPath.string().c_str());
     }
 
-    CUBE_CSProject_AppendReference(&project, icarianCSPath.string().c_str());
+    CUBE_CSProject_AppendReference(&project, icarianCSPathStr.c_str());
 
-    m_built = CUBE_CSProject_Compile(&project, cachePath.string().c_str(), cscPath.string().c_str(), &lines, &lineCount);
+    m_built = CUBE_CSProject_Compile(&project, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
 
     if (!FlushOutput(&lines, &lineCount))
     {
@@ -265,6 +272,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         const std::filesystem::path editorPath = projectPath / "Editor";
         const std::filesystem::path editorProjectFile = cachePath / (std::string(a_name) + "Editor.csproj");
         const std::filesystem::path projectOutputFile = cachePath / assemblyPath / (std::string(a_name) + ".dll");
+        const std::string projectOutputFileStr = projectOutputFile.string();
 
         std::vector<std::filesystem::path> editorScripts;
         MonoProjectGenerator::GetScripts(&editorScripts, editorPath, projectPath);
@@ -284,6 +292,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
                 { std::string(a_name), cachePath / assemblyPath / (std::string(a_name) + ".dll") },
             };
 
+            // TODO: Clean this up and move to CUBE
             const MonoProjectGenerator editorProject = MonoProjectGenerator(editorScripts.data(), (uint32_t)editorScripts.size(), editorDependencies, sizeof(editorDependencies) / sizeof(*editorDependencies));
             editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", externalDependencies, sizeof(externalDependencies) / sizeof(*externalDependencies));
         }
@@ -291,7 +300,8 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         CUBE_CSProject editorProject = { 0 };
         IDEFER(CUBE_CSProject_Destroy(&editorProject));
 
-        editorProject.Name = CUBE_StackString_CreateC((std::string(a_name) + "Editor").data());
+        const std::string editorProjectName = std::string(a_name) + "Editor";
+        editorProject.Name = CUBE_StackString_CreateC(editorProjectName.c_str());
         editorProject.Target = CUBE_CSProjectTarget_Library;
         editorProject.OutputPath = CUBE_Path_CreateC("Editor");
 
@@ -300,16 +310,17 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         for (const std::filesystem::path& p : editorScripts)
         {
             const std::filesystem::path absPath = projectPath / p;
+            const std::string absPathStr = absPath.string();
 
-            CUBE_CSProject_AppendSource(&editorProject, absPath.string().c_str());
+            CUBE_CSProject_AppendSource(&editorProject, absPathStr.c_str());
         }
 
-        CUBE_CSProject_AppendReference(&editorProject, icarianCSPath.string().c_str());
-        CUBE_CSProject_AppendReference(&editorProject, icarianEditorCSPath.string().c_str());
+        CUBE_CSProject_AppendReference(&editorProject, icarianCSPathStr.c_str());
+        CUBE_CSProject_AppendReference(&editorProject, icarianEditorCSPathStr.c_str());
 
-        CUBE_CSProject_AppendReference(&editorProject, projectOutputFile.string().c_str());
+        CUBE_CSProject_AppendReference(&editorProject, projectOutputFileStr.c_str());
 
-        m_built = CUBE_CSProject_Compile(&editorProject, cachePath.string().c_str(), cscPath.string().c_str(), &lines, &lineCount);
+        m_built = CUBE_CSProject_Compile(&editorProject, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
 
         if (!FlushOutput(&lines, &lineCount))
         {
