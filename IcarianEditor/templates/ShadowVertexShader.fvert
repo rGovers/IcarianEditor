@@ -11,6 +11,6 @@ layout(location = 3) in vec2 texCoord;
 void main() 
 {
     // Basic shadow vertex shader
-    mat4 modelMat = #!instancedstructure(modelBuffer).Model;
+    mat4 modelMat = #!instancestructure(modelBuffer).Model;
     gl_Position = shadowLightBuffer.LVP * modelMat * position;
 }

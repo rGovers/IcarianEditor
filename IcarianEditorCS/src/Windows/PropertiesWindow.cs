@@ -53,16 +53,16 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void DisplayGUI(object a_object)
+        static void DisplayGUI(object a_object, bool a_sceneObject)
         {
             Type type = a_object.GetType();
             if (s_windows.ContainsKey(type))
             {
-                s_windows[type].OnGUI(a_object);
+                s_windows[type].OnGUI(a_object, a_sceneObject);
             }
             else
             {
-                s_defaultWindow.OnGUI(a_object);
+                s_defaultWindow.OnGUI(a_object, a_sceneObject);
             }
         }
 
@@ -71,7 +71,7 @@ namespace IcarianEditor.Windows
             // TODO: Implement multi selection at some point
             if (!Workspace.IsSelectionEmpty)
             {
-                DisplayGUI(Workspace.Selection.First());
+                DisplayGUI(Workspace.Selection.First(), false);
             }
             else if (!Workspace.IsDefSelectionEmpty)
             {
@@ -82,7 +82,7 @@ namespace IcarianEditor.Windows
 
                     if (def != null)
                     {
-                        DisplayGUI(def);
+                        DisplayGUI(def, def.IsSceneDef);
 
                         EditorDefLibrary.RebuildDefData(def);
                     }

@@ -27,6 +27,7 @@ namespace IcarianEditor.Editor
             {
                 return;
             }
+            matDef.PostResolve();
 
             Material mat = AssetLibrary.GetMaterial(matDef);
             if (mat == null)

@@ -5,7 +5,7 @@ namespace IcarianEditor.Properties
     [PWindow(typeof(SpotLightDef))]
     public class SpotLightPropertiesWindow : LightPropertiesWindow
     {
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             SpotLightDef def = a_object as SpotLightDef;
             if (def == null)
@@ -22,7 +22,7 @@ namespace IcarianEditor.Properties
             GUI.FloatField("Outer Cutoff Angle", ref def.OuterCutoffAngle);
             GUI.Tooltip("Outer Cutoff Angle", "Outer cutoff angle of the light.");
 
-            base.OnGUI(a_object);
+            base.OnGUI(a_object, a_sceneObject);
         }
     }
 }

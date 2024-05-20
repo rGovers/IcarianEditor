@@ -19,10 +19,14 @@ struct IDStack
 {
     IDStack(const std::string_view& a_id)
     {
+        Instance->PushID(a_id);
+
         ImGui::PushID(a_id.data());
     }
     ~IDStack()
     {
+        Instance->PopID();
+
         ImGui::PopID();
     }
 };
@@ -752,7 +756,7 @@ std::string GUI::GetID() const
 
     for (const std::string& s : m_id)
     {
-        str += s;
+        str += s + " ";
     }
 
     return str;

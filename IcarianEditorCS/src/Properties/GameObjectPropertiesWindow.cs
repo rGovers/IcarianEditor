@@ -22,7 +22,7 @@ namespace IcarianEditor.Properties
 
         RotationMode  m_mode = RotationMode.AxisAngle;
 
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             GameObjectDef def = a_object as GameObjectDef;
             if (def == null)
@@ -178,11 +178,11 @@ namespace IcarianEditor.Properties
                     GUI.SameLine();
 
                     // Allow inline editing for scene defs
-                    if (comp.IsSceneDef)
+                    if (a_sceneObject)
                     {
                         if (GUI.StructView($"[{i}] Scene Component"))
                         {
-                            BaseGUI(comp);
+                            BaseGUI(comp, false);
                         }
                     }
                     else

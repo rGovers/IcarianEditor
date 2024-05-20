@@ -21,6 +21,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
 
     CUBE_CSProject_AppendSources(&project, 
         "src/AnimationMaster.cs",
+        "src/ClipBoard.cs",
         "src/ColliderRenderer.cs",
         "src/EditorConfig.cs",
         "src/EditorDefLibrary.cs",

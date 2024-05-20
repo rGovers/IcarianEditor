@@ -22,7 +22,7 @@ namespace IcarianEditor.Properties
 
         static GameObjectPropertiesWindow s_gameObjectWindow = new GameObjectPropertiesWindow();
 
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             SelectionObject selectionObject = (SelectionObject)a_object;
 
@@ -145,7 +145,7 @@ namespace IcarianEditor.Properties
                 // Allow inline editing for scene objects
                 if (def != null && def.IsSceneDef)
                 {
-                    s_gameObjectWindow.OnGUI(def);  
+                    s_gameObjectWindow.OnGUI(def, a_sceneObject);  
                 }
 
                 break;

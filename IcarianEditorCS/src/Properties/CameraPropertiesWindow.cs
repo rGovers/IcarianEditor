@@ -6,7 +6,7 @@ namespace IcarianEditor.Properties
     [PWindow(typeof(CameraDef))]
     public class CameraPropertiesWindow : PropertiesEditorWindow
     {
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             CameraDef def = a_object as CameraDef;
             if (def == null)

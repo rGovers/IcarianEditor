@@ -29,7 +29,7 @@ namespace IcarianEditor.Properties
 
     public class PropertiesEditorWindow
     {
-        static void ShowFields(string a_name, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
+        static void ShowFields(string a_name, bool a_sceneObject, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
         {
             switch (a_obj)
             {
@@ -170,7 +170,7 @@ namespace IcarianEditor.Properties
                         {
                             MethodInfo genericInfo = method.MakeGenericMethod(a_type);
 
-                            object[] args = new object[] { a_name, def, normDef, false };
+                            object[] args = new object[] { a_name, def, normDef, a_sceneObject };
                             if ((bool)genericInfo.Invoke(null, args))
                             {
                                 a_obj = args[1] as Def;
@@ -241,7 +241,7 @@ namespace IcarianEditor.Properties
                         for (int i = 0; i < len; ++i)
                         {
                             object o = a.GetValue(i);
-                            ShowFields($"[{i}]", ref o, eNVal, eType, a_attributes);
+                            ShowFields($"[{i}]", a_sceneObject, ref o, eNVal, eType, a_attributes);
                             a.SetValue(o, i);
                         }
 
@@ -295,7 +295,7 @@ namespace IcarianEditor.Properties
 
                             GUI.SameLine();
 
-                            ShowFields($"[{index++}]", ref oVal, gNVal, gType, a_attributes);
+                            ShowFields($"[{index++}]", a_sceneObject, ref oVal, gNVal, gType, a_attributes);
 
                             method.Invoke(nObj, new object[] { oVal });
 
@@ -342,7 +342,7 @@ namespace IcarianEditor.Properties
                             List<Attribute> atts = new List<Attribute>(a_attributes);
                             atts.AddRange(field.GetCustomAttributes());
 
-                            ShowFields($"{a_name}.{field.Name}", ref val, field.GetValue(normObj), field.FieldType, atts);
+                            ShowFields($"{a_name}.{field.Name}", a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, atts);
 
                             field.SetValue(a_obj, val);
                         }
@@ -357,7 +357,7 @@ namespace IcarianEditor.Properties
             }
         }
 
-        public static void BaseGUI(object a_object)
+        public static void BaseGUI(object a_object, bool a_sceneObject)
         {
             Type objType = a_object.GetType();
 
@@ -387,7 +387,7 @@ namespace IcarianEditor.Properties
 
                 IEnumerable<Attribute> attributes = field.GetCustomAttributes();
 
-                ShowFields(field.Name, ref val, field.GetValue(normObj), field.FieldType, attributes);
+                ShowFields(field.Name, a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, attributes);
  
                 field.SetValue(a_object, val);
 
@@ -401,9 +401,9 @@ namespace IcarianEditor.Properties
             }
         }
 
-        public virtual void OnGUI(object a_object)
+        public virtual void OnGUI(object a_object, bool a_sceneObject)
         {
-            BaseGUI(a_object);
+            BaseGUI(a_object, a_sceneObject);
         }
     }
 }

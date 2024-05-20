@@ -1,10 +1,10 @@
+using IcarianEngine;
+using IcarianEngine.Definitions;
+using IcarianEngine.Maths;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
-using IcarianEngine;
-using IcarianEngine.Definitions;
-using IcarianEngine.Maths;
 
 namespace IcarianEditor.Modals
 {
@@ -49,6 +49,8 @@ namespace IcarianEditor.Modals
                     scene.RemoveDef(obj.DefName);
                 }
 
+                Workspace.ClearSelection();
+                
                 scene.RemoveSceneObject(m_id);
 
                 return false;

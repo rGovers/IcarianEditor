@@ -5,7 +5,7 @@ namespace IcarianEditor.Properties
     [PWindow(typeof(LightDef))]
     public class LightPropertiesWindow : PropertiesEditorWindow
     {
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             LightDef def = a_object as LightDef;
             if (def == null)

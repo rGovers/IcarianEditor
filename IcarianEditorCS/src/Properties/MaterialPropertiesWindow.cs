@@ -11,7 +11,7 @@ namespace IcarianEditor.Properties
     [PWindow(typeof(MaterialDef))]
     public class MaterialPropertiesWindow : PropertiesEditorWindow
     {
-        public override void OnGUI(object a_object)
+        public override void OnGUI(object a_object, bool a_sceneObject)
         {
             MaterialDef def = a_object as MaterialDef;
             if (def == null)

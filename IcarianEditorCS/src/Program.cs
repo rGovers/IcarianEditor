@@ -16,6 +16,7 @@ namespace IcarianEditor
             MethodInfo assetLibraryInitMethod = assetLibraryType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
             assetLibraryInitMethod.Invoke(null, new object[] { });
 
+            ClipBoard.Init();
             PropertiesWindow.Init();
             EditorWindow.Init();
         }
@@ -28,6 +29,7 @@ namespace IcarianEditor
 
         static void Unload()
         {
+            ClipBoard.Clear();
             AssetLibrary.ClearAssets();
             EditorDefLibrary.Clear();
             AnimationMaster.Destroy();
