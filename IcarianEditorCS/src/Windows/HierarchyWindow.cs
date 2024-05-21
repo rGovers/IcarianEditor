@@ -99,6 +99,8 @@ namespace IcarianEditor.Windows
             {
                 if (GUI.MenuItem("Paste"))
                 {
+                    EditorScene scene = Workspace.GetScene();
+
                     scene.AddSceneObject((string)item.Data);
                 }
             }
