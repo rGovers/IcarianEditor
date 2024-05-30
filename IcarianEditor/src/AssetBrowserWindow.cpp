@@ -281,7 +281,14 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
         {
             constexpr uint32_t Length = sizeof(SceneTemplate) / sizeof(*SceneTemplate) - 1;
 
-            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length - 1, "New Scene", ".iscene"));
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length, "New Scene", ".iscene"));
+        }
+
+        if (ImGui::MenuItem("Canvas"))
+        {
+            constexpr uint32_t Length = sizeof(CanvasTemplate) / sizeof(*CanvasTemplate) - 1;
+
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, CanvasTemplate, Length, "New Canvas", ".ui"));
         }
 
         ImGui::EndMenu();

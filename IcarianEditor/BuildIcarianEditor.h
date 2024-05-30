@@ -27,6 +27,7 @@ const static char* TemplateBasePaths[] =
     "templates/DefTable.cs",
     "templates/Component.cs",
     "templates/Scriptable.cs",
+    "templates/Canvas.ui",
     "templates/VertexShader.fvert",
     "templates/SkinnedVertexShader.fvert",
     "templates/ShadowVertexShader.fvert",

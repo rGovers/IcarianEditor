@@ -12,6 +12,7 @@
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/StringUtils.h"
 #include "EditorConfig.h"
 #include "IO.h"
 #include "KtxHelpers.h"
@@ -55,9 +56,9 @@ constexpr static T ToWInt(const unsigned char* a_data)
     constexpr uint32_t Size = sizeof(T);
 
     T val = 0;
-    for (uint32_t i = 0; i < Size; ++i)
+    for (T i = 0; i < Size; ++i)
     {
-        val |= (T)(a_data[i] << i * 8);
+        val |= (T)(a_data[i]) << (i * 8);
     }
 
     return val;
@@ -75,15 +76,15 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     constexpr uint16_t MagicDLLNumber = 0x5A4D;
     constexpr uint32_t MagicNTAddress = 0x00004550;
     
-    // Is Exe/DLL
-    if (ToWInt<uint16_t>(a_data) != MagicDLLNumber)
+    const bool isExe = ToWInt<uint16_t>(a_data) == MagicDLLNumber;
+    if (!isExe)
     {
         return false;
     }
 
     const uint32_t winNTHdr = ToWInt<uint32_t>(a_data + 60);
-    // Address is valid
-    if (ToWInt<uint32_t>(a_data + winNTHdr) != MagicNTAddress)
+    const bool validAddress = ToWInt<uint32_t>(a_data + winNTHdr) == MagicNTAddress;
+    if (!validAddress)
     {
         return false;
     }
@@ -93,11 +94,11 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     {
         if (a_data[i + lightningAddr])
         {
-            return false;
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
@@ -108,53 +109,95 @@ static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::pa
 
         if (iter.is_regular_file())
         {
-            Asset asset;
-
-            asset.Path = IO::GetRelativePath(a_workingDir, path);
-            asset.ModifiedTime = std::filesystem::last_write_time(path);
+            Asset asset = 
+            { 
+                .ModifiedTime = std::filesystem::last_write_time(path),
+                .Path = IO::GetRelativePath(a_workingDir, path),
+            };
 
             const std::filesystem::path ext = asset.Path.extension();
             const std::filesystem::path name = asset.Path.filename();
 
-            if (ext == ".cs")
+            const std::string extStr = ext.string();
+
+            switch (StringHash<uint32_t>(extStr.c_str())) 
+            {
+            case StringHash<uint32_t>(".cs"):
             {
                 asset.AssetType = AssetType_Script;
+
+                break;
             }
-            else if (ext == ".dll" || ext == ".so")
+            case StringHash<uint32_t>(".fvert"):
+            case StringHash<uint32_t>(".fpix"):
+            case StringHash<uint32_t>(".ffrag"):
+            {
+                asset.AssetType = AssetType_Shader;
+
+                break;
+            }
+            case StringHash<uint32_t>(".dll"):
+            case StringHash<uint32_t>(".so"):
             {
                 asset.AssetType = AssetType_Assembly;
+
+                break;
             }
-            else if (ext == ".def")
+            case StringHash<uint32_t>(".def"):
             {
                 asset.AssetType = AssetType_Def;
+
+                break;
             }
-            else if (ext == ".scrb")
+            case StringHash<uint32_t>(".ui"):
+            {
+                asset.AssetType = AssetType_UI;
+
+                break;
+            }
+            case StringHash<uint32_t>(".scrb"):
             {
                 asset.AssetType = AssetType_Scribe;
+
+                break;
             }
-            else if (ext == ".iscene")
+            case StringHash<uint32_t>(".iscene"):
             {
                 asset.AssetType = AssetType_Scene;
+
+                break;
             }
-            else if (ext == ".png" || ext == ".ktx2")
+            case StringHash<uint32_t>(".png"):
+            case StringHash<uint32_t>(".ktx2"):
             {
                 asset.AssetType = AssetType_Texture;
+
+                break;
             }
-            else if (ext == ".dae" || ext == ".fbx" || ext == ".obj")
+            case StringHash<uint32_t>(".obj"):
+            case StringHash<uint32_t>(".dae"):
+            case StringHash<uint32_t>(".fbx"):
+            case StringHash<uint32_t>(".glb"):
+            case StringHash<uint32_t>(".gltf"):
             {
                 asset.AssetType = AssetType_Model;
-            }
-            else if (name == "about.xml")
-            {
-                asset.AssetType = AssetType_About;
-            }
-            else
-            {
-                asset.AssetType = AssetType_Other;
-            }
 
-            asset.Data = nullptr;
-            asset.Size = 0;
+                break;
+            }
+            default:
+            {
+                if (name == "about.xml")
+                {
+                    asset.AssetType = AssetType_About;
+                }
+                else
+                {
+                    asset.AssetType = AssetType_Other;
+                }
+
+                break;
+            }
+            }
 
             a_assets->emplace_back(asset);
         }
@@ -605,6 +648,8 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
             break;
         }
         case AssetType_Model:
+        case AssetType_Shader:
+        case AssetType_UI:
         case AssetType_Other:
         {
             WriteData(a_path / "Core" / "Assets" / asset.Path, asset.Data, asset.Size, asset.ModifiedTime);
@@ -733,8 +778,10 @@ void AssetLibrary::Serialize(const Project* a_project)
         switch (type) 
         {
         case AssetType_Script:
+        case AssetType_Shader:
         case AssetType_Model:
         case AssetType_Texture:
+        case AssetType_UI:
         {
             continue;
         }

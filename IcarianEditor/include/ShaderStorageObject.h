@@ -6,12 +6,13 @@
 class ShaderStorageObject
 {
 private:
-    GLuint m_handle;
+    uint64_t m_size;
+    GLuint   m_handle;
 
 protected:
 
 public:
-    ShaderStorageObject(const void* a_object, uint32_t a_size);
+    ShaderStorageObject();
     ~ShaderStorageObject();
 
     inline GLuint GetHandle() const
@@ -19,5 +20,5 @@ public:
         return m_handle;
     }
 
-    void WriteBuffer(const void* a_object, uint32_t a_size) const;
+    void WriteBuffer(const void* a_data, uint16_t a_stride, uint32_t a_count);
 };

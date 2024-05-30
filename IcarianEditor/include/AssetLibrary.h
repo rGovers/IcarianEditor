@@ -15,6 +15,8 @@ class RuntimeManager;
     F(Scene) \
     F(Scribe) \
     F(Script) \
+    F(Shader) \
+    F(UI) \
     F(Other)
 
 #define ASSETTYPE_ENUM_DEFINITION(name) AssetType_##name,

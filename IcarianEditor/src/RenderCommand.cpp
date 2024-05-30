@@ -104,12 +104,11 @@ RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 
     IcarianCore::ShaderCameraBuffer cameraBuffer;
     IcarianCore::ShaderModelBuffer modelBuffer;
-    IcarianCore::ShaderBoneBuffer boneBuffer;
 
     m_cameraBuffer = new UniformBuffer(&cameraBuffer, sizeof(cameraBuffer));
     m_transformBuffer = new UniformBuffer(&modelBuffer, sizeof(modelBuffer));
-    m_transformBatchBuffer = new ShaderStorageObject(&modelBuffer, sizeof(modelBuffer));
-    m_skeletonBuffer = new ShaderStorageObject(&boneBuffer, sizeof(boneBuffer));
+    m_transformBatchBuffer = new ShaderStorageObject();
+    m_skeletonBuffer = new ShaderStorageObject();
 }
 RenderCommand::~RenderCommand()
 {
@@ -335,7 +334,7 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
 
     if (batched)
     {
-        Instance->m_transformBatchBuffer->WriteBuffer(&buffer, sizeof(buffer));   
+        Instance->m_transformBatchBuffer->WriteBuffer(&buffer, sizeof(buffer), 1);   
     }
     else 
     {
@@ -478,7 +477,7 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
         transforms[i] = GetBoneTransform(data, i) * data.Bones[i].InvBind;
     }
 
-    Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
+    Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4), count);
 
     const RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 

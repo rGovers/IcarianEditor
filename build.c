@@ -396,14 +396,6 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    // This is to work around issues with using .NET compiler removing the main method for some reason it does that and crashes on Windows
-    // This is not an issue on Linux or when using Mono compilers
-    // Just a workaround to allow it to be run from embedded mono runtime
-    // This is a hack and only works because of how managed .NET assemblies work with there not being much difference between a DLL and an EXE
-    // Also stops the end user from running IcarianCS.exe directly
-    // Will probably fix this down the line so it can be run as a true dll
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "IcarianEngine/IcarianCS/build/IcarianCS.dll");
-
     printf("IcarianCS Compiled!\n");
 
     PrintHeader("Building IcarianNative");
@@ -534,7 +526,7 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CreateDirectoryC("build/bin");
 
     CUBE_IO_CopyFileC("IcarianEditorCS/build/IcarianEditorCS.dll", "build/IcarianEditorCS.dll");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/IcarianCS.dll");
 
     CUBE_IO_CopyDirectoryC("bin", "build", CBTRUE);
 
