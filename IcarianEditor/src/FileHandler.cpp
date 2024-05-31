@@ -95,7 +95,8 @@ static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path
 
 static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
-    a_workspace->PushDef(a_relativePath, a_size, a_data);
+    const std::string str = a_relativePath.string();
+    ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
 FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace)

@@ -134,7 +134,7 @@ namespace FlareImGui
         return Image(a_path.data(), { a_size.x, a_size.y });
     }
 
-    bool ImageButton(GLuint a_texture, const glm::vec2& a_size, bool a_background)
+    bool ImageButton(const char* a_label, GLuint a_texture, const glm::vec2& a_size, bool a_background)
     {
         if (!a_background)
         {
@@ -151,19 +151,19 @@ namespace FlareImGui
 
         if (a_texture != -1)
         {
-            ret = ImGui::ImageButton((ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
+            ret = ImGui::ImageButton(a_label, (ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
         }
 
         return ret;
     }
-    bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background)
+    bool ImageButton(const char* a_label, Texture* a_texture, const glm::vec2& a_size, bool a_background)
     {
         if (a_texture == nullptr)
         {
-            return ImageButton(-1, a_size, a_background);
+            return ImageButton(a_label, -1, a_size, a_background);
         }
 
-        return ImageButton(a_texture->GetHandle(), a_size, a_background);
+        return ImageButton(a_label, a_texture->GetHandle(), a_size, a_background);
     }
     bool ImageButton(const char* a_label, const char* a_path, const ImVec2& a_size, bool a_background)
     {
@@ -183,11 +183,7 @@ namespace FlareImGui
         const Texture* tex = Datastore::GetTexture(a_path);
         if (tex != nullptr)
         {
-            const ImGuiID id = ImGui::GetID(a_label);
-
-            ImGui::PushID(id);
-            ret = ImGui::ImageButton(TexToImHandle(tex), a_size);
-            ImGui::PopID();
+            ret = ImGui::ImageButton(a_label, TexToImHandle(tex), a_size);
         }
         else
         {

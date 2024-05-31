@@ -93,7 +93,7 @@ static MonoString* M_GUI_GetDef(MonoString* a_str, MonoString* a_preview, uint32
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DefPath");
         if (payload != nullptr)
         {
-            return mono_string_from_utf32((mono_unichar4*)payload->Data);
+            return mono_string_new(mono_domain_get(), (char*)payload->Data);
         }
     }
 

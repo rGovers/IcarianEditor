@@ -60,7 +60,8 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
     MonoDomain* editorDomain = m_runtime->GetEditorDomain();
 
-    MonoString* pathString = mono_string_from_utf32((mono_unichar4*)a_path.u32string().c_str());
+    const std::u32string str = a_path.u32string();
+    MonoString* pathString = mono_string_from_utf32((mono_unichar4*)str.c_str());
 
     void* args[] =
     {
@@ -68,13 +69,4 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
     };
 
     m_runtime->ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
-}
-void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, const uint8_t* a_data)
-{
-    const std::u32string str = a_path.u32string();
-
-    const std::string pathStr = a_path.string();
-
-    ImGui::Text("%s", pathStr.c_str());
-    ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size() * sizeof(char32_t));
 }

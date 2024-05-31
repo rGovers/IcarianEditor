@@ -135,14 +135,18 @@ namespace IcarianEditor
 
         public void AddSceneObject(string a_defName)
         {
+            AddSceneObject(a_defName, Vector3.Zero, Quaternion.Identity, Vector3.One);
+        }
+        public void AddSceneObject(string a_defName, Vector3 a_translation, Quaternion a_rotation, Vector3 a_scale)
+        {
             GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(a_defName);
             if (def != null)
             {
                 SceneObject obj = new SceneObject()
                 {
-                    Translation = Vector3.Zero,
-                    Rotation = Quaternion.Identity,
-                    Scale = Vector3.One,
+                    Translation = a_translation,
+                    Rotation = a_rotation,
+                    Scale = a_scale,
                     DefName = a_defName
                 };
                 SceneObjectData dat = new SceneObjectData()

@@ -56,5 +56,4 @@ public:
     void SetScene(const std::filesystem::path& a_path);
 
     void OpenDef(const std::filesystem::path& a_path);
-    void PushDef(const std::filesystem::path& a_path, uint32_t a_size, const uint8_t* a_data);
 };

@@ -197,8 +197,6 @@ void GameWindow::Update(double a_delta)
     {
         const ImGuiStyle& style = ImGui::GetStyle();
 
-        const float titleBarSize = ImGui::GetFontSize() + style.FramePadding.y * 2;
-
         if (locked)
         {
             m_app->SetCursorState(CursorState_Locked);
@@ -213,9 +211,8 @@ void GameWindow::Update(double a_delta)
         else 
         {
             const ImVec2 mousePosIm = ImGui::GetMousePos();
-            const ImVec2 winPosIm = ImGui::GetWindowPos();
 
-            const glm::vec2 cPos = glm::vec2(mousePosIm.x - winPosIm.x, mousePosIm.y - (winPosIm.y + titleBarSize));
+            const glm::vec2 cPos = glm::vec2(mousePosIm.x - (winPos.x + vMinIm.x), mousePosIm.y - (winPos.y + vMinIm.y));
 
             m_processManager->PushCursorPos(cPos);
         }

@@ -349,7 +349,8 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
 
     ImGui::BeginGroup();
 
-    const std::string fileName = path.filename().string();
+    const std::filesystem::path filenamePath = path.filename();
+    const std::string filename = filenamePath.string();
 
     Texture* tex;
 
@@ -362,7 +363,7 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
         tex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
     }
 
-    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+    FlareImGui::ImageButton(filename.c_str(), tex, glm::vec2((float)ItemWidth), false);
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
     {
         m_curIndex = a_index;
@@ -381,7 +382,7 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
         ret = true;
     }
 
-    ImGui::Text("%s", fileName.c_str());
+    ImGui::Text("%s", filename.c_str());
 
     ImGui::EndGroup();
 
@@ -412,15 +413,17 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     drawList->AddRectFilled(ImVec2(startXPos, startYPos), ImVec2(startXPos + width, startYPos + height), rectColor, 2.0f);
 
-    const std::string fileName = a_path.stem().string();
+    const std::filesystem::path filenamePath = a_path.stem();
+    const std::string filename = filenamePath.string();
     const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
+    const std::string pathStr = a_path.string();
 
     FileHandler::FileCallback* openCallback;
     FileHandler::FileCallback* dragCallback;
     GLuint tex;
     FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
 
-    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+    FlareImGui::ImageButton(pathStr.c_str(), tex, glm::vec2((float)ItemWidth), false);
 
     uint32_t size;
     const uint8_t* data;
@@ -429,7 +432,8 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     if (size > 0 && data != nullptr)
     {
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+        const bool hovered = ImGui::IsItemHovered();
+        if (hovered && ImGui::IsMouseDoubleClicked(0))
         {
             if (openCallback == nullptr)
             {
@@ -467,7 +471,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
         }
     }
             
-    ImGui::Text("%s", fileName.c_str());
+    ImGui::Text("%s", filename.c_str());
 
     if (type != AssetType_Null)
     {

@@ -43,6 +43,8 @@ namespace IcarianEditor.Windows
                         if (a.AttributeType == typeof(EDisplayAttribute))
                         {
                             att = a.Constructor.Invoke(new object[] { a.ConstructorArguments[0].Value }) as EDisplayAttribute;
+
+                            break;
                         }
                     }
                     // Crashes on Windows so we'll use the above method
@@ -138,6 +140,32 @@ namespace IcarianEditor.Windows
 
                     RenderGameObjects(obj, def, mat);
                 }
+            }
+        }
+
+        static void PeekDefPath(string a_path, Vector3 a_editorPos)
+        {
+            GameObjectDef def = EditorDefLibrary.GeneratePathDef<GameObjectDef>(a_path);
+            if (def != null)
+            {
+                Matrix4 transform = new Matrix4(Vector4.UnitX, Vector4.UnitY, Vector4.UnitZ, new Vector4(a_editorPos, 1.0f));
+                RenderComponents(def, true, transform);
+            }
+
+            Gizmos.DrawIcoSphere(a_editorPos, 0.025f, 1, 0.001f, Color.White);
+        }
+        static void AcceptDefPath(string a_path, Vector3 a_editorPos)
+        {
+            EditorScene scene = Workspace.GetScene();
+            if (scene != null)
+            {
+                return;
+            }
+
+            GameObjectDef def = EditorDefLibrary.GeneratePathDef<GameObjectDef>(a_path);
+            if (def != null)
+            {
+                scene.AddSceneObject(def.DefName, a_editorPos, Quaternion.Identity, Vector3.One);
             }
         }
 
