@@ -11,7 +11,7 @@ using System.Xml;
 #include "InteropBinding.h"
 #include "EditorSceneInterop.h"
 
-EDITORSCENE_EXPORT_TABLE(IOP_BIND_FUNCTION)
+EDITORSCENE_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {
@@ -23,6 +23,7 @@ namespace IcarianEditor
     }
     public struct SceneObjectData
     {
+        public bool Visible;
         public ulong ID;
         public SceneObject Object;
     }
@@ -151,6 +152,7 @@ namespace IcarianEditor
                 };
                 SceneObjectData dat = new SceneObjectData()
                 {
+                    Visible = true,
                     ID = Workspace.NewID(),
                     Object = obj
                 };
@@ -169,6 +171,23 @@ namespace IcarianEditor
                     m_sceneObjects.Remove(dat);
 
                     break;
+                }
+            }
+        }
+
+        public void SetVisible(ulong a_id, bool a_state)
+        {
+            int count = m_sceneObjects.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                SceneObjectData dat = m_sceneObjects[i];
+                if (dat.ID == a_id)
+                {
+                    dat.Visible = a_state;
+
+                    m_sceneObjects[i] = dat;
+
+                    return;
                 }
             }
         }
@@ -204,11 +223,12 @@ namespace IcarianEditor
             };
             SceneObjectData dat = new SceneObjectData()
             {
+                Visible = true,
                 ID = Workspace.NewID(),
                 Object = obj
             };
 
-            foreach (XmlElement node in a_element.ChildNodes)
+            foreach (XmlNode node in a_element.ChildNodes)
             {
                 if (node is XmlElement element)
                 {

@@ -133,6 +133,7 @@ namespace IcarianEditor.Windows
                 return;
             }
 
+            // Probably not the best way of doing this but it works
             List<SelectionObject> selectionList = new List<SelectionObject>();
             ulong selectionID = ulong.MaxValue;
 
@@ -162,6 +163,26 @@ namespace IcarianEditor.Windows
                     SelectionMode = SelectionObjectMode.SceneObject,
                     SceneObject = obj
                 });
+
+                bool visible = objectData.Visible;
+                if (GUI.ToggleButton($"Visible{idStr}", "Textures/Icons/Hierarchy_Visible.png", "Textures/Icons/Hierarchy_Hidden.png", ref visible, new Vector2(12.0f), false))
+                {
+                    scene.SetVisible(id, visible);
+
+                    // Have to break as C# does not allow modifying the value while iterating cause C# is a "good" language
+                    // Fuck C# and this fucky hack
+                    // Why the fuck C# iterates by value instead of by reference who tf knows
+                    // Newer versions have ref loops but incompatible with the editor specifically
+                    // Should do properly but it works
+                    break;
+                }
+                GUI.Tooltip("Visibility", "Toggles the visibility of the Scene Object");
+
+                GUI.SameLine();
+
+                GUI.Texture("Textures/Icons/Hierarchy_SceneGameObject.png", new Vector2(16.0f));
+
+                GUI.SameLine();
 
                 if (GUI.Selectable(name))
                 {

@@ -130,6 +130,11 @@ namespace IcarianEditor.Windows
 
             foreach (SceneObjectData objData in sceneObjects)
             {
+                if (!objData.Visible)
+                {
+                    continue;
+                }
+
                 SceneObject obj = objData.Object;
 
                 GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);

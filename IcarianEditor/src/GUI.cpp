@@ -15,6 +15,8 @@ static GUI* Instance = nullptr;
 
 static constexpr uint32_t BufferSize = 4096;
 
+// TODO: This is a mess in this file and need to be cleaned up and redone
+// I am not happy with the current state of the file
 struct IDStack
 {
     IDStack(const std::string_view& a_id)
@@ -42,6 +44,39 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetButton,
     STACK_G_ID(str);
     return (uint32_t)ImGui::Button(str);
 }, MonoString* a_str)
+RUNTIME_FUNCTION(uint32_t, GUI, GetToggleButton, 
+{
+    char* str = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(str));
+
+    if (*a_state)
+    {
+        char* enabledStr = mono_string_to_utf8(a_enabledPath);
+        IDEFER(mono_free(enabledStr));
+
+        if (FlareImGui::ImageButton(str, enabledStr, a_size, (bool)a_background))
+        {
+            *a_state = false;
+
+            return true;
+        }
+    }
+    else
+    {
+        char* disabledStr = mono_string_to_utf8(a_disabledPath);
+        IDEFER(mono_free(disabledStr));
+
+        if (FlareImGui::ImageButton(str, disabledStr, a_size, (bool)a_background))
+        {
+            *a_state = true;
+
+            return true;
+        }
+    }
+
+    return false;
+    
+}, MonoString* a_str, MonoString* a_enabledPath, MonoString* a_disabledPath, uint32_t* a_state, glm::vec2 a_size, uint32_t a_background)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox, 
 {
@@ -620,6 +655,7 @@ void GUI::Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets
         Instance = new GUI(a_app, a_runtime, a_assets);
         
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetButton);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetToggleButton);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCheckbox);
 

@@ -13,6 +13,8 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetButton(string a_label);
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetToggleButton(string a_str, string a_enabledPath, string a_disabledPath, IntPtr a_state, Vector2 a_size, uint a_background);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetCheckbox(string a_label, IntPtr a_bool);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -144,6 +146,33 @@ namespace IcarianEditor
         public static bool Button(string a_label)
         {
             return GetButton(a_label) != 0;
+        }
+        public static bool ToggleButton(string a_label, string a_enabledPath, string a_disabledPath, ref bool a_state, Vector2 a_size, bool a_background = true)
+        {
+            uint state = 0;
+            if (a_state)
+            {
+                state = 1;
+            }
+
+            uint background = 0;
+            if (a_background)
+            {
+                background = 1;
+            }
+
+            GCHandle handle = GCHandle.Alloc(state, GCHandleType.Pinned);
+
+            bool ret = false;
+            if (GetToggleButton(a_label, a_enabledPath, a_disabledPath, handle.AddrOfPinnedObject(), a_size, background) != 0)
+            {
+                ret = true;
+                a_state = (uint)handle.Target != 0;
+            }
+
+            handle.Free();
+
+            return ret;
         }
 
         public static bool RCheckbox(string a_label, ref bool a_value, bool a_default)
