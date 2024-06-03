@@ -7,11 +7,13 @@ namespace IcarianEditor.Modals
 {
     public class NewSceneObjectModal : Modal
     {
+        bool         m_array; 
         int          m_selection;
         List<string> m_defNames;
 
-        public NewSceneObjectModal() : base("New Scene Object", new Vector2(300.0f, 80.0f))
+        public NewSceneObjectModal(bool a_array = false) : base("New Scene Object", new Vector2(300.0f, 80.0f))
         {
+            m_array = a_array;
             m_selection = 0;
             m_defNames = new List<string>();
 
@@ -37,8 +39,14 @@ namespace IcarianEditor.Modals
                 }
 
                 EditorScene scene = Workspace.GetScene();
-
-                scene.AddSceneObject(m_defNames[m_selection]);
+                if (m_array)
+                {
+                    scene.AddSceneObjectArray(m_defNames[m_selection]);
+                }
+                else
+                {
+                    scene.AddSceneObject(m_defNames[m_selection]);
+                }
 
                 return false;
             }

@@ -92,6 +92,11 @@ namespace IcarianEditor.Windows
                 new NewSceneObjectModal();
             }
 
+            if (GUI.MenuItem("New Scene Object Array"))
+            {
+                new NewSceneObjectModal(true);
+            }
+
             GUI.Separator();
 
             ClipBoardItem item;
@@ -155,8 +160,6 @@ namespace IcarianEditor.Windows
                 ulong id = objectData.ID;
                 string idStr = $"##[{id}]{obj.DefName}";
 
-                GUI.PushID(idStr);
-
                 selectionList.Add(new SelectionObject()
                 {
                     ID = id,
@@ -184,7 +187,7 @@ namespace IcarianEditor.Windows
 
                 GUI.SameLine();
 
-                if (GUI.Selectable(name))
+                if (GUI.Selectable($"{name}{idStr}"))
                 {
                     selectionID = id;
                 }
@@ -198,8 +201,55 @@ namespace IcarianEditor.Windows
 
                     GUI.EndPopup();
                 }
+            }
 
-                GUI.PopID();
+            GUI.Separator();
+
+            IEnumerable<SceneObjectArrayData> sceneObjectArrays = scene.SceneObjectArrays;
+            foreach (SceneObjectArrayData arrayData in sceneObjectArrays)
+            {
+                SceneObjectArray arr = arrayData.Array;
+
+                string name = arr.DefName;
+                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(name);
+                if (def == null)
+                {
+                    continue;
+                }
+
+                ulong id = arrayData.ID;
+                string idStr = $"##A[{id}]{arr.DefName}";
+
+                selectionList.Add(new SelectionObject()
+                {
+                    ID = id,
+                    SelectionMode = SelectionObjectMode.SceneObjectArray,
+                    SceneObjectArray = arr
+                });
+
+                bool visible = arrayData.Visible;
+                if (GUI.ToggleButton($"Visible{idStr}", "Textures/Icons/Hierarchy_Visible.png", "Textures/Icons/Hierarchy_Hidden.png", ref visible, new Vector2(12.0f), false))
+                {
+                    scene.SetVisible(id, visible);
+
+                    break;
+                }
+
+                GUI.SameLine();
+
+                if (GUI.Selectable($"{name}{idStr}"))
+                {
+                    selectionID = id;
+                }
+
+                if (!context && GUI.BeginContextPopup())
+                {
+                    context = true;
+
+                    CreateMenuItem();
+
+                    GUI.EndPopup();
+                }
             }
 
             if (selectionID != ulong.MaxValue)
