@@ -13,7 +13,7 @@ using System.Xml;
 #include "InteropBinding.h"
 #include "EditorDefLibraryInterop.h"
 
-EDITORDEFLIBRARY_EXPORT_TABLE(IOP_BIND_FUNCTION)
+EDITORDEFLIBRARY_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {
@@ -36,7 +36,7 @@ namespace IcarianEditor
         static DefDataLoader           s_defDataLoader = null;
         static DefGenerator            s_createDef = null;
 
-        public const string DefintionNamespace = "IcarianEngine.Definitions.";
+        public const string DefintionNamespace = "IcarianEngine.Definitions";
 
         internal static void Init()
         {   
@@ -513,15 +513,17 @@ namespace IcarianEditor
             string typeName = defType.ToString();
             if (typeName.StartsWith(DefintionNamespace))
             {
-                typeName = typeName.Substring(DefintionNamespace.Length);
+                typeName = typeName.Substring(DefintionNamespace.Length + 1);
             }
 
-            DefData data = new DefData();
-            data.Type = typeName;
-            data.Name = a_def.DefName;
-            data.Parent = a_def.DefParentName;
-            data.Path = a_def.DefPath;
-            data.Abstract = false;
+            DefData data = new DefData()
+            {
+                Type = typeName,
+                Name = a_def.DefName,
+                Parent = a_def.DefParentName,
+                Path = a_def.DefPath,
+                Abstract = false,
+            };
             data.DefDataObjects = new List<DefDataObject>();
 
             Type baseType = baseDef.GetType();
@@ -559,6 +561,37 @@ namespace IcarianEditor
             }
 
             return data;
+        }
+
+        internal static bool AddDef(Def a_def)
+        {
+            if (a_def == null)
+            {
+                Logger.Warning("Cannot add null def");
+
+                return false;
+            }
+
+            DefData data = GenerateData(a_def);
+
+            int count = s_defs.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                if (string.IsNullOrEmpty(s_defs[i].Name))
+                {
+                    s_defs[i] = data;
+                    s_defPathLookup.Add(data.Path, i);
+                    s_defNameLookup.Add(data.Name, i);
+
+                    return true;
+                }
+            }
+
+            s_defs.Add(data);
+            s_defPathLookup.Add(data.Path, count);
+            s_defNameLookup.Add(data.Name, count);
+
+            return true;
         }
 
         internal static bool AddSceneDef(Def a_def)

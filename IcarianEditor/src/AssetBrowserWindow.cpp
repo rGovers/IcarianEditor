@@ -19,14 +19,16 @@
 #include "Modals/CreateSciptableModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
+#include "Runtime/RuntimeManager.h"
 #include "Templates.h"
 #include "Texture.h"
 
-AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary, RuntimeManager* a_runtime) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
 {
     m_app = a_app;
     m_assetLibrary = a_assetLibrary;
     m_project = a_project;
+    m_runtime = a_runtime;
 
     m_fileTree.clear();
     m_curIndex = -1;
@@ -276,6 +278,20 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
         }
 
         ImGui::Separator();
+
+        if (ImGui::MenuItem("Def"))
+        {
+            const std::string pathStr = a_path.string();
+
+            MonoString* str = mono_string_new(m_runtime->GetEditorDomain(), pathStr.c_str());
+
+            void* args[] =
+            {
+                str
+            };
+
+            m_runtime->ExecFunction("IcarianEditor.Modals", "CreateDefModal", ":Create(string)", args);
+        }
 
         if (ImGui::MenuItem("Scene"))
         {

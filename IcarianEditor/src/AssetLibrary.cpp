@@ -20,6 +20,7 @@
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
+#include "EditorCreateDefModalInterop.h"
 #include "EditorDefLibraryInterop.h"
 #include "EditorSceneInterop.h"
 
@@ -27,6 +28,7 @@ static AssetLibrary* Instance = nullptr;
 
 #define ASSETLIBRARY_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
 
+EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 EDITORDEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 EDITORSCENE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
@@ -34,6 +36,7 @@ AssetLibrary::AssetLibrary(RuntimeManager* a_runtime)
 {
     m_runtime = a_runtime;
     
+    EDITOR_CREATEDEFMODAL_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
     EDITORDEFLIBRARY_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
     EDITORSCENE_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
 
@@ -236,6 +239,21 @@ static void ReadAssets(std::vector<Asset>* a_assets, const std::filesystem::path
     }
 }
 
+void AssetLibrary::CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
+{
+    const Asset asset = 
+    {
+        .ModifiedTime = std::filesystem::file_time_type::clock::now(),
+        .Path = a_path,
+        .AssetType = AssetType_Def,
+        .Size = a_size,
+        .Data = a_data,
+        .Flags = 0b1 << Asset::ForceWriteBit
+    };
+
+    m_assets.emplace_back(asset);
+}
+
 void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
@@ -320,6 +338,7 @@ Next:;
 
 void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 {
+    // TODO: Naive wiping the assets should be smarter about it
     for (const Asset& asset : m_assets)
     {
         if (asset.Data != nullptr)
@@ -775,31 +794,40 @@ void AssetLibrary::Serialize(const Project* a_project)
 
         const e_AssetType type = a.AssetType;
 
-        switch (type) 
+        if (!IISBITSET(a.Flags, Asset::ForceWriteBit))
         {
-        case AssetType_Script:
-        case AssetType_Shader:
-        case AssetType_Model:
-        case AssetType_Texture:
-        case AssetType_UI:
-        {
-            continue;
-        }
-        case AssetType_Def:
-        {
-            if (defEditor != DefEditor_Editor)
+            switch (type) 
+            {
+            // Editor does not touch theses files so if there is not a force write just skip
+            case AssetType_Assembly:
+            case AssetType_Script:
+            case AssetType_Shader:
+            case AssetType_Model:
+            case AssetType_Texture:
+            // Not at this point but may change
+            case AssetType_About:
+            case AssetType_Scribe:
+            case AssetType_UI:
             {
                 continue;
             }
+            // Editor only writes theses files if the Editor is the Def editor
+            case AssetType_Def:
+            {
+                if (defEditor != DefEditor_Editor)
+                {
+                    continue;
+                }
 
-            break;
+                break;
+            }
+            default:
+            {
+                break;
+            }
+            }
         }
-        default:
-        {
-            break;
-        }
-        }
-
+        
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
@@ -807,5 +835,6 @@ void AssetLibrary::Serialize(const Project* a_project)
         }
 
         a.ModifiedTime = std::filesystem::file_time_type::clock::now();
+        ICLEARBIT(a.Flags, Asset::ForceWriteBit);
     }
 }

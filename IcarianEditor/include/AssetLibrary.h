@@ -42,11 +42,14 @@ struct FileAlias
 
 struct Asset
 {
+    static constexpr uint32_t ForceWriteBit = 0;
+
     std::filesystem::file_time_type ModifiedTime;
     std::filesystem::path Path;
     e_AssetType AssetType;
     uint32_t Size;
     uint8_t* Data;
+    uint8_t Flags;
 };
 
 class AssetLibrary
@@ -61,6 +64,8 @@ protected:
 public:
     AssetLibrary(RuntimeManager* a_runtime);
     ~AssetLibrary();
+
+    void CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
 
     void WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
     void WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);

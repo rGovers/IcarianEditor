@@ -41,6 +41,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Editor/TriggerBodyEditorDisplay.cs",
 
         "src/Modals/AddComponentModal.cs",
+        "src/Modals/CreateDefModal.cs",
         "src/Modals/ConfirmModal.cs",
         "src/Modals/CreateSceneDefModal.cs",
         "src/Modals/DeleteSceneObjectModal.cs",

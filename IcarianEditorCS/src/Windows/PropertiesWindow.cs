@@ -15,8 +15,6 @@ namespace IcarianEditor.Windows
 
         static Dictionary<Type, PropertiesEditorWindow> s_windows;
 
-        const string DefintionNamespace = "IcarianEngine.Definitions.";
-
         internal static void Init()
         {
             s_defaultWindow = new PropertiesEditorWindow();

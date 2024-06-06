@@ -48,22 +48,16 @@ namespace IcarianEditor.Modals
                     if (type.IsSubclassOf(baseType))
                     {
                         string name = type.FullName;
-                        if (name.StartsWith(EditorDefLibrary.DefintionNamespace))
+                        if (type.Namespace == EditorDefLibrary.DefintionNamespace)
                         {
-                            m_defData.Add(new DefData()
-                            {
-                                Name = type.Name,
-                                Type = type
-                            });
+                            name = type.Name;
                         }
-                        else
+                        
+                        m_defData.Add(new DefData()
                         {
-                            m_defData.Add(new DefData()
-                            {
-                                Name = name,
-                                Type = type
-                            });
-                        }
+                            Name = name,
+                            Type = type
+                        });
                     }
                 }
             }
