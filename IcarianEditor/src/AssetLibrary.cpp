@@ -279,7 +279,6 @@ void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size
 
     ICARIAN_ASSERT_MSG(0, "Def not found");
 }
-
 void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
@@ -604,7 +603,10 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
                         std::filesystem::create_directories(dir);
                     }
 
-                    if (ext == ".png")
+                    const std::string extStr = ext.string();
+                    switch (StringHash<uint32_t>(extStr.c_str()))
+                    {
+                    case StringHash<uint32_t>(".png"):
                     {
                         int width;
                         int height;
@@ -626,7 +628,8 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
                                 .numLevels = 1,
                                 .numLayers = 1,
                                 .numFaces = 1,
-                                .generateMipmaps = KTX_TRUE
+                                // Apparently was changed at some point with block compression not fussed
+                                .generateMipmaps = KTX_FALSE
                             };
 
                             ktxTexture2* ktxTex;
@@ -635,9 +638,14 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
 
                             ICARIAN_ASSERT_R(ktxTexture_SetImageFromMemory((ktxTexture*)ktxTex, 0, 0, 0, data, (ktx_size_t)size) == KTX_SUCCESS);
 
-                            ktxBasisParams basisParam =  { 0 };
+                            // TODO: Expose more project settings to allow some control over this
+                            ktxBasisParams basisParam = { 0 };
                             basisParam.structSize = sizeof(basisParam);
                             basisParam.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL;
+                            // TODO: Investigate it using all assigned cores initially before dropping to 1-4 cores
+                            // This is terrible utilization of something like a 5950X and barely better then single threaded
+                            // More pressing concerns as I have my own performance problems to worry about most notably stb which is why I am this predicament to begin with
+                            // Need to work on moving stuff into the background anyway
                             basisParam.threadCount = std::thread::hardware_concurrency() / 2;
 
                             ICARIAN_ASSERT_R(ktxTexture2_CompressBasisEx(ktxTex, &basisParam) == KTX_SUCCESS);
@@ -648,6 +656,9 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
 
                             WriteData(writePath, (uint8_t*)ktxDat, (uint32_t)ktxDatSize, asset.ModifiedTime);
                         }
+
+                        break;
+                    }
                     }
                 }
 
