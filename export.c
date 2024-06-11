@@ -240,11 +240,11 @@ int main(int a_argc, char** a_argv)
 
     CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative.exe", "build/BuildFiles/Windows/bin/renameexe");
     CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager.exe", "build/BuildFiles/Windows/bin/IcarianModManger.exe");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Windows/bin/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Windows/bin/IcarianCS.dll");
     CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/mono-2.0-sgen.dll", "build/BuildFiles/Windows/bin/mono-2.0-sgen.dll");
     CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/MonoPosixHelper.dll", "build/BuildFiles/Windows/bin/MonoPosixHelper.dll");
 
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Windows/lib/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Windows/lib/IcarianCS.dll");
 
     CUBE_IO_CHMODC("build/BuildFiles/Windows/bin/renameexe.exe", 0755);
     CUBE_IO_CHMODC("build/BuildFiles/Windows/bin/IcarianModManger", 0755);
@@ -267,9 +267,9 @@ int main(int a_argc, char** a_argv)
 
     CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative", "build/BuildFiles/Linux/bin/renameexe");
     CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager", "build/BuildFiles/Linux/bin/IcarianModManger");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Linux/bin/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Linux/bin/IcarianCS.dll");
 
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Linux/lib/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Linux/lib/IcarianCS.dll");
 
     CUBE_IO_CHMODC("build/BuildFiles/Linux/bin/renameexe", 0755);
     CUBE_IO_CHMODC("build/BuildFiles/Linux/bin/IcarianModManger", 0755);

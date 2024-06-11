@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
+static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
 {
     CUBE_CSProject project = { 0 };
 
@@ -49,6 +49,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Modals/Modal.cs",
         "src/Modals/NewSceneObjectModal.cs",
 
+        "src/Properties/AmbientLightPropertiesWindow.cs",
         "src/Properties/CameraPropertiesWindow.cs",
         "src/Properties/DirectionalLightPropertiesWindow.cs",
         "src/Properties/GameObjectPropertiesWindow.cs",

@@ -26,7 +26,7 @@ void ShaderStorageObject::WriteBuffer(const void* a_data, uint16_t a_stride, uin
 
     const int32_t count = (int32_t)a_count;
     const uint64_t dataSize = (uint64_t)a_stride * a_count;
-    const uint64_t bufferSize = sizeof(count) + dataSize;
+    const uint64_t bufferSize = 16 + dataSize;
 
     if (bufferSize > m_size)
     {
@@ -47,6 +47,6 @@ void ShaderStorageObject::WriteBuffer(const void* a_data, uint16_t a_stride, uin
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(count), &count);
     if (a_count > 0)
     {
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, sizeof(count), (GLsizeiptr)dataSize, a_data);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 16, (GLsizeiptr)dataSize, a_data);
     }
 }

@@ -30,9 +30,11 @@ namespace IcarianEditor.Properties
                 return;
             }
 
-            GUI.EnumField("Rotation Mode", ref m_mode);
+            GUI.StringField("Name", ref def.Name);
 
             GUI.RVec3Field("Translation", ref def.Translation, Vector3.Zero);
+            
+            GUI.EnumField("Rotation Mode", ref m_mode);
 
             if (m_lastDef != def)
             {
@@ -177,20 +179,9 @@ namespace IcarianEditor.Properties
 
                     GUI.SameLine();
 
-                    // Allow inline editing for scene defs
-                    if (a_sceneObject)
+                    if (GUI.DefField<ComponentDef>($"[{i}]", ref comp))
                     {
-                        if (GUI.StructView($"[{i}] Scene Component"))
-                        {
-                            BaseGUI(comp, false);
-                        }
-                    }
-                    else
-                    {
-                        if (GUI.DefField<ComponentDef>($"[{i}]", ref comp))
-                        {
-                            def.Components[i] = comp;
-                        }
+                        def.Components[i] = comp;
                     }
 
                     GUI.PopID();
