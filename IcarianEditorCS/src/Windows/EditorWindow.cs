@@ -122,7 +122,6 @@ namespace IcarianEditor.Windows
                 {
                     for (int z = 0; z < a_array.Count.Z; ++z)
                     {
-                        // Logger.Message("c");
                         Vector3 pos = new Vector3((float)x, (float)y, (float)z) * a_array.Spacing;
                         Matrix4 transMat = new Matrix4
                         (

@@ -29,6 +29,47 @@ namespace IcarianEditor.Properties
 
     public class PropertiesEditorWindow
     {
+        static string FormattedName(string a_name)
+        {
+            if (string.IsNullOrWhiteSpace(a_name))
+            {
+                return "[BADWHITESPACENAME]";
+            }
+
+            int startIndex = 0;
+            if (a_name.StartsWith("m_"))
+            {
+                startIndex = 2;
+            }
+
+            int len = a_name.Length;
+            if (len <= startIndex)
+            {
+                return "[BADFORMATNAME]";
+            }
+
+            string outStr = string.Empty;
+            outStr += char.ToUpper(a_name[startIndex]);
+
+            for (int i = startIndex + 1; i < len; ++i)
+            {
+                char c = a_name[i];
+                if (char.IsUpper(c))
+                {
+                    if (char.IsLower(a_name[i - 1]))
+                    {
+                        outStr += $" {c}";
+
+                        continue;
+                    }
+                }
+
+                outStr += c;
+            }
+
+            return outStr;
+        }
+
         static void ShowFields(string a_name, bool a_sceneObject, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
         {
             switch (a_obj)
@@ -381,13 +422,13 @@ namespace IcarianEditor.Properties
                     continue;
                 }
 
-                string fName = field.Name;
+                string fName = FormattedName(field.Name);
 
                 object val = field.GetValue(a_object);
 
                 IEnumerable<Attribute> attributes = field.GetCustomAttributes();
 
-                ShowFields(field.Name, a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, attributes);
+                ShowFields(fName, a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, attributes);
  
                 field.SetValue(a_object, val);
 

@@ -23,6 +23,9 @@ private:
 
     ConfirmModalData* m_data;
 
+    void Submit();
+    void Cancel();
+    
 protected:
 
 public:

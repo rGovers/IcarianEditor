@@ -16,16 +16,28 @@ ConfirmModal::~ConfirmModal()
     }
 }
 
+void ConfirmModal::Submit()
+{
+    if (m_data != nullptr)
+    {
+        m_data->Confirm();
+    }
+}
+void ConfirmModal::Cancel()
+{
+    if (m_data != nullptr)
+    {
+        m_data->Cancel();
+    }
+}
+
 bool ConfirmModal::Update()
 {
     ImGui::Text("%s", m_text.c_str());
 
     if (ImGui::Button("Confirm"))
-    {
-        if (m_data != nullptr)
-        {
-            m_data->Confirm();
-        }
+    {  
+        Submit();
 
         return false;
     }
@@ -34,10 +46,21 @@ bool ConfirmModal::Update()
 
     if (ImGui::Button("Cancel"))
     {
-        if (m_data != nullptr)
-        {
-            m_data->Cancel();
-        }
+        Cancel();
+
+        return false;
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_Enter))
+    {
+        Submit();
+
+        return false;
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        Cancel();
 
         return false;
     }
