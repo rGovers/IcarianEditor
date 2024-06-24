@@ -65,6 +65,8 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Windows/SceneDefsWindow.cs"
     );
 
+    CUBE_CSProject_AppendReference(&project, "System.Core.dll");
+    CUBE_CSProject_AppendReference(&project, "System.Xml.dll");
     CUBE_CSProject_AppendReference(&project, "../IcarianEngine/IcarianCS/build/IcarianCS.dll");
 
     return project;
