@@ -185,7 +185,7 @@ namespace IcarianEditor.Windows
         static void AcceptDefPath(string a_path, Vector3 a_editorPos)
         {
             EditorScene scene = Workspace.GetScene();
-            if (scene != null)
+            if (scene == null)
             {
                 return;
             }
