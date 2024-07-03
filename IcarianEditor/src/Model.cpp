@@ -1,9 +1,5 @@
 #include "Model.h"
 
-#include "Core/ColladaLoader.h"
-#include "Core/OBJLoader.h"
-#include "Logger.h"
-
 #include "EngineModelInteropStructures.h"
 
 Model::Model(const void* a_vertices, uint32_t a_vertexCount, const GLuint* a_indices, uint32_t a_indexCount, uint16_t a_vertexStride)
@@ -80,41 +76,4 @@ Model* Model::CreateCube()
     };
 
     return new Model(Vertices, sizeof(Vertices) / sizeof(*Vertices), Indices, sizeof(Indices) / sizeof(*Indices), sizeof(Vertex));
-}
-
-Model* Model::FromFile(const std::filesystem::path& a_path)
-{
-    if (!std::filesystem::exists(a_path))
-    {
-        Logger::Error("Model does not exist: " + a_path.string());
-
-        return nullptr;
-    }
-
-    const std::filesystem::path& ext = a_path.extension();
-
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    float radius;
-
-    if (ext == ".dae")
-    {
-        IcarianCore::ColladaLoader_LoadFile(a_path, &vertices, &indices, &radius);
-    }
-    else if (ext == ".obj")
-    {
-        IcarianCore::OBJLoader_LoadFile(a_path, &vertices, &indices, &radius);
-    }
-
-    const uint32_t vertexCount = (uint32_t)vertices.size();
-    const uint32_t indexCount = (uint32_t)indices.size();
-
-    if (vertexCount > 0 && indexCount > 0)
-    {
-        return new Model(vertices.data(), vertexCount, (GLuint*)indices.data(), indexCount, sizeof(Vertex));
-    }
-
-    Logger::Error("Failed to load file: " + a_path.string());
-
-    return nullptr;
 }

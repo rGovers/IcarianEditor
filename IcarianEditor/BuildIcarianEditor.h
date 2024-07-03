@@ -124,7 +124,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
 
-        // "GLM_FORCE_QUAT_DATA_XYZW",
+        "GLM_FORCE_QUAT_DATA_XYZW",
         "GLM_FORCE_RADIANS",
         "KHRONOS_STATIC",
         "LIBKTX",
@@ -139,6 +139,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "../EditorInterop",
         "../IcarianEngine/EngineInterop",
         "../IcarianEngine/IcarianCore/include",
+        "../IcarianEngine/deps/assimp/include",
+        "../IcarianEngine/deps/gen/assimp",
         "../IcarianEngine/deps/CUBE/include",
         "../IcarianEngine/deps/flare-glfw/include",
         "../IcarianEngine/deps/flare-glm",
@@ -310,12 +312,14 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
             "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
-            "../IcarianEngine/deps/OpenFBX/build/OpenFBXLibDeflate.lib"
+            "../IcarianEngine/deps/assimp/build/assimp.lib",
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/unzip.lib"
         );
 
         CUBE_CProject_AppendReference(&project, "gdi32");
         CUBE_CProject_AppendReference(&project, "wsock32");
         CUBE_CProject_AppendReference(&project, "ws2_32");
+        CUBE_CProject_AppendReference(&project, "z");
 
         // Magic string to get std library to link with MinGW
         CUBE_CProject_AppendCFlag(&project, "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic");
@@ -336,7 +340,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
             "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
-            "../IcarianEngine/deps/OpenFBX/build/libOpenFBXLibDeflate.a"
+            "../IcarianEngine/deps/assimp/build/libassimp.a",
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a"
         );
 
         CUBE_CProject_AppendReference(&project, "m");

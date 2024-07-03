@@ -32,6 +32,4 @@ public:
     }
 
     static Model* CreateCube();
-
-    static Model* FromFile(const std::filesystem::path& a_path);
 };

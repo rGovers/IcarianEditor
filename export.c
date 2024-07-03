@@ -93,7 +93,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
 
     free(dependencyProjects);
 
-    icarianCoreProject = BuildIcarianCoreProject(CBTRUE, a_platform, BuildConfiguration_Release);
+    icarianCoreProject = BuildIcarianCoreProject(CBFALSE, a_platform, BuildConfiguration_Release);
 
     printf("Compiling IcarianCore...\n");
 

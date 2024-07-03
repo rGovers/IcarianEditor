@@ -89,9 +89,7 @@ public:
         return m_samplers[a_addr];
     }
 
-    MonoArray* LoadDAEAnimationClip(const std::filesystem::path& a_path) const;
-    MonoArray* LoadFBXAnimationClip(const std::filesystem::path& a_path) const;
-    MonoArray* LoadGLTFAnimationClip(const std::filesystem::path& a_path) const;
+    MonoArray* LoadExternalAnimationClip(const std::filesystem::path& a_path);
 
     void Clear();
 };
