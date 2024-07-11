@@ -23,7 +23,6 @@ FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
-
     switch (codeEditor)
     {
     case CodeEditor_VisualStudio:
@@ -35,6 +34,12 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
     case CodeEditor_VisualStudioCode:
     {
         IO::OpenFile("code", a_path);
+
+        break;
+    }
+    case CodeEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
 
         break;
     }
@@ -59,6 +64,12 @@ static void OpenShader(const std::filesystem::path& a_path, const std::filesyste
 
         break;
     }
+    case CodeEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
+
+        break;
+    }
     default:
     {
         IO::OpenFile(a_path);
@@ -77,6 +88,12 @@ static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path,
     case DefEditor_VisualStudioCode:
     {
         IO::OpenFile("code", a_path);
+
+        break;
+    }
+    case DefEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
 
         break;
     }

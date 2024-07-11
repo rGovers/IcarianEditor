@@ -15,6 +15,7 @@
 #include "Modals/CreateAssemblyControlModal.h"
 #include "Modals/CreateComponentModal.h"
 #include "Modals/CreateDefTableModal.h"
+#include "Modals/CreateEmptyScriptModal.h"
 #include "Modals/CreateFileModal.h"
 #include "Modals/CreateSciptableModal.h"
 #include "Modals/RenamePathModal.h"
@@ -216,6 +217,13 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
         if (ImGui::BeginMenu("Script"))
         {
             IDEFER(ImGui::EndMenu());
+
+            if (ImGui::MenuItem("Empty"))
+            {
+                m_app->PushModal(new CreateEmptyScriptModal(m_app, m_project, a_path));
+            }
+
+            ImGui::Separator();
 
             if (ImGui::MenuItem("Assembly Control"))
             {

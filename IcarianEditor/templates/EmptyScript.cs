@@ -1,0 +1,6 @@
+using IcarianEngine;
+
+namespace @ProjectName@
+{
+    
+}

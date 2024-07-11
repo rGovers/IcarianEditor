@@ -93,6 +93,28 @@ namespace IcarianEditor.Properties
 
                 break;
             }
+            case sbyte val:
+            {
+                sbyte nVal = (sbyte)a_normVal;
+                int sVal = (int)val;
+                if (GUI.RIntField(a_name, ref sVal, (int)nVal))
+                {
+                    a_obj = (sbyte)sVal;
+                }
+
+                break;
+            }
+            case byte val:
+            {
+                byte nVal = (byte)a_normVal;
+                uint sVal = (uint)val;
+                if (GUI.RUIntField(a_name, ref sVal, (uint)nVal))
+                {
+                    a_obj = (byte)sVal;
+                }
+
+                break;
+            }
             case short val:
             {
                 short nVal = (short)a_normVal;

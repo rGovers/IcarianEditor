@@ -13,6 +13,7 @@ enum e_CodeEditor : uint32_t
     CodeEditor_Default,
     CodeEditor_VisualStudio,
     CodeEditor_VisualStudioCode,
+    CodeEditor_Kate,
     CodeEditor_End
 };
 
@@ -20,6 +21,7 @@ enum e_DefEditor : uint32_t
 {
     DefEditor_Editor,
     DefEditor_VisualStudioCode,
+    DefEditor_Kate,
     DefEditor_End
 };
 

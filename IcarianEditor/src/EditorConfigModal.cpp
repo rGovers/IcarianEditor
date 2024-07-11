@@ -16,28 +16,46 @@ static constexpr const char* CodeEditorNames[] =
 {
     "Default",
     "Visual Studio",
-    "Visual Studio Code"
+    "Visual Studio Code",
+    "Kate"
 };
 
 static constexpr const char* DefEditorNames[] =
 {
     "Editor",
-    "Visual Studio Code"
+    "Visual Studio Code",
+    "Kate"
 };
 
 #if WIN32
 constexpr static bool CodeEditorEnabled[] =
 {
-    true,
-    true,
-    true
+    true,   // Default
+    true,   // Visual Studio
+    true,   // VSCode
+    false,  // Kate - Unable to validate it works need someone to confirm before enabling
+};
+
+constexpr static bool DefEditorEnabled[] =
+{
+    true,   // Editor
+    true,   // VSCode
+    false,  // Kate - Unable to validate it works need someone to confirm before enabling
 };
 #else
 constexpr static bool CodeEditorEnabled[] =
 {
-    true,
-    false,
-    true
+    true,   // Default
+    false,  // Visual Studio
+    true,   // VSCode
+    true,   // Kate
+};
+
+constexpr static bool DefEditorEnabled[] =
+{
+    true,   // Editor
+    true,   // VSCode
+    true,   // Kate
 };
 #endif
 
@@ -161,6 +179,12 @@ void EditorConfigModal::ExternalToolsTab()
 
         for (uint32_t i = 0; i < DefEditor_End; ++i)
         {
+            const bool enabled = DefEditorEnabled[i];
+            if (!enabled)
+            {
+                continue;
+            }
+
             const bool selected = defEditor == i;
 
             if (ImGui::Selectable(DefEditorNames[i], selected))
