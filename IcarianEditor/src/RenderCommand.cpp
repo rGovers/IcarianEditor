@@ -22,6 +22,7 @@ static RenderCommand* Instance = nullptr;
 
 #define RENDERCOMMAND_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, RenderCommand, BindMaterial, { RenderCommand::BindMaterial(a_addr); }, uint32_t a_addr) \
+    F(void, IcarianEngine.Rendering, RenderCommand, DrawModel, { RenderCommand::DrawModel(a_transform, a_addr); }, glm::mat4 a_transform, uint32_t a_addr) \
     \
     F(uint32_t, IcarianEditor, AnimationMaster, GenerateSkeletonBuffer, { return RenderCommand::GenerateSkeletonBuffer(); }) \
     F(void, IcarianEditor, AnimationMaster, BindSkeletonBuffer, { RenderCommand::BindSkeletonBuffer(a_addr); }, uint32_t a_addr) \
@@ -30,19 +31,6 @@ static RenderCommand* Instance = nullptr;
     F(void, IcarianEngine.Rendering.Animation, Animator, DestroyBuffer, { }, uint32_t a_addr) \
 
 RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
-
-RUNTIME_FUNCTION(void, RenderCommand, DrawModel, 
-{
-    glm::mat4 transform;
-    float* f = (float*)&transform;
-
-    for (int i = 0; i < 16; ++i)   
-    {
-        f[i] = mono_array_get(a_transform, float, i);
-    }
-
-    RenderCommand::DrawModel(transform, a_modelAddr);
-}, MonoArray* a_transform, uint32_t a_modelAddr)
 
 RUNTIME_FUNCTION(void, SkeletonAnimator, PushTransform,
 {
@@ -127,8 +115,6 @@ void RenderCommand::Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage)
         Instance = new RenderCommand(a_storage);
 
         RENDERCOMMAND_BINDING_FUNCTION_TABLE(RENDERCOMMAND_RUNTIME_ATTACH);
-
-        BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, RenderCommand, DrawModel);
         
         BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, SkeletonAnimator, PushTransform);
 
