@@ -310,6 +310,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/flare-glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
+            "../IcarianEngine/deps/zlib/build/zlib.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
@@ -321,7 +322,6 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendReference(&project, "gdi32");
         CUBE_CProject_AppendReference(&project, "wsock32");
         CUBE_CProject_AppendReference(&project, "ws2_32");
-        CUBE_CProject_AppendReference(&project, "z");
 
         // Magic string to get std library to link with MinGW
         CUBE_CProject_AppendCFlag(&project, "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic");
@@ -339,6 +339,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/flare-glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
+            "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
@@ -348,7 +349,6 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
         CUBE_CProject_AppendReference(&project, "m");
         CUBE_CProject_AppendReference(&project, "stdc++");
-        CUBE_CProject_AppendReference(&project, "z");
 
         break;
     }
