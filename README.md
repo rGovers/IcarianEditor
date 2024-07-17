@@ -5,9 +5,8 @@
 The editor for Icarian Engine.
 
 ## Prerequisites
-* Vulkan SDK
+* Vulkan SDK(Validation Layers in Debug not required in Release)
 * Python3(glslang)
-* zlib
 ### Linux
 * GCC, Clang or Zig
 ### Windows

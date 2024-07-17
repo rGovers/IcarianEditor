@@ -3,6 +3,7 @@
 #include <stb_image.h>
 
 #include "Core/IcarianAssert.h"
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 
 static void ErrorCallback(int a_error, const char* a_description)
@@ -11,10 +12,20 @@ static void ErrorCallback(int a_error, const char* a_description)
 }
 
 // I dont not know if I need to throw GLFW or Windows under the bus for this one and have had enough of the WIN32 api to go digging
-
 Application::Application(uint32_t a_width, uint32_t a_height, const std::string_view& a_title)
 {
+    // TODO: Do some glfw hacks relating to the titlebar
     m_maximized = false;
+
+#ifndef WIN32
+    // Wayland is weird so prefer run under XWayland for the editor for the time being
+    // Will change when Wayland becomes more mature cough GNOME cough
+    // Have had no issues under KDE
+    // Major thing is Wayland up until recently had a fixed size input buffer and would cause crashes
+    // Still dont have a way to set/get window position I prefer it have it and ignore it on select desktops then not at all
+    // Wayland contributors still seem more interested in gaslighting and bikeshedding then fixing issues still so not even gonna bother
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+#endif
 
     ICARIAN_ASSERT_R(glfwInit());
 
@@ -27,15 +38,15 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     m_window = glfwCreateWindow((int)a_width, (int)a_height, a_title.data(), NULL, NULL);
-
-    glfwSetWindowUserPointer(m_window, this);
-
-    if (!m_window)
+    if (m_window == NULL)
     {
         glfwTerminate();
         
         ICARIAN_ASSERT(0);
     }
+    
+    glfwSetWindowUserPointer(m_window, this);
+
     glfwMakeContextCurrent(m_window);
 
 #ifdef WIN32
@@ -59,14 +70,13 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
 #endif
 
     GLFWimage icon;
-
     icon.pixels = stbi_load("Textures/Icons/Logo_White.png", &icon.width, &icon.height, NULL, 4);
 
     if (icon.pixels != nullptr)
     {
-        glfwSetWindowIcon(m_window, 1, &icon);
+        IDEFER(stbi_image_free(icon.pixels));
 
-        stbi_image_free(icon.pixels);
+        glfwSetWindowIcon(m_window, 1, &icon);
     }
     
     m_cursors[Cursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);

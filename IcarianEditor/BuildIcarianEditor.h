@@ -308,7 +308,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendLibraries(&project,
             "../IcarianEngine/IcarianCore/build/IcarianCore.lib",
 
-            "../IcarianEngine/deps/flare-glfw/build/GLFW.lib",
+            "../IcarianEngine/deps/glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
             "../IcarianEngine/deps/zlib/build/zlib.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
@@ -337,7 +337,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendLibraries(&project, 
             "../IcarianEngine/IcarianCore/build/libIcarianCore.a",
 
-            "../IcarianEngine/deps/flare-glfw/build/libGLFW.a",
+            "../IcarianEngine/deps/glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
             "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
@@ -347,6 +347,10 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
             "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a"
         );
 
+        // Work out WTF is going on and why I sometimes need to link and unlink system zlib to get it to compile
+        // Suspect some weird object shenanigans
+        // The fact it is only sometimes is very suspicious
+        // CUBE_CProject_AppendReference(&project, "z");
         CUBE_CProject_AppendReference(&project, "m");
         CUBE_CProject_AppendReference(&project, "stdc++");
 
