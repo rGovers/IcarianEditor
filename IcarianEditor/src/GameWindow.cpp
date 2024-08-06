@@ -166,12 +166,6 @@ void GameWindow::Update(double a_delta)
     m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
 
     const bool locked = m_processManager->GetCursorState() == CursorState_Locked;
-    bool running = m_processManager->IsRunning();
-
-    if (!running)
-    {
-        m_app->SetCursorState(CursorState_Normal);
-    }
 
     // The oh fuck the app has taken input away button stop giving control
     if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
@@ -210,6 +204,8 @@ void GameWindow::Update(double a_delta)
         }
         else 
         {
+            m_app->SetCursorState(CursorState_Normal);
+
             const ImVec2 mousePosIm = ImGui::GetMousePos();
 
             const glm::vec2 cPos = glm::vec2(mousePosIm.x - (winPos.x + vMinIm.x), mousePosIm.y - (winPos.y + vMinIm.y));
@@ -217,7 +213,7 @@ void GameWindow::Update(double a_delta)
             m_processManager->PushCursorPos(cPos);
         }
 
-        unsigned char mouseState = 0;
+        uint8_t mouseState = 0;
         if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             mouseState |= 0b1 << MouseButton_Left;
@@ -234,7 +230,7 @@ void GameWindow::Update(double a_delta)
         m_processManager->PushMouseState(mouseState);
 
         IcarianCore::KeyboardState state;
-        for (unsigned int i = 0; i < KeyCode_Last; ++i)
+        for (uint32_t i = 0; i < KeyCode_Last; ++i)
         {
             const ImGuiKey key = GameKeyTable[i];
             if (key != ImGuiKey_None)
@@ -262,6 +258,8 @@ void GameWindow::Update(double a_delta)
 
     ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + 5.0f, 45.0f));
 
+    bool running = m_processManager->IsRunning();
+
     if (FlareImGui::ImageSwitchButton("Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
     {
         if (running)
@@ -278,6 +276,8 @@ void GameWindow::Update(double a_delta)
         else
         {
             m_processManager->Stop();
+
+            m_app->SetCursorState(CursorState_Normal);
         }
     }
 }

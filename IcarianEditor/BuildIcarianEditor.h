@@ -124,7 +124,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
-
+        
         "GLM_FORCE_QUAT_DATA_XYZW",
         "GLM_FORCE_RADIANS",
         "KHRONOS_STATIC",
@@ -136,22 +136,26 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     CUBE_String_Destroy(&commitDefine);
 
     CUBE_CProject_AppendIncludePaths(&project, 
-        "include",
+        "./include",
+
         "../EditorInterop",
         "../IcarianEngine/EngineInterop",
+
         "../IcarianEngine/IcarianCore/include",
+
         "../IcarianEngine/deps/assimp/include",
         "../IcarianEngine/deps/gen/assimp",
         "../IcarianEngine/deps/CUBE/include",
-        "../IcarianEngine/deps/flare-glfw/include",
+        "../IcarianEngine/deps/glfw/include",
         "../IcarianEngine/deps/flare-glm",
         "../IcarianEngine/deps/flare-stb",
         "../IcarianEngine/deps/KTX-Software/include",
         "../IcarianEngine/deps/flare-tinyxml2",
         "../IcarianEngine/deps/imgui",
         "../IcarianEngine/deps/glad/include",
-        "lib/flare-ImGuizmo",
-        "lib/implot"
+
+        "./lib/flare-ImGuizmo",
+        "./lib/implot"
     );
 
     CUBE_CProject_AppendSources(&project, 
@@ -310,11 +314,11 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
-            "../IcarianEngine/deps/zlib/build/zlib.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
+            "../IcarianEngine/deps/zlib/build/zlib.lib",
             "../IcarianEngine/deps/assimp/build/assimp.lib",
             "../IcarianEngine/deps/assimp/contrib/unzip/build/unzip.lib"
         );
@@ -339,18 +343,23 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
-            "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
+            // I want to cry linking order matters for zlib for some reason
+            // Linker was prematurely discarding unused functions hence linking error
+            // Thank you random person on GitHub having issues with assimp and StackOverflow for giving enough information to piece together what is happening
+            // Need to ensure that it is linked just before it is used otherwise linker does not resolve symbols
+            // Explains why linking the system zlib fixed it should properly work now with hacky link order
+            // Ironically not a problem in release builds as the linker was extra aggressive 
+            // By my understanding linker goes left to right and has a window that it stores symbols and stuff on the left side can fall off when it needs more space for stuff on the right side hence moving it later fixed it
+            // May need to update CUBE down the line to use linking groups as apparently that can give you a little more control
+            // TLDR: Despite linking earlier in the chain was getting discarded needs to be linked just in time
+            "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/assimp/build/libassimp.a",
             "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a"
         );
 
-        // Work out WTF is going on and why I sometimes need to link and unlink system zlib to get it to compile
-        // Suspect some weird object shenanigans
-        // The fact it is only sometimes is very suspicious
-        // CUBE_CProject_AppendReference(&project, "z");
         CUBE_CProject_AppendReference(&project, "m");
         CUBE_CProject_AppendReference(&project, "stdc++");
 

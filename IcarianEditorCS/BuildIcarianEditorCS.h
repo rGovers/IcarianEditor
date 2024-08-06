@@ -49,16 +49,12 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Modals/Modal.cs",
         "src/Modals/NewSceneObjectModal.cs",
 
-        "src/Properties/AmbientLightPropertiesWindow.cs",
         "src/Properties/CameraPropertiesWindow.cs",
-        "src/Properties/DirectionalLightPropertiesWindow.cs",
         "src/Properties/GameObjectPropertiesWindow.cs",
-        "src/Properties/LightPropertiesWindow.cs",
         "src/Properties/MaterialPropertiesWindow.cs",
-        "src/Properties/PointLightPropertiesWindow.cs",
         "src/Properties/PropertiesEditorWindow.cs",
         "src/Properties/SelectionObjectPropertiesWindow.cs",
-        "src/Properties/SpotLightPropertiesWindow.cs",
+        
         "src/Windows/EditorWindow.cs",
         "src/Windows/HierarchyWindow.cs",
         "src/Windows/PropertiesWindow.cs",

@@ -454,6 +454,8 @@ void ProcessManager::Stop()
 
         PollMessage(true);        
     }    
+
+    m_cursorState = CursorState_Normal;
 }
 void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
 {
@@ -479,11 +481,11 @@ void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
         }
     }
 }
-void ProcessManager::PushMouseState(unsigned char a_state)
+void ProcessManager::PushMouseState(uint8_t a_state)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(unsigned char), (char*)&a_state }))
+        if (!m_pipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(uint8_t), (char*)&a_state }))
         {
             Logger::Error("Failed to send mouse state message to IcarianEngine");
 
@@ -493,7 +495,7 @@ void ProcessManager::PushMouseState(unsigned char a_state)
         }
     }
 }
-void ProcessManager::PushKeyboardState(IcarianCore::KeyboardState& a_state)
+void ProcessManager::PushKeyboardState(const IcarianCore::KeyboardState& a_state)
 {
     if (m_captureInput && IsRunning())
     {

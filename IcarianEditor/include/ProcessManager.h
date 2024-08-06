@@ -106,8 +106,8 @@ public:
     void SetSize(uint32_t a_width, uint32_t a_height);
    
     void PushCursorPos(const glm::vec2& a_cPos);
-    void PushMouseState(unsigned char a_state);
-    void PushKeyboardState(IcarianCore::KeyboardState& a_state);
+    void PushMouseState(uint8_t a_state);
+    void PushKeyboardState(const IcarianCore::KeyboardState& a_state);
 
     bool Start(const std::filesystem::path& a_workingDir);
     void Update();
