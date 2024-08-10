@@ -150,6 +150,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetInt,
 
     return (uint32_t)ImGui::InputInt(("##V_" + str).c_str(), (int*)a_value);
 }, MonoString* a_str, int32_t* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetIntSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderInt(("##V_" + str).c_str(), (int*)a_value, (int)a_min, (int)a_max);
+}, MonoString* a_str, int32_t* a_value, int32_t a_min, int32_t a_max)
 RUNTIME_FUNCTION(uint32_t, GUI, GetUInt, 
 {
     char* mStr = mono_string_to_utf8(a_str);
@@ -161,6 +172,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetUInt,
 
     return (uint32_t)ImGui::InputInt(("##V_" + str).c_str(), (int*)a_value);
 }, MonoString* a_str, uint32_t* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetUIntSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderInt(("##V_" + str).c_str(), (int*)a_value, (int)a_min, (int)a_max);
+}, MonoString* a_str, uint32_t* a_value, uint32_t a_min, uint32_t a_max)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetBitField, 
 {
@@ -223,6 +245,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetFloat,
 
     return (uint32_t)ImGui::DragFloat(("##V_" + str).c_str(), a_value);
 }, MonoString* a_str, float* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetFloatSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderFloat(("##V_" + str).c_str(), a_value, a_min, a_max);
+}, MonoString* a_str, float* a_value, float a_min, float a_max)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetVec2, 
 {
@@ -662,11 +695,14 @@ void GUI::Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetDef);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetInt);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetIntSlider);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUInt);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUIntSlider);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetBitField);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloat);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloatSlider);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec2);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec3);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec4);

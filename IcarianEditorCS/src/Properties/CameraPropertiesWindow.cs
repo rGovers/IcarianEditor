@@ -17,14 +17,14 @@ namespace IcarianEditor.Properties
             if (EditorConfig.UseDegrees)
             {
                 float fov = def.FOV * Mathf.RadToDeg;
-                if (GUI.FloatField("FOV", ref fov))
+                if (GUI.FloatSliderField("FOV", ref fov, 0.1f * Mathf.RadToDeg, Mathf.PI * Mathf.RadToDeg))
                 {
                     def.FOV = fov * Mathf.DegToRad;
                 }
             }
             else
             {
-                GUI.FloatField("FOV", ref def.FOV);
+                GUI.FloatSliderField("FOV", ref def.FOV, 0.1f, Mathf.PI);
             }
             GUI.Tooltip("FOV", "Field of View for the camera.");
             

@@ -244,18 +244,24 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     
     CUBE_String* lines = CBNULL;
     CBUINT32 lineCount = 0;
-    CUBE_CSProject project = { 0 };
-    IDEFER(CUBE_CSProject_Destroy(&project));
 
-    project.Name = CUBE_StackString_CreateC(a_name.data());
-    project.Target = CUBE_CSProjectTarget_Library;
-    project.OutputPath = CUBE_Path_CreateC(assemblyPath.string().c_str());
+    const std::string asmPathStr = assemblyPath.string();
+
+    CUBE_CSProject project = 
+    { 
+        .Name = CUBE_StackString_CreateC(a_name.data()),
+        .Target = CUBE_CSProjectTarget_Library,
+        .OutputPath = CUBE_Path_CreateC(asmPathStr.c_str()),
+        .Debug = CBTRUE
+    };
+    IDEFER(CUBE_CSProject_Destroy(&project));
 
     for (const std::filesystem::path& p : projectScripts)
     {
         const std::filesystem::path absPath = projectPath / p;
 
-        CUBE_CSProject_AppendSource(&project, absPath.string().c_str());
+        const std::string absStr = absPath.string();
+        CUBE_CSProject_AppendSource(&project, absStr.c_str());
     }
 
     CUBE_CSProject_AppendReference(&project, icarianCSPathStr.c_str());
@@ -297,13 +303,16 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
             editorProject.Serialize(std::string(a_name) + "Editor", editorProjectFile, "Editor", externalDependencies, sizeof(externalDependencies) / sizeof(*externalDependencies));
         }
 
-        CUBE_CSProject editorProject = { 0 };
-        IDEFER(CUBE_CSProject_Destroy(&editorProject));
-
         const std::string editorProjectName = std::string(a_name) + "Editor";
-        editorProject.Name = CUBE_StackString_CreateC(editorProjectName.c_str());
-        editorProject.Target = CUBE_CSProjectTarget_Library;
-        editorProject.OutputPath = CUBE_Path_CreateC("Editor");
+
+        CUBE_CSProject editorProject = 
+        { 
+            .Name = CUBE_StackString_CreateC(editorProjectName.c_str()),
+            .Target = CUBE_CSProjectTarget_Library,
+            .OutputPath = CUBE_Path_CreateC("Editor"),
+            .Debug = CBTRUE
+        };
+        IDEFER(CUBE_CSProject_Destroy(&editorProject));
 
         std::filesystem::create_directories(cachePath / "Editor");
 

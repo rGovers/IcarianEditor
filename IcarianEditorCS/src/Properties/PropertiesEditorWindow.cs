@@ -95,6 +95,18 @@ namespace IcarianEditor.Properties
             }
             case sbyte val:
             {
+                sbyte min = 0;
+                sbyte max = 0;
+
+                foreach (Attribute a in a_attributes)
+                {
+                    if (a is EditorRangeAttribute range)
+                    {
+                        min = (sbyte)range.Min;
+                        max = (sbyte)range.Max;
+                    }
+                }
+
                 sbyte nVal = (sbyte)a_normVal;
                 int sVal = (int)val;
                 if (GUI.RIntField(a_name, ref sVal, (int)nVal))
@@ -106,66 +118,273 @@ namespace IcarianEditor.Properties
             }
             case byte val:
             {
-                byte nVal = (byte)a_normVal;
+                byte min = 0;
+                byte max = 0;
+
                 uint sVal = (uint)val;
-                if (GUI.RUIntField(a_name, ref sVal, (uint)nVal))
+                foreach (Attribute a in a_attributes)
                 {
-                    a_obj = (byte)sVal;
+                    if (a is EditorBitfieldAttribute)
+                    {
+                        if (GUI.BitField(a_name, ref sVal, 8))
+                        {
+                            a_obj = (byte)sVal;
+                        }
+
+                        return;
+                    }
+                    else if (a is EditorRangeAttribute range)
+                    {
+                        min = (byte)range.Min;
+                        max = (byte)range.Max;
+                    }
+                }
+
+                byte nVal = (byte)a_normVal;
+                if (min != max)
+                {
+                    if (GUI.RUIntSliderField(a_name, ref sVal, min, max, (uint)nVal))
+                    {
+                        a_obj = (byte)sVal;
+                    }
+                }
+                else
+                {
+                    if (GUI.RUIntField(a_name, ref sVal, (uint)nVal))
+                    {
+                        a_obj = (byte)sVal;
+                    }
                 }
 
                 break;
             }
             case short val:
             {
+                short min = 0;
+                short max = 0;
+
+                foreach (Attribute a in a_attributes)
+                {
+                    if (a is EditorRangeAttribute range)
+                    {
+                        min = (short)range.Min;
+                        max = (short)range.Max;
+                    }
+                }
+
                 short nVal = (short)a_normVal;
                 int sVal = (int)val;
-                if (GUI.RIntField(a_name, ref sVal, (int)nVal))
+                if (min != max)
                 {
-                    a_obj = (short)sVal;
+                    if (GUI.RIntSliderField(a_name, ref sVal, min, max, (int)nVal))
+                    {
+                        a_obj = (short)sVal;
+                    }
+                }
+                else
+                {
+                    if (GUI.RIntField(a_name, ref sVal, (int)nVal))
+                    {
+                        a_obj = (short)sVal;
+                    }
                 }
 
                 break;
             }
             case ushort val:
             {
-                ushort nVal = (ushort)a_normVal;
+                ushort min = 0;
+                ushort max = 0;
+
                 uint sVal = (uint)val;
-                if (GUI.RUIntField(a_name, ref sVal, (uint)nVal))
+                foreach (Attribute a in a_attributes)
                 {
-                    a_obj = (ushort)sVal;
+                    if (a is EditorBitfieldAttribute)
+                    {
+                        if (GUI.BitField(a_name, ref sVal, 16))
+                        {
+                            a_obj = (ushort)sVal;
+                        }
+
+                        return;
+                    }
+                    else if (a is EditorRangeAttribute range)
+                    {
+                        min = (ushort)range.Min;
+                        max = (ushort)range.Max;
+                    }
+                }
+
+                ushort nVal = (ushort)a_normVal;
+                if (min != max)
+                {
+                    if (GUI.RUIntSliderField(a_name, ref sVal, min, max, (uint)nVal))
+                    {
+                        a_obj = (ushort)sVal;
+                    }
+                }
+                else
+                {
+                    if (GUI.RUIntField(a_name, ref sVal, (uint)nVal))
+                    {
+                        a_obj = (ushort)sVal;
+                    }
                 }
 
                 break;
             }
             case int val:
             {
-                if (GUI.RIntField(a_name, ref val, (int)a_normVal))
+                int min = 0;
+                int max = 0;
+
+                foreach (Attribute a in a_attributes)
                 {
-                    a_obj = val;
+                    if (a is EditorRangeAttribute range)
+                    {
+                        min = (int)range.Min;
+                        max = (int)range.Max;
+                    }
+                }
+
+                if (min != max)
+                {
+                    if (GUI.RIntSliderField(a_name, ref val, min, max, (int)a_normVal))
+                    {
+                        a_obj = val;
+                    }
+                }
+                else
+                {
+                    if (GUI.RIntField(a_name, ref val, (int)a_normVal))
+                    {
+                        a_obj = val;
+                    }
                 }
 
                 break;
             }
             case uint val:
             {
-                if (GUI.RUIntField(a_name, ref val, (uint)a_normVal))
+                uint min = 0;
+                uint max = 0;
+
+                foreach (Attribute a in a_attributes)
                 {
-                    a_obj = val;
+                    if (a is EditorBitfieldAttribute)
+                    {
+                        if (GUI.BitField(a_name, ref val, 32))
+                        {
+                            a_obj = val;
+                        }
+
+                        return;
+                    }
+                    else if (a is EditorRangeAttribute range)
+                    {
+                        min = (uint)range.Min;
+                        max = (uint)range.Max;
+                    }
+                }
+
+                if (min != max)
+                {
+                    if (GUI.RUIntSliderField(a_name, ref val, min, max, (uint)a_normVal))
+                    {
+                        a_obj = val;
+                    }
+                }
+                else
+                {
+                    if (GUI.RUIntField(a_name, ref val, (uint)a_normVal))
+                    {
+                        a_obj = val;
+                    }
                 }
 
                 break;
             }
             case float val:
             {   
-                if (GUI.RFloatField(a_name, ref val, (float)a_normVal))
+                bool isAngle = false;
+                float min = 0.0f;
+                float max = 0.0f;
+
+                foreach (Attribute a in a_attributes)
                 {
-                    a_obj = val;
+                    if (a is EditorAngleAttribute)
+                    {
+                        isAngle = true;
+                    }
+                    else if (a is EditorRangeAttribute range)
+                    {
+                        min = (float)range.Min;
+                        max = (float)range.Max;
+                    }
+                }
+
+                if (isAngle && EditorConfig.UseDegrees)
+                {
+                    float angle = val * Mathf.RadToDeg;
+                    if (min != max)
+                    {
+                        float maxAngle = max * Mathf.RadToDeg;
+                        float minAngle = min * Mathf.RadToDeg;
+
+                        if (GUI.RFloatSliderField(a_name, ref angle, minAngle, maxAngle, (float)a_normVal))
+                        {
+                            a_obj = angle * Mathf.DegToRad;
+                        }
+                    }
+                    else
+                    {
+                        if (GUI.RFloatField(a_name, ref val, (float)a_normVal))
+                        {
+                            a_obj = angle * Mathf.DegToRad;
+                        }
+                    }
+
+                    break;
+                }
+
+                if (min != max)
+                {
+                    if (GUI.RFloatSliderField(a_name, ref val, min, max, (float)a_normVal))
+                    {
+                        a_obj = val;
+                    }
+                }
+                else
+                {
+                    if (GUI.RFloatField(a_name, ref val, (float)a_normVal))
+                    {
+                        a_obj = val;
+                    }
                 }
 
                 break;
             }
             case Vector2 val:
             {
+                foreach (Attribute a in a_attributes)
+                {
+                    if (a is EditorAngleAttribute)
+                    {
+                        if (EditorConfig.UseDegrees)
+                        {
+                            Vector2 v = val * Mathf.RadToDeg;
+                            if (GUI.RVec2Field(a_name, ref v, (Vector2)a_normVal))
+                            {
+                                a_obj = v * Mathf.DegToRad;
+                            }
+
+                            return;
+                        }
+
+                        break;
+                    }
+                }
+
                 if (GUI.RVec2Field(a_name, ref val, (Vector2)a_normVal))
                 {
                     a_obj = val;
@@ -175,6 +394,25 @@ namespace IcarianEditor.Properties
             }
             case Vector3 val:
             {
+                foreach (Attribute a in a_attributes)
+                {
+                    if (a is EditorAngleAttribute)
+                    {
+                        if (EditorConfig.UseDegrees)
+                        {
+                            Vector3 v = val * Mathf.RadToDeg;
+                            if (GUI.RVec3Field(a_name, ref v, (Vector3)a_normVal))
+                            {
+                                a_obj = v * Mathf.DegToRad;
+                            }
+
+                            return;
+                        }
+
+                        break;
+                    }
+                }
+
                 if (GUI.RVec3Field(a_name, ref val, (Vector3)a_normVal))
                 {
                     a_obj = val;
@@ -193,6 +431,7 @@ namespace IcarianEditor.Properties
             }
             case Quaternion val:
             {
+                // TODO: Improve this as could be a little smarter and use a rotation mode
                 if (GUI.RQuaternionField(a_name, ref val, (Quaternion)a_normVal))
                 {
                     a_obj = val;

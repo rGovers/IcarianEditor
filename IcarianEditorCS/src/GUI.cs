@@ -23,13 +23,19 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetInt(string a_label, IntPtr a_int);
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetIntSlider(string a_label, IntPtr a_int, int a_min, int a_max);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetUInt(string a_label, IntPtr a_int);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetUIntSlider(string a_label, IntPtr a_int, uint a_min, uint a_max);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetBitField(string a_label, IntPtr a_int, uint a_bitCount);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetFloat(string a_label, IntPtr a_float);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetFloatSlider(string a_label, IntPtr a_float, float a_min, float a_max);
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetVec2(string a_label, IntPtr a_vec);
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -341,6 +347,43 @@ namespace IcarianEditor
 
             return ret;
         }
+        public static bool RIntSliderField(string a_label, ref int a_int, int a_min, int a_max, int a_default = default(int))
+        {
+            bool ret = false;
+            if (a_int != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_int = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= IntSliderField(a_label, ref a_int, a_min, a_max);
+
+            return ret;
+        }
+        public static bool IntSliderField(string a_label, ref int a_int, int a_min, int a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_int, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetIntSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_int = (int)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
+        }
         public static bool RUIntField(string a_label, ref uint a_int, uint a_default = default(uint))
         {
             bool ret = false;
@@ -375,6 +418,43 @@ namespace IcarianEditor
             handle.Free();
 
             return ret;
+        }
+        public static bool RUIntSliderField(string a_label, ref uint a_int, uint a_min, uint a_max, uint a_default = default(uint))
+        {
+            bool ret = false;
+            if (a_int != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_int = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= UIntSliderField(a_label, ref a_int, a_min, a_max);
+
+            return ret;
+        }
+        public static bool UIntSliderField(string a_label, ref uint a_int, uint a_min, uint a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_int, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetUIntSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_int = (uint)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
         }
 
         public static bool BitField(string a_label, ref uint a_value, uint a_bitCount = 8)
@@ -427,6 +507,43 @@ namespace IcarianEditor
             handle.Free();
 
             return ret;
+        }
+        public static bool RFloatSliderField(string a_label, ref float a_float, float a_min, float a_max, float a_default = default(float))
+        {
+            bool ret = false;
+            if (a_float != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_float = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= FloatSliderField(a_label, ref a_float, a_min, a_max);
+
+            return ret;
+        }
+        public static bool FloatSliderField(string a_label, ref float a_float, float a_min, float a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_float, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetFloatSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_float = (float)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
         }
 
         public static bool RVec2Field(string a_label, ref Vector2 a_vec, Vector2 a_default = default(Vector2))
