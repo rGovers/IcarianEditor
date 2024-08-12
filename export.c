@@ -205,7 +205,7 @@ int main(int a_argc, char** a_argv)
 
     printf("Compiling IcarianCS...\n");
 
-    icarianCSProject = BuildIcarianCSProject(CBTRUE);
+    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
 
     // ret = CUBE_CSProject_Compile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", &lines, &lineCount);
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", CUBE_CProjectCompiler_GCC, CBNULL, &lines, &lineCount);
