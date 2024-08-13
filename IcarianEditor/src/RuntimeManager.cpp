@@ -252,7 +252,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         .Name = CUBE_StackString_CreateC(a_name.data()),
         .Target = CUBE_CSProjectTarget_Library,
         .OutputPath = CUBE_Path_CreateC(asmPathStr.c_str()),
-        .Debug = CBTRUE
+//        .Debug = CBTRUE
     };
     IDEFER(CUBE_CSProject_Destroy(&project));
 
@@ -310,7 +310,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
             .Name = CUBE_StackString_CreateC(editorProjectName.c_str()),
             .Target = CUBE_CSProjectTarget_Library,
             .OutputPath = CUBE_Path_CreateC("Editor"),
-            .Debug = CBTRUE
+  //          .Debug = CBTRUE
         };
         IDEFER(CUBE_CSProject_Destroy(&editorProject));
 
