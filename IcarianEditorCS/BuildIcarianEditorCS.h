@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
+static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
 {
     CUBE_CSProject project = { 0 };
 
@@ -21,6 +21,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
 
     CUBE_CSProject_AppendSources(&project, 
         "src/AnimationMaster.cs",
+        "src/ClipBoard.cs",
         "src/ColliderRenderer.cs",
         "src/EditorConfig.cs",
         "src/EditorDefLibrary.cs",
@@ -40,6 +41,7 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Editor/TriggerBodyEditorDisplay.cs",
 
         "src/Modals/AddComponentModal.cs",
+        "src/Modals/CreateDefModal.cs",
         "src/Modals/ConfirmModal.cs",
         "src/Modals/CreateSceneDefModal.cs",
         "src/Modals/DeleteSceneObjectModal.cs",
@@ -48,20 +50,19 @@ CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Modals/NewSceneObjectModal.cs",
 
         "src/Properties/CameraPropertiesWindow.cs",
-        "src/Properties/DirectionalLightPropertiesWindow.cs",
         "src/Properties/GameObjectPropertiesWindow.cs",
-        "src/Properties/LightPropertiesWindow.cs",
         "src/Properties/MaterialPropertiesWindow.cs",
-        "src/Properties/PointLightPropertiesWindow.cs",
         "src/Properties/PropertiesEditorWindow.cs",
         "src/Properties/SelectionObjectPropertiesWindow.cs",
-        "src/Properties/SpotLightPropertiesWindow.cs",
+        
         "src/Windows/EditorWindow.cs",
         "src/Windows/HierarchyWindow.cs",
         "src/Windows/PropertiesWindow.cs",
         "src/Windows/SceneDefsWindow.cs"
     );
 
+    CUBE_CSProject_AppendReference(&project, "System.Core.dll");
+    CUBE_CSProject_AppendReference(&project, "System.Xml.dll");
     CUBE_CSProject_AppendReference(&project, "../IcarianEngine/IcarianCS/build/IcarianCS.dll");
 
     return project;

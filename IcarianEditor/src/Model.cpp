@@ -1,8 +1,8 @@
-#include "Model.h"
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
 
-#include "Core/ColladaLoader.h"
-#include "Core/OBJLoader.h"
-#include "Logger.h"
+#include "Model.h"
 
 #include "EngineModelInteropStructures.h"
 
@@ -82,39 +82,24 @@ Model* Model::CreateCube()
     return new Model(Vertices, sizeof(Vertices) / sizeof(*Vertices), Indices, sizeof(Indices) / sizeof(*Indices), sizeof(Vertex));
 }
 
-Model* Model::FromFile(const std::filesystem::path& a_path)
-{
-    if (!std::filesystem::exists(a_path))
-    {
-        Logger::Error("Model does not exist: " + a_path.string());
-
-        return nullptr;
-    }
-
-    const std::filesystem::path& ext = a_path.extension();
-
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    float radius;
-
-    if (ext == ".dae")
-    {
-        IcarianCore::ColladaLoader_LoadFile(a_path, &vertices, &indices, &radius);
-    }
-    else if (ext == ".obj")
-    {
-        IcarianCore::OBJLoader_LoadFile(a_path, &vertices, &indices, &radius);
-    }
-
-    const uint32_t vertexCount = (uint32_t)vertices.size();
-    const uint32_t indexCount = (uint32_t)indices.size();
-
-    if (vertexCount > 0 && indexCount > 0)
-    {
-        return new Model(vertices.data(), vertexCount, (GLuint*)indices.data(), indexCount, sizeof(Vertex));
-    }
-
-    Logger::Error("Failed to load file: " + a_path.string());
-
-    return nullptr;
-}
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "GUI.h"
 
 #include <glm/glm.hpp>
@@ -15,14 +19,20 @@ static GUI* Instance = nullptr;
 
 static constexpr uint32_t BufferSize = 4096;
 
+// TODO: This is a mess in this file and need to be cleaned up and redone
+// I am not happy with the current state of the file
 struct IDStack
 {
     IDStack(const std::string_view& a_id)
     {
+        Instance->PushID(a_id);
+
         ImGui::PushID(a_id.data());
     }
     ~IDStack()
     {
+        Instance->PopID();
+
         ImGui::PopID();
     }
 };
@@ -38,6 +48,39 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetButton,
     STACK_G_ID(str);
     return (uint32_t)ImGui::Button(str);
 }, MonoString* a_str)
+RUNTIME_FUNCTION(uint32_t, GUI, GetToggleButton, 
+{
+    char* str = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(str));
+
+    if (*a_state)
+    {
+        char* enabledStr = mono_string_to_utf8(a_enabledPath);
+        IDEFER(mono_free(enabledStr));
+
+        if (FlareImGui::ImageButton(str, enabledStr, a_size, (bool)a_background))
+        {
+            *a_state = false;
+
+            return true;
+        }
+    }
+    else
+    {
+        char* disabledStr = mono_string_to_utf8(a_disabledPath);
+        IDEFER(mono_free(disabledStr));
+
+        if (FlareImGui::ImageButton(str, disabledStr, a_size, (bool)a_background))
+        {
+            *a_state = true;
+
+            return true;
+        }
+    }
+
+    return false;
+    
+}, MonoString* a_str, MonoString* a_enabledPath, MonoString* a_disabledPath, uint32_t* a_state, glm::vec2 a_size, uint32_t a_background)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox, 
 {
@@ -89,7 +132,7 @@ static MonoString* M_GUI_GetDef(MonoString* a_str, MonoString* a_preview, uint32
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DefPath");
         if (payload != nullptr)
         {
-            return mono_string_from_utf32((mono_unichar4*)payload->Data);
+            return mono_string_new(mono_domain_get(), (char*)payload->Data);
         }
     }
 
@@ -111,6 +154,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetInt,
 
     return (uint32_t)ImGui::InputInt(("##V_" + str).c_str(), (int*)a_value);
 }, MonoString* a_str, int32_t* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetIntSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderInt(("##V_" + str).c_str(), (int*)a_value, (int)a_min, (int)a_max);
+}, MonoString* a_str, int32_t* a_value, int32_t a_min, int32_t a_max)
 RUNTIME_FUNCTION(uint32_t, GUI, GetUInt, 
 {
     char* mStr = mono_string_to_utf8(a_str);
@@ -122,6 +176,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetUInt,
 
     return (uint32_t)ImGui::InputInt(("##V_" + str).c_str(), (int*)a_value);
 }, MonoString* a_str, uint32_t* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetUIntSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderInt(("##V_" + str).c_str(), (int*)a_value, (int)a_min, (int)a_max);
+}, MonoString* a_str, uint32_t* a_value, uint32_t a_min, uint32_t a_max)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetBitField, 
 {
@@ -184,6 +249,17 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetFloat,
 
     return (uint32_t)ImGui::DragFloat(("##V_" + str).c_str(), a_value);
 }, MonoString* a_str, float* a_value)
+RUNTIME_FUNCTION(uint32_t, GUI, GetFloatSlider, 
+{
+    char* mStr = mono_string_to_utf8(a_str);
+    IDEFER(mono_free(mStr));
+    const std::string str = mStr;
+
+    STACK_G_ID(str);
+    FlareImGui::Label(str);
+
+    return (uint32_t)ImGui::SliderFloat(("##V_" + str).c_str(), a_value, a_min, a_max);
+}, MonoString* a_str, float* a_value, float a_min, float a_max)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetVec2, 
 {
@@ -616,17 +692,21 @@ void GUI::Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets
         Instance = new GUI(a_app, a_runtime, a_assets);
         
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetButton);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetToggleButton);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCheckbox);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetDef);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetInt);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetIntSlider);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUInt);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUIntSlider);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetBitField);
 
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloat);
+        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloatSlider);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec2);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec3);
         BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec4);
@@ -752,8 +832,30 @@ std::string GUI::GetID() const
 
     for (const std::string& s : m_id)
     {
-        str += s;
+        str += s + " ";
     }
 
     return str;
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

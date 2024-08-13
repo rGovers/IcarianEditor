@@ -25,8 +25,10 @@ const static char* TemplateBasePaths[] =
     "templates/Scene.iscene",
     "templates/AssemblyControl.cs",
     "templates/DefTable.cs",
+    "templates/EmptyScript.cs",
     "templates/Component.cs",
     "templates/Scriptable.cs",
+    "templates/Canvas.ui",
     "templates/VertexShader.fvert",
     "templates/SkinnedVertexShader.fvert",
     "templates/ShadowVertexShader.fvert",
@@ -118,12 +120,12 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
     CUBE_CProject_AppendDefines(&project,
         "ICARIANEDITOR_VERSION_MAJOR=2024",
-        "ICARIANEDITOR_VERSION_MINOR=0",
+        "ICARIANEDITOR_VERSION_MINOR=1",
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
-
-        // "GLM_FORCE_QUAT_DATA_XYZW",
+        
+        "GLM_FORCE_QUAT_DATA_XYZW",
         "GLM_FORCE_RADIANS",
         "KHRONOS_STATIC",
         "LIBKTX",
@@ -134,20 +136,26 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     CUBE_String_Destroy(&commitDefine);
 
     CUBE_CProject_AppendIncludePaths(&project, 
-        "include",
+        "./include",
+
         "../EditorInterop",
         "../IcarianEngine/EngineInterop",
+
         "../IcarianEngine/IcarianCore/include",
+
+        "../IcarianEngine/deps/assimp/include",
+        "../IcarianEngine/deps/gen/assimp",
         "../IcarianEngine/deps/CUBE/include",
-        "../IcarianEngine/deps/flare-glfw/include",
+        "../IcarianEngine/deps/glfw/include",
         "../IcarianEngine/deps/flare-glm",
         "../IcarianEngine/deps/flare-stb",
         "../IcarianEngine/deps/KTX-Software/include",
         "../IcarianEngine/deps/flare-tinyxml2",
         "../IcarianEngine/deps/imgui",
         "../IcarianEngine/deps/glad/include",
-        "lib/flare-ImGuizmo",
-        "lib/implot"
+
+        "./lib/flare-ImGuizmo",
+        "./lib/implot"
     );
 
     CUBE_CProject_AppendSources(&project, 
@@ -159,74 +167,75 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "../IcarianEngine/deps/imgui/backends/imgui_impl_glfw.cpp",
         "../IcarianEngine/deps/imgui/backends/imgui_impl_opengl3.cpp",
         "../IcarianEngine/deps/glad/src/glad.c",
-        "lib/flare-ImGuizmo/ImGuizmo.cpp",
-        "lib/implot/implot.cpp",
-        "lib/implot/implot_items.cpp",
+        "./lib/flare-ImGuizmo/ImGuizmo.cpp",
+        "./lib/implot/implot.cpp",
+        "./lib/implot/implot_items.cpp",
 
-        "src/Application.cpp",
-        "src/AppMain.cpp",
-        "src/AssetBrowserWindow.cpp",
-        "src/AssetLibrary.cpp",
-        "src/BuildLoadingTask.cpp",
-        "src/BuildProjectModal.cpp",
-        "src/ConfirmModal.cpp",
-        "src/ConsoleWindow.cpp",
-        "src/CopyBuildLibraryLoadingTask.cpp",
-        "src/CreateAssemblyControlModal.cpp",
-        "src/CreateComponentModal.cpp",
-        "src/CreateDefTableModal.cpp",
-        "src/CreateFileModal.cpp",
-        "src/CreateProjectModal.cpp",
-        "src/CreateScriptableModal.cpp",
-        "src/Datastore.cpp",
-        "src/EditorConfig.cpp",
-        "src/EditorConfigModal.cpp",
-        "src/EditorWindow.cpp",
-        "src/ErrorModal.cpp",
-        "src/FileDialog.cpp",
-        "src/FileDialogBlock.cpp",
-        "src/FileHandler.cpp",
-        "src/FlareImGui.cpp",
-        "src/GameWindow.cpp",
-        "src/GenerateConfigLoadingTask.cpp",
-        "src/GetAssetModal.cpp",
-        "src/Gizmos.cpp",
-        "src/GUI.cpp",
-        "src/HierarchyWindow.cpp",
-        "src/IO.cpp",
-        "src/LoadingModal.cpp",
-        "src/Logger.cpp",
-        "src/main.cpp",
-        "src/Modal.cpp",
-        "src/Model.cpp",
-        "src/MonoProjectGenerator.cpp",
-        "src/OpenProjectModal.cpp",
-        "src/PixelShader.cpp",
-        "src/ProjectConfigModal.cpp",
-        "src/ProcessManager.cpp",
-        "src/ProfilerData.cpp",
-        "src/ProfilerWindow.cpp",
-        "src/Project.cpp",
-        "src/PropertiesWindow.cpp",
-        "src/RenamePathModal.cpp",
-        "src/RenderCommand.cpp",
-        "src/RuntimeManager.cpp",
-        "src/RuntimeModal.cpp",
-        "src/RuntimeStorage.cpp",
-        "src/SceneDefsWindow.cpp",
-        "src/SerializeAssetsLoadingTask.cpp",
-        "src/Shader.cpp",
-        "src/ShaderProgram.cpp",
-        "src/ShaderStorage.cpp",
-        "src/ShaderStorageObject.cpp",
-        "src/TemplateBuilder.cpp",
-        "src/Texture.cpp",
-        "src/TextureSampler.cpp",
-        "src/TimelineWindow.cpp",
-        "src/UniformBuffer.cpp",
-        "src/VertexShader.cpp",
-        "src/Window.cpp",
-        "src/Workspace.cpp"
+        "./src/Application.cpp",
+        "./src/AppMain.cpp",
+        "./src/AssetBrowserWindow.cpp",
+        "./src/AssetLibrary.cpp",
+        "./src/BuildLoadingTask.cpp",
+        "./src/BuildProjectModal.cpp",
+        "./src/ConfirmModal.cpp",
+        "./src/ConsoleWindow.cpp",
+        "./src/CopyBuildLibraryLoadingTask.cpp",
+        "./src/CreateAssemblyControlModal.cpp",
+        "./src/CreateComponentModal.cpp",
+        "./src/CreateDefTableModal.cpp",
+        "./src/CreateEmptyScriptModal.cpp",
+        "./src/CreateFileModal.cpp",
+        "./src/CreateProjectModal.cpp",
+        "./src/CreateScriptableModal.cpp",
+        "./src/Datastore.cpp",
+        "./src/EditorConfig.cpp",
+        "./src/EditorConfigModal.cpp",
+        "./src/EditorWindow.cpp",
+        "./src/ErrorModal.cpp",
+        "./src/FileDialog.cpp",
+        "./src/FileDialogBlock.cpp",
+        "./src/FileHandler.cpp",
+        "./src/FlareImGui.cpp",
+        "./src/GameWindow.cpp",
+        "./src/GenerateConfigLoadingTask.cpp",
+        "./src/GetAssetModal.cpp",
+        "./src/Gizmos.cpp",
+        "./src/GUI.cpp",
+        "./src/HierarchyWindow.cpp",
+        "./src/IO.cpp",
+        "./src/LoadingModal.cpp",
+        "./src/Logger.cpp",
+        "./src/main.cpp",
+        "./src/Modal.cpp",
+        "./src/Model.cpp",
+        "./src/MonoProjectGenerator.cpp",
+        "./src/OpenProjectModal.cpp",
+        "./src/PixelShader.cpp",
+        "./src/ProjectConfigModal.cpp",
+        "./src/ProcessManager.cpp",
+        "./src/ProfilerData.cpp",
+        "./src/ProfilerWindow.cpp",
+        "./src/Project.cpp",
+        "./src/PropertiesWindow.cpp",
+        "./src/RenamePathModal.cpp",
+        "./src/RenderCommand.cpp",
+        "./src/RuntimeManager.cpp",
+        "./src/RuntimeModal.cpp",
+        "./src/RuntimeStorage.cpp",
+        "./src/SceneDefsWindow.cpp",
+        "./src/SerializeAssetsLoadingTask.cpp",
+        "./src/Shader.cpp",
+        "./src/ShaderProgram.cpp",
+        "./src/ShaderStorage.cpp",
+        "./src/ShaderStorageObject.cpp",
+        "./src/TemplateBuilder.cpp",
+        "./src/Texture.cpp",
+        "./src/TextureSampler.cpp",
+        "./src/TimelineWindow.cpp",
+        "./src/UniformBuffer.cpp",
+        "./src/VertexShader.cpp",
+        "./src/Window.cpp",
+        "./src/Workspace.cpp"
     );
 
     // Used for style editor window
@@ -303,13 +312,15 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendLibraries(&project,
             "../IcarianEngine/IcarianCore/build/IcarianCore.lib",
 
-            "../IcarianEngine/deps/flare-glfw/build/GLFW.lib",
+            "../IcarianEngine/deps/glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
             "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
-            "../IcarianEngine/deps/OpenFBX/build/OpenFBXLibDeflate.lib"
+            "../IcarianEngine/deps/zlib/build/zlib.lib",
+            "../IcarianEngine/deps/assimp/build/assimp.lib",
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/unzip.lib"
         );
 
         CUBE_CProject_AppendReference(&project, "gdi32");
@@ -330,17 +341,27 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendLibraries(&project, 
             "../IcarianEngine/IcarianCore/build/libIcarianCore.a",
 
-            "../IcarianEngine/deps/flare-glfw/build/libGLFW.a",
+            "../IcarianEngine/deps/glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
             "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
-            "../IcarianEngine/deps/OpenFBX/build/libOpenFBXLibDeflate.a"
+            // I want to cry linking order matters for zlib for some reason
+            // Linker was prematurely discarding unused functions hence linking error
+            // Thank you random person on GitHub having issues with assimp and StackOverflow for giving enough information to piece together what is happening
+            // Need to ensure that it is linked just before it is used otherwise linker does not resolve symbols
+            // Explains why linking the system zlib fixed it should properly work now with hacky link order
+            // Ironically not a problem in release builds as the linker was extra aggressive 
+            // By my understanding linker goes left to right and has a window that it stores symbols and stuff on the left side can fall off when it needs more space for stuff on the right side hence moving it later fixed it
+            // May need to update CUBE down the line to use linking groups as apparently that can give you a little more control
+            // TLDR: Despite linking earlier in the chain was getting discarded needs to be linked just in time
+            "../IcarianEngine/deps/zlib/build/libzlib.a",
+            "../IcarianEngine/deps/assimp/build/libassimp.a",
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a"
         );
 
         CUBE_CProject_AppendReference(&project, "m");
         CUBE_CProject_AppendReference(&project, "stdc++");
-        CUBE_CProject_AppendReference(&project, "z");
 
         break;
     }

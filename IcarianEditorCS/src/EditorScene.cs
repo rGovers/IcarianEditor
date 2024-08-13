@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
@@ -11,30 +15,31 @@ using System.Xml;
 #include "InteropBinding.h"
 #include "EditorSceneInterop.h"
 
-EDITORSCENE_EXPORT_TABLE(IOP_BIND_FUNCTION)
+EDITORSCENE_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {
-    public struct GameObjectData
-    {
-        public ulong ID;
-        public SceneObject Object;
-        public string DefName;
-    }
     public struct SceneObjectData
     {
+        public bool Visible;
         public ulong ID;
         public SceneObject Object;
+    }
+    public struct SceneObjectArrayData
+    {
+        public bool Visible;
+        public ulong ID;
+        public SceneObjectArray Array;
     }
 
     public class EditorScene
     {
         static Dictionary<string, EditorScene> s_scenes = new Dictionary<string, EditorScene>();
 
-        string                m_path;
-        List<SceneObjectData> m_sceneObjects;
-        List<GameObjectData>  m_gameObjects;
-        List<string>          m_defNames;
+        string                     m_path;
+        List<SceneObjectData>      m_sceneObjects;
+        List<SceneObjectArrayData> m_sceneObjectArrays;
+        List<string>               m_defNames;
 
         public IEnumerable<SceneObjectData> SceneObjects
         {
@@ -43,11 +48,11 @@ namespace IcarianEditor
                 return m_sceneObjects;
             }
         }
-        public IEnumerable<GameObjectData> GameObjects
+        public IEnumerable<SceneObjectArrayData> SceneObjectArrays
         {
             get
             {
-                return m_gameObjects;
+                return m_sceneObjectArrays;
             }
         }
 
@@ -63,7 +68,7 @@ namespace IcarianEditor
         {
             m_path = a_path;
             m_sceneObjects = new List<SceneObjectData>();
-            m_gameObjects = new List<GameObjectData>();
+            m_sceneObjectArrays = new List<SceneObjectArrayData>();
             m_defNames = new List<string>();
         }
 
@@ -79,24 +84,11 @@ namespace IcarianEditor
 
             return ulong.MaxValue;
         }
-        public ulong GetID(SceneObject a_sceneObject, string a_defName)
+        public ulong GetID(SceneObjectArray a_sceneObjectArray)
         {
-            foreach (GameObjectData dat in m_gameObjects)
+            foreach (SceneObjectArrayData dat in m_sceneObjectArrays)
             {
-                if (dat.Object == a_sceneObject && dat.DefName == a_defName)
-                {
-                    return dat.ID;
-                }
-            }
-
-            return ulong.MaxValue;
-        }
-        public ulong GetID(SceneObject a_sceneObject, GameObjectDef a_def)
-        {
-            string defName = a_def.DefName;
-            foreach (GameObjectData dat in m_gameObjects)
-            {
-                if (dat.Object == a_sceneObject && dat.DefName == defName)
+                if (dat.Array == a_sceneObjectArray)
                 {
                     return dat.ID;
                 }
@@ -112,6 +104,18 @@ namespace IcarianEditor
                 if (dat.ID == a_id)
                 {
                     return dat.Object;
+                }
+            }
+
+            return null;
+        }
+        public SceneObjectArray GetSceneObjectArray(ulong a_id)
+        {
+            foreach (SceneObjectArrayData dat in m_sceneObjectArrays)
+            {
+                if (dat.ID == a_id)
+                {
+                    return dat.Array;
                 }
             }
 
@@ -135,25 +139,28 @@ namespace IcarianEditor
 
         public void AddSceneObject(string a_defName)
         {
+            AddSceneObject(a_defName, Vector3.Zero, Quaternion.Identity, Vector3.One);
+        }
+        public void AddSceneObject(string a_defName, Vector3 a_translation, Quaternion a_rotation, Vector3 a_scale)
+        {
             GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(a_defName);
             if (def != null)
             {
                 SceneObject obj = new SceneObject()
                 {
-                    Translation = Vector3.Zero,
-                    Rotation = Quaternion.Identity,
-                    Scale = Vector3.One,
+                    Translation = a_translation,
+                    Rotation = a_rotation,
+                    Scale = a_scale,
                     DefName = a_defName
                 };
                 SceneObjectData dat = new SceneObjectData()
                 {
+                    Visible = true,
                     ID = Workspace.NewID(),
                     Object = obj
                 };
 
                 m_sceneObjects.Add(dat);
-
-                GetObjects(obj, def);
             }
         }
         public void RemoveSceneObject(ulong a_id)
@@ -169,27 +176,77 @@ namespace IcarianEditor
             }
         }
 
-        void GetObjects(SceneObject a_object, GameObjectDef a_def)
+        public void AddSceneObjectArray(string a_defName)
         {
-            if (a_def == null)
+            AddSceneObjectArray(a_defName, Vector3.Zero, Quaternion.Identity);
+        }
+        public void AddSceneObjectArray(string a_defName, Vector3 a_translation, Quaternion a_rotation)
+        {
+            GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(a_defName);
+            if (def != null)
             {
-                return;
-            }
+                SceneObjectArray array = new SceneObjectArray()
+                {
+                    Translation = a_translation,
+                    Rotation = a_rotation,
+                    Count = IVector3.One,
+                    Spacing = Vector3.One,
+                    DefName = a_defName 
+                };
+                SceneObjectArrayData dat = new SceneObjectArrayData()
+                {
+                    Visible = true,
+                    ID = Workspace.NewID(),
+                    Array = array
+                };
 
-            GameObjectData dat = new GameObjectData()
-            {
-                ID = Workspace.NewID(),
-                Object = a_object,
-                DefName = a_def.DefName
-            };
-
-            m_gameObjects.Add(dat);
-
-            foreach (GameObjectDef child in a_def.Children)
-            {
-                GetObjects(a_object, child);
+                m_sceneObjectArrays.Add(dat);
             }
         }
+        public void RemoveSceneObjectArray(ulong a_id)
+        {
+            foreach (SceneObjectArrayData dat in m_sceneObjectArrays)
+            {
+                if (dat.ID == a_id)
+                {
+                    m_sceneObjectArrays.Remove(dat);
+
+                    break;
+                }
+            }
+        }
+
+        public void SetVisible(ulong a_id, bool a_state)
+        {
+            int objectCount = m_sceneObjects.Count;
+            for (int i = 0; i < objectCount; ++i)
+            {
+                SceneObjectData dat = m_sceneObjects[i];
+                if (dat.ID == a_id)
+                {
+                    dat.Visible = a_state;
+
+                    m_sceneObjects[i] = dat;
+
+                    return;
+                }
+            }
+
+            int arrayCount = m_sceneObjectArrays.Count;
+            for (int i = 0; i < arrayCount; ++i)
+            {
+                SceneObjectArrayData dat = m_sceneObjectArrays[i];
+                if (dat.ID == a_id)
+                {
+                    dat.Visible = a_state;
+
+                    m_sceneObjectArrays[i] = dat;
+
+                    return;
+                }
+            }
+        }
+
         void LoadSceneObject(XmlElement a_element)
         {
             SceneObject obj = new SceneObject()
@@ -198,13 +255,8 @@ namespace IcarianEditor
                 Rotation = Quaternion.Identity,
                 Scale = Vector3.One
             };
-            SceneObjectData dat = new SceneObjectData()
-            {
-                ID = Workspace.NewID(),
-                Object = obj
-            };
 
-            foreach (XmlElement node in a_element.ChildNodes)
+            foreach (XmlNode node in a_element.ChildNodes)
             {
                 if (node is XmlElement element)
                 {
@@ -244,7 +296,7 @@ namespace IcarianEditor
                     }
                     default:
                     {
-                        Logger.Error($"IcarianEditorCS: Invalid scene object element {element.Name}");
+                        Logger.Error($"IcarianEditorCS: Invalid SceneObject element: {element.Name}");
 
                         break;
                     }
@@ -252,13 +304,96 @@ namespace IcarianEditor
                 }
             }
 
-            if (!string.IsNullOrEmpty(obj.DefName))
+            if (!string.IsNullOrWhiteSpace(obj.DefName))
             {
-                m_sceneObjects.Add(dat);
+                m_sceneObjects.Add(new SceneObjectData()
+                {
+                    Visible = true,
+                    ID = Workspace.NewID(),
+                    Object = obj
+                });
             }
             else
             {
-                Logger.Error($"IcarianEditorCS: Scene object has no def name");
+                Logger.Error($"IcarianEditorCS: SceneObject has no Def name");
+            }
+        }
+        void LoadSceneObjectArray(XmlElement a_element)
+        {
+            SceneObjectArray arr = new SceneObjectArray()
+            {
+                Translation = Vector3.Zero,
+                Rotation = Quaternion.Identity,
+                Count = IVector3.One,
+                Spacing = Vector3.One
+            };
+
+            foreach (XmlNode node in a_element.ChildNodes)
+            {
+                if (node is XmlElement element)
+                {
+                    switch (element.Name)
+                    {
+                    case "Translation":
+                    {
+                        arr.Translation = element.ToVector3();
+
+                        break;
+                    }
+                    case "Rotation":
+                    {
+                        arr.Rotation = element.ToQuaternion();
+
+                        break;
+                    }
+                    case "AxisAngle":
+                    {
+                        Vector4 rot = element.ToVector4(Vector4.Zero);
+
+                        arr.Rotation = Quaternion.FromAxisAngle(Vector3.Normalized(rot.XYZ), rot.W);
+
+                        break;
+                    }
+                    case "Count":
+                    {
+                        arr.Count = element.ToIVector3(IVector3.One);
+
+                        break;
+                    }
+                    case "Spacing":
+                    {
+                        arr.Spacing = element.ToVector3(Vector3.One);
+
+                        break;
+                    }
+                    case "DefName":
+                    {
+                        arr.DefName = element.InnerText;
+
+                        break;
+                    }
+                    default:
+                    {
+                        Logger.Error($"IcarianEditorCS: Invalid SceneObjectArray element: {element.Name}");
+
+                        break;
+                    }
+                    }
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(arr.DefName))
+            {
+                m_sceneObjectArrays.Add(new SceneObjectArrayData()
+                {
+                    Visible = true,
+                    ID = Workspace.NewID(),
+                    Array = arr
+                });
+            }
+            else
+            {
+                Logger.Error($"IcarianEditorCS: SceneObjectArray has no Def name");
             }
         }
 
@@ -273,6 +408,12 @@ namespace IcarianEditor
                     case "GameObject":
                     {
                         LoadSceneObject(element);
+
+                        break;
+                    }
+                    case "GameObjectArray":
+                    {   
+                        LoadSceneObjectArray(element);
 
                         break;
                     }
@@ -342,17 +483,6 @@ namespace IcarianEditor
                 }
             }
 
-            foreach (SceneObjectData dat in scene.m_sceneObjects)
-            {
-                SceneObject obj = dat.Object;
-
-                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
-                if (def != null)
-                {
-                    scene.GetObjects(obj, def);
-                }
-            }
-
             s_scenes.Add(a_path, scene);
 
             return scene;
@@ -419,6 +549,39 @@ namespace IcarianEditor
                 element.AppendChild(defName);
             }
 
+            foreach (SceneObjectArrayData dat in scene.m_sceneObjectArrays)
+            {
+                SceneObjectArray arr = dat.Array;
+
+                XmlElement element = doc.CreateElement("GameObjectArray");
+                objects.AppendChild(element);
+
+                XmlElement translation = arr.Translation.ToXml(doc, "Translation");
+                if (translation != null)
+                {
+                    element.AppendChild(translation);
+                }
+                XmlElement rotation = arr.Rotation.ToXml(doc, "Rotation");
+                if (rotation != null)
+                {
+                    element.AppendChild(rotation);
+                }
+                XmlElement count = arr.Count.ToXml(doc, "Count", IVector3.One);
+                if (count != null)
+                {
+                    element.AppendChild(count);
+                }
+                XmlElement spacing = arr.Spacing.ToXml(doc, "Spacing", Vector3.One);
+                if (spacing != null)
+                {
+                    element.AppendChild(spacing);
+                }
+
+                XmlElement defName = doc.CreateElement("DefName");
+                defName.InnerText = arr.DefName;
+                element.AppendChild(defName);
+            }
+
             XmlElement defs = doc.CreateElement("Defs");
             root.AppendChild(defs);
 
@@ -449,3 +612,25 @@ namespace IcarianEditor
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

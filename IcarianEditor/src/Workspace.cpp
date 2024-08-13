@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "Workspace.h"
 
 #include <imgui.h>
@@ -60,7 +64,8 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
     MonoDomain* editorDomain = m_runtime->GetEditorDomain();
 
-    MonoString* pathString = mono_string_from_utf32((mono_unichar4*)a_path.u32string().c_str());
+    const std::u32string str = a_path.u32string();
+    MonoString* pathString = mono_string_from_utf32((mono_unichar4*)str.c_str());
 
     void* args[] =
     {
@@ -69,12 +74,25 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
 
     m_runtime->ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
 }
-void Workspace::PushDef(const std::filesystem::path& a_path, uint32_t a_size, const uint8_t* a_data)
-{
-    const std::u32string str = a_path.u32string();
 
-    const std::string pathStr = a_path.string();
-
-    ImGui::Text("%s", pathStr.c_str());
-    ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size() * sizeof(char32_t));
-}
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

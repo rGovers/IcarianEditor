@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 using IcarianEditor.Properties;
 using IcarianEngine;
 using IcarianEngine.Definitions;
@@ -14,8 +18,6 @@ namespace IcarianEditor.Windows
         static PropertiesEditorWindow                   s_defaultWindow;
 
         static Dictionary<Type, PropertiesEditorWindow> s_windows;
-
-        const string DefintionNamespace = "IcarianEngine.Definitions.";
 
         internal static void Init()
         {
@@ -53,16 +55,16 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void DisplayGUI(object a_object)
+        static void DisplayGUI(object a_object, bool a_sceneObject)
         {
             Type type = a_object.GetType();
             if (s_windows.ContainsKey(type))
             {
-                s_windows[type].OnGUI(a_object);
+                s_windows[type].OnGUI(a_object, a_sceneObject);
             }
             else
             {
-                s_defaultWindow.OnGUI(a_object);
+                s_defaultWindow.OnGUI(a_object, a_sceneObject);
             }
         }
 
@@ -71,7 +73,7 @@ namespace IcarianEditor.Windows
             // TODO: Implement multi selection at some point
             if (!Workspace.IsSelectionEmpty)
             {
-                DisplayGUI(Workspace.Selection.First());
+                DisplayGUI(Workspace.Selection.First(), false);
             }
             else if (!Workspace.IsDefSelectionEmpty)
             {
@@ -82,7 +84,7 @@ namespace IcarianEditor.Windows
 
                     if (def != null)
                     {
-                        DisplayGUI(def);
+                        DisplayGUI(def, def.IsSceneDef);
 
                         EditorDefLibrary.RebuildDefData(def);
                     }
@@ -95,3 +97,25 @@ namespace IcarianEditor.Windows
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

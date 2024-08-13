@@ -281,7 +281,7 @@ int main(int a_argc, char** a_argv)
     {
         printf("Target Platform: Linux Clang\n");
 
-        compiler = CUBE_CProjectCompiler_GCC;
+        compiler = CUBE_CProjectCompiler_Clang;
 
         break;
     }
@@ -297,16 +297,12 @@ int main(int a_argc, char** a_argv)
 
     icarianEnginePath = CUBE_Path_CreateC("IcarianEngine");
 
-    // Fuck you for adding a python dependency
-    // I do not know why that slow piece language that breaks abi every fucking update is used at all
-    // Somehow managed to take 1st place from javascript for hatred
-    // Probably gonna have to rewrite down the line to remove shitty dependency
     CUBE_CommandLine commandLine = { 0 };
 
-    CUBE_String_AppendC(&commandLine.Path, "IcarianEngine/IcarianNative/lib/SPIRV-Tools");
+    CUBE_String_AppendC(&commandLine.Path, "IcarianEngine/IcarianNative/lib/glslang");
     CUBE_String_AppendC(&commandLine.Command, "python3");
 
-    CUBE_CommandLine_AppendArgumentC(&commandLine, "utils/git-sync-deps");
+    CUBE_CommandLine_AppendArgumentC(&commandLine, "update_glslang_sources.py");
 
     int retCode = CUBE_CommandLine_Execute(&commandLine, &lines, &lineCount);
 
@@ -380,7 +376,7 @@ int main(int a_argc, char** a_argv)
     PrintHeader("Building IcarianCS");
 
     printf("Creating IcarianCS project...\n");
-    icarianCSProject = BuildIcarianCSProject(CBTRUE);
+    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
 
     printf("Compiling IcarianCS...\n");
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", compiler, CBNULL, &lines, &lineCount);
@@ -395,14 +391,6 @@ int main(int a_argc, char** a_argv)
 
         return 1;
     }
-
-    // This is to work around issues with using .NET compiler removing the main method for some reason it does that and crashes on Windows
-    // This is not an issue on Linux or when using Mono compilers
-    // Just a workaround to allow it to be run from embedded mono runtime
-    // This is a hack and only works because of how managed .NET assemblies work with there not being much difference between a DLL and an EXE
-    // Also stops the end user from running IcarianCS.exe directly
-    // Will probably fix this down the line so it can be run as a true dll
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "IcarianEngine/IcarianCS/build/IcarianCS.dll");
 
     printf("IcarianCS Compiled!\n");
 
@@ -534,7 +522,7 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CreateDirectoryC("build/bin");
 
     CUBE_IO_CopyFileC("IcarianEditorCS/build/IcarianEditorCS.dll", "build/IcarianEditorCS.dll");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/IcarianCS.dll");
 
     CUBE_IO_CopyDirectoryC("bin", "build", CBTRUE);
 

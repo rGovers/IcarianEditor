@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 using IcarianEditor.Editor;
 using IcarianEngine;
 using IcarianEngine.Definitions;
@@ -43,6 +47,8 @@ namespace IcarianEditor.Windows
                         if (a.AttributeType == typeof(EDisplayAttribute))
                         {
                             att = a.Constructor.Invoke(new object[] { a.ConstructorArguments[0].Value }) as EDisplayAttribute;
+
+                            break;
                         }
                     }
                     // Crashes on Windows so we'll use the above method
@@ -86,58 +92,112 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void RenderGameObjects(SceneObject a_sceneObject, GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform)
+        static void RenderGameObjects(bool a_selected, GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform)
         {
             Matrix4 mat = Matrix4.FromTransform(a_gameObjectDef.Translation, a_gameObjectDef.Rotation, a_gameObjectDef.Scale) * a_parentTransform;
 
-            bool selected = Workspace.SelectionContains(a_sceneObject, a_gameObjectDef);
-            
-            RenderComponents(a_gameObjectDef, selected, mat);
+            RenderComponents(a_gameObjectDef, a_selected, mat);
 
             foreach (GameObjectDef c in a_gameObjectDef.Children)
             {
                 GameObjectDef gameObject = EditorDefLibrary.GenerateDef<GameObjectDef>(c.DefName);
+                if (gameObject == null)
+                {
+                    continue;
+                }
 
-                RenderGameObjects(a_sceneObject, gameObject, mat);
+                RenderGameObjects(a_selected, gameObject, mat);
             }
         }
-
-        static void BeginSelectGameObjects(SceneObject a_sceneObject, GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform, ref Vector3 a_mid, ref uint a_count)
+        static void RenderArray(SceneObjectArray a_array)
         {
-            Matrix4 mat = Matrix4.FromTransform(a_gameObjectDef.Translation, a_gameObjectDef.Rotation, a_gameObjectDef.Scale) * a_parentTransform;
-
-            bool selected = Workspace.SelectionContains(a_sceneObject, a_gameObjectDef);
-
-            if (selected)
+            GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(a_array.DefName);
+            if (def == null)
             {
-                a_mid += mat[3].XYZ;
-                a_count++;
+                return;
             }
 
-            foreach (GameObjectDef c in a_gameObjectDef.Children)
-            {
-                GameObjectDef gameObject = EditorDefLibrary.GenerateDef<GameObjectDef>(c.DefName);
+            bool selected = Workspace.SelectionContains(a_array);
+            Matrix4 rotMat = a_array.Rotation.ToMatrix();
 
-                BeginSelectGameObjects(a_sceneObject, gameObject, mat, ref a_mid, ref a_count);
+            for (int x = 0; x < a_array.Count.X; ++x)
+            {
+                for (int y = 0; y < a_array.Count.Y; ++y)
+                {
+                    for (int z = 0; z < a_array.Count.Z; ++z)
+                    {
+                        Vector3 pos = new Vector3((float)x, (float)y, (float)z) * a_array.Spacing;
+                        Matrix4 transMat = new Matrix4
+                        (
+                            Vector4.UnitX,
+                            Vector4.UnitY,
+                            Vector4.UnitZ,
+                            new Vector4(a_array.Translation + a_array.Rotation * pos, 1.0f)
+                        );
+
+                        Matrix4 mat = rotMat * transMat;
+
+                        RenderGameObjects(selected, def, mat);
+                    }
+                }
             }
         }
-
         static void RenderScene(EditorScene a_scene)
         {
             IEnumerable<SceneObjectData> sceneObjects = a_scene.SceneObjects;
-
             foreach (SceneObjectData objData in sceneObjects)
             {
+                if (!objData.Visible)
+                {
+                    continue;
+                }
+
                 SceneObject obj = objData.Object;
-
                 GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
-
                 if (def != null)
                 {
+                    bool selected = Workspace.SelectionContains(obj);
                     Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
 
-                    RenderGameObjects(obj, def, mat);
+                    RenderGameObjects(selected, def, mat);
                 }
+            }
+
+            IEnumerable<SceneObjectArrayData> arrayObjects = a_scene.SceneObjectArrays;
+            foreach (SceneObjectArrayData arrData in arrayObjects)
+            {
+                if (!arrData.Visible)
+                {
+                    continue;
+                }
+
+                RenderArray(arrData.Array);
+            }
+        }
+
+        static void PeekDefPath(string a_path, Vector3 a_editorPos)
+        {
+            GameObjectDef def = EditorDefLibrary.GeneratePathDef<GameObjectDef>(a_path);
+            if (def != null)
+            {
+                Matrix4 transform = new Matrix4(Vector4.UnitX, Vector4.UnitY, Vector4.UnitZ, new Vector4(a_editorPos, 1.0f));
+                RenderComponents(def, true, transform);
+            }
+
+            Gizmos.DrawIcoSphere(a_editorPos, 0.025f, 1, 0.001f, Color.White);
+        }
+        static void AcceptDefPath(string a_path, Vector3 a_editorPos)
+        {
+            EditorScene scene = Workspace.GetScene();
+            if (scene == null)
+            {
+                return;
+            }
+
+            GameObjectDef def = EditorDefLibrary.GeneratePathDef<GameObjectDef>(a_path);
+            if (def != null)
+            {
+                scene.AddSceneObject(def.DefName, a_editorPos, Quaternion.Identity, Vector3.One);
             }
         }
 
@@ -151,45 +211,77 @@ namespace IcarianEditor.Windows
 
             if (!Workspace.IsSelectionEmpty)
             {
-                bool isManipulating = Gizmos.IsManipulating;
-
-                if (!isManipulating)
+                if (!Gizmos.IsManipulating)
                 {
                     Vector3 mid = Vector3.Zero;
                     uint count = 0;
 
-                    IEnumerable<SceneObjectData> sceneObjects = scene.SceneObjects;
+                    IEnumerable<SelectionObject> selection = Workspace.Selection;
 
+                    IEnumerable<SceneObjectData> sceneObjects = scene.SceneObjects;
                     foreach (SceneObjectData objData in sceneObjects)
                     {
-                        SceneObject obj = objData.Object;
-
-                        GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
-
-                        foreach (SelectionObject selectionObj in Workspace.Selection)
+                        if (!objData.Visible)
                         {
-                            if (selectionObj.SceneObject == obj && selectionObj.SelectionMode == SelectionObjectMode.SceneObject)
+                            continue;
+                        }
+
+                        SceneObject obj = objData.Object;
+                        GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(obj.DefName);
+                        if (def == null)
+                        {
+                            continue;
+                        }
+
+                        bool selected = false;
+                        foreach (SelectionObject selectionObj in selection)
+                        {
+                            if (selectionObj.SelectionMode == SelectionObjectMode.SceneObject && selectionObj.SceneObject == obj)
                             {
+                                selected = true;
                                 mid += obj.Translation;
-                                count++;
+                                ++count;
 
                                 break;
                             }
                         }
 
-                        if (def != null)
-                        {
-                            Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
+                        Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
 
-                            BeginSelectGameObjects(obj, def, mat, ref mid, ref count);
-                            RenderGameObjects(obj, def, mat);
+                        RenderGameObjects(selected, def, mat);
+                    }
+
+                    IEnumerable<SceneObjectArrayData> sceneArrays = scene.SceneObjectArrays;
+                    foreach (SceneObjectArrayData arrData in sceneArrays)
+                    {
+                        if (!arrData.Visible)
+                        {
+                            continue;
                         }
+
+                        SceneObjectArray arr = arrData.Array;
+                        GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(arr.DefName);
+                        if (def == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (SelectionObject selectionObj in selection)
+                        {
+                            if (selectionObj.SelectionMode == SelectionObjectMode.SceneObjectArray && selectionObj.SceneObjectArray == arr)
+                            {
+                                mid += arr.Translation;
+                                ++count;
+
+                                break;
+                            }
+                        }
+
+                        RenderArray(arr);
                     }
 
                     if (count <= 0)
                     {
-                        Logger.Error($"IcarianEditorCS: Invalid count {count}");
-
                         return;
                     }
 
@@ -202,7 +294,7 @@ namespace IcarianEditor.Windows
 
                     s_startPos = mid;
 
-                    foreach (SelectionObject sel in Workspace.Selection)
+                    foreach (SelectionObject sel in selection)
                     {
                         s_startData.Add(new TransformData()
                         {
@@ -248,3 +340,25 @@ namespace IcarianEditor.Windows
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

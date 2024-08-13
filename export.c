@@ -93,7 +93,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
 
     free(dependencyProjects);
 
-    icarianCoreProject = BuildIcarianCoreProject(CBTRUE, a_platform, BuildConfiguration_Release);
+    icarianCoreProject = BuildIcarianCoreProject(CBFALSE, a_platform, BuildConfiguration_Release);
 
     printf("Compiling IcarianCore...\n");
 
@@ -205,7 +205,7 @@ int main(int a_argc, char** a_argv)
 
     printf("Compiling IcarianCS...\n");
 
-    icarianCSProject = BuildIcarianCSProject(CBTRUE);
+    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
 
     // ret = CUBE_CSProject_Compile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", &lines, &lineCount);
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", CUBE_CProjectCompiler_GCC, CBNULL, &lines, &lineCount);
@@ -240,11 +240,11 @@ int main(int a_argc, char** a_argv)
 
     CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative.exe", "build/BuildFiles/Windows/bin/renameexe");
     CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager.exe", "build/BuildFiles/Windows/bin/IcarianModManger.exe");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Windows/bin/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Windows/bin/IcarianCS.dll");
     CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/mono-2.0-sgen.dll", "build/BuildFiles/Windows/bin/mono-2.0-sgen.dll");
     CUBE_IO_CopyFileC("IcarianEngine/deps/Mono/Windows/bin/MonoPosixHelper.dll", "build/BuildFiles/Windows/bin/MonoPosixHelper.dll");
 
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Windows/lib/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Windows/lib/IcarianCS.dll");
 
     CUBE_IO_CHMODC("build/BuildFiles/Windows/bin/renameexe.exe", 0755);
     CUBE_IO_CHMODC("build/BuildFiles/Windows/bin/IcarianModManger", 0755);
@@ -267,9 +267,9 @@ int main(int a_argc, char** a_argv)
 
     CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative", "build/BuildFiles/Linux/bin/renameexe");
     CUBE_IO_CopyFileC("IcarianEngine/IcarianModManager/build/IcarianModManager", "build/BuildFiles/Linux/bin/IcarianModManger");
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Linux/bin/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Linux/bin/IcarianCS.dll");
 
-    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.exe", "build/BuildFiles/Linux/lib/IcarianCS.dll");
+    CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/BuildFiles/Linux/lib/IcarianCS.dll");
 
     CUBE_IO_CHMODC("build/BuildFiles/Linux/bin/renameexe", 0755);
     CUBE_IO_CHMODC("build/BuildFiles/Linux/bin/IcarianModManger", 0755);

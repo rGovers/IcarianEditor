@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "RenderCommand.h"
 
 #include "Core/IcarianAssert.h"
@@ -22,6 +26,7 @@ static RenderCommand* Instance = nullptr;
 
 #define RENDERCOMMAND_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, RenderCommand, BindMaterial, { RenderCommand::BindMaterial(a_addr); }, uint32_t a_addr) \
+    F(void, IcarianEngine.Rendering, RenderCommand, DrawModel, { RenderCommand::DrawModel(a_transform, a_addr); }, glm::mat4 a_transform, uint32_t a_addr) \
     \
     F(uint32_t, IcarianEditor, AnimationMaster, GenerateSkeletonBuffer, { return RenderCommand::GenerateSkeletonBuffer(); }) \
     F(void, IcarianEditor, AnimationMaster, BindSkeletonBuffer, { RenderCommand::BindSkeletonBuffer(a_addr); }, uint32_t a_addr) \
@@ -30,19 +35,6 @@ static RenderCommand* Instance = nullptr;
     F(void, IcarianEngine.Rendering.Animation, Animator, DestroyBuffer, { }, uint32_t a_addr) \
 
 RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
-
-RUNTIME_FUNCTION(void, RenderCommand, DrawModel, 
-{
-    glm::mat4 transform;
-    float* f = (float*)&transform;
-
-    for (int i = 0; i < 16; ++i)   
-    {
-        f[i] = mono_array_get(a_transform, float, i);
-    }
-
-    RenderCommand::DrawModel(transform, a_modelAddr);
-}, MonoArray* a_transform, uint32_t a_modelAddr)
 
 RUNTIME_FUNCTION(void, SkeletonAnimator, PushTransform,
 {
@@ -104,12 +96,11 @@ RenderCommand::RenderCommand(RuntimeStorage* a_storage)
 
     IcarianCore::ShaderCameraBuffer cameraBuffer;
     IcarianCore::ShaderModelBuffer modelBuffer;
-    IcarianCore::ShaderBoneBuffer boneBuffer;
 
     m_cameraBuffer = new UniformBuffer(&cameraBuffer, sizeof(cameraBuffer));
     m_transformBuffer = new UniformBuffer(&modelBuffer, sizeof(modelBuffer));
-    m_transformBatchBuffer = new ShaderStorageObject(&modelBuffer, sizeof(modelBuffer));
-    m_skeletonBuffer = new ShaderStorageObject(&boneBuffer, sizeof(boneBuffer));
+    m_transformBatchBuffer = new ShaderStorageObject();
+    m_skeletonBuffer = new ShaderStorageObject();
 }
 RenderCommand::~RenderCommand()
 {
@@ -128,8 +119,6 @@ void RenderCommand::Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage)
         Instance = new RenderCommand(a_storage);
 
         RENDERCOMMAND_BINDING_FUNCTION_TABLE(RENDERCOMMAND_RUNTIME_ATTACH);
-
-        BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, RenderCommand, DrawModel);
         
         BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, SkeletonAnimator, PushTransform);
 
@@ -335,7 +324,7 @@ void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr
 
     if (batched)
     {
-        Instance->m_transformBatchBuffer->WriteBuffer(&buffer, sizeof(buffer));   
+        Instance->m_transformBatchBuffer->WriteBuffer(&buffer, sizeof(buffer), 1);   
     }
     else 
     {
@@ -478,7 +467,7 @@ void RenderCommand::BindSkeletonBuffer(uint32_t a_addr)
         transforms[i] = GetBoneTransform(data, i) * data.Bones[i].InvBind;
     }
 
-    Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4) * count);
+    Instance->m_skeletonBuffer->WriteBuffer(transforms, sizeof(glm::mat4), count);
 
     const RenderProgram program = Instance->m_storage->GetRenderProgram(Instance->m_boundShader);
 
@@ -528,3 +517,25 @@ void RenderCommand::DrawBones(uint32_t a_addr, const glm::mat4& a_transform)
         Gizmos::DrawLine(pos, pos + right * 0.02f, 0.001f, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

@@ -13,7 +13,7 @@ void main()
 {
     // Basic pixel shader
     outColor = fragColor;
-    outNorm = fragNormal;
+    outNorm = vec4(fragNormal, 1.0);
     outSpec = vec4(0.0);
     outEmission = vec4(0.0);
 }

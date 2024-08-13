@@ -1,8 +1,13 @@
-using System.Collections.Generic;
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
+using IcarianEditor;
 using IcarianEditor.Modals;
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
+using System.Collections.Generic;
 
 namespace IcarianEditor.Windows
 {
@@ -90,106 +95,42 @@ namespace IcarianEditor.Windows
             {
                 new NewSceneObjectModal();
             }
+
+            if (GUI.MenuItem("New Scene Object Array"))
+            {
+                new NewSceneObjectModal(true);
+            }
+
+            GUI.Separator();
+
+            ClipBoardItem item;
+            if (ClipBoard.GetItem(new ClipBoardItemType[] { ClipBoardItemType.SceneObject }, out item))
+            {
+                if (GUI.MenuItem("Paste"))
+                {
+                    EditorScene scene = Workspace.GetScene();
+
+                    scene.AddSceneObject((string)item.Data);
+                }
+            }
         }
+
         static void ObjectOptionsMenu(ulong a_id)
         {
+            if (GUI.MenuItem("Copy"))
+            {
+                EditorScene scene = Workspace.GetScene();
+
+                SceneObject sObject = scene.GetSceneObject(a_id);
+                ClipBoard.AddItem(ClipBoardItemType.SceneObject, sObject.DefName);
+            }
+
+            GUI.Separator();
+
             if (GUI.MenuItem("Delete"))
             {
                 new DeleteSceneObjectModal(a_id);
             }
-        }
-
-        static void DisplayObject(EditorScene a_scene, SceneObject a_obj, GameObjectDef a_def, ref ulong a_selectionID, ref List<SelectionObject> a_selectionList)
-        {
-            if (a_def == null)
-            {
-                return;
-            }
-
-            if (!a_def.IsSceneDef)
-            {
-                return;
-            }
-
-            string name = a_def.DefName;
-
-            List<GameObjectDef> sChildren = new List<GameObjectDef>();
-            foreach (GameObjectDef def in a_def.Children)
-            {
-                if (def.IsSceneDef)
-                {
-                    sChildren.Add(def);
-                }
-            }
-        
-            uint childCount = (uint)sChildren.Count;
-
-            ulong id = a_scene.GetID(a_obj, name);
-
-            a_selectionList.Add(new SelectionObject()
-            {
-                ID = id,
-                SelectionMode = SelectionObjectMode.GameObjectDef,
-                SceneObject = a_obj,
-                GameObjectDefName = name
-            });
-
-            string idStr = $"##[{id}]{name}";
-            GUI.PushID(idStr);
-
-            if (childCount > 0)
-            {
-                bool show = GUI.Node(idStr);
-
-                GUI.SameLine();
-
-                if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
-                {
-                    GUI.SameLine();
-                }
-
-                GUI.SameLine();
-
-                if (GUI.Selectable(name))
-                {
-                    a_selectionID = id;
-                }
-
-                if (show)
-                {   
-                    foreach (GameObjectDef def in sChildren)
-                    {
-                        if (def.IsSceneDef)
-                        {
-                            // Only generates a placeholder def need to generate the actual def
-                            // Side effect of needing to keep the defs in an intermediate state
-                            GameObjectDef cDef = EditorDefLibrary.GenerateDef<GameObjectDef>(def.DefName);
-
-                            DisplayObject(a_scene, a_obj, cDef, ref a_selectionID, ref a_selectionList);
-                        }
-                    }
-
-                    GUI.PopNode();
-                }
-            }
-            else
-            {
-                GUI.NIndent();
-
-                if (GUI.Texture("Textures/Icons/Icon_SceneGameObject.png", new Vector2(16.0f, 16.0f)))
-                {
-                    GUI.SameLine();
-                }
-
-                if (GUI.Selectable(name))
-                {
-                    a_selectionID = id;
-                }
-
-                GUI.Unindent();
-            }
-
-            GUI.PopID();
         }
 
         static void OnGUI()
@@ -201,6 +142,7 @@ namespace IcarianEditor.Windows
                 return;
             }
 
+            // Probably not the best way of doing this but it works
             List<SelectionObject> selectionList = new List<SelectionObject>();
             ulong selectionID = ulong.MaxValue;
 
@@ -222,16 +164,6 @@ namespace IcarianEditor.Windows
                 ulong id = objectData.ID;
                 string idStr = $"##[{id}]{obj.DefName}";
 
-                bool show = false;
-                if (def.IsSceneDef)
-                {
-                    show = GUI.Node(idStr);
-
-                    GUI.SameLine();
-                }
-
-                GUI.PushID(idStr);
-
                 selectionList.Add(new SelectionObject()
                 {
                     ID = id,
@@ -239,7 +171,27 @@ namespace IcarianEditor.Windows
                     SceneObject = obj
                 });
 
-                if (GUI.Selectable(name))
+                bool visible = objectData.Visible;
+                if (GUI.ToggleButton($"Visible{idStr}", "Textures/Icons/Hierarchy_Visible.png", "Textures/Icons/Hierarchy_Hidden.png", ref visible, new Vector2(12.0f), false))
+                {
+                    scene.SetVisible(id, visible);
+
+                    // Have to break as C# does not allow modifying the value while iterating cause C# is a "good" language
+                    // Fuck C# and this fucky hack
+                    // Why the fuck C# iterates by value instead of by reference who tf knows
+                    // Newer versions have ref loops but incompatible with the editor specifically
+                    // Should do properly but it works
+                    break;
+                }
+                GUI.Tooltip("Visibility", "Toggles the visibility of the Scene Object");
+
+                GUI.SameLine();
+
+                GUI.Texture("Textures/Icons/Hierarchy_SceneGameObject.png", new Vector2(16.0f));
+
+                GUI.SameLine();
+
+                if (GUI.Selectable($"{name}{idStr}"))
                 {
                     selectionID = id;
                 }
@@ -248,19 +200,60 @@ namespace IcarianEditor.Windows
                 {
                     context = true;
 
+                    CreateMenuItem();
                     ObjectOptionsMenu(id);
 
                     GUI.EndPopup();
                 }
+            }
 
-                if (show)
+            GUI.Separator();
+
+            IEnumerable<SceneObjectArrayData> sceneObjectArrays = scene.SceneObjectArrays;
+            foreach (SceneObjectArrayData arrayData in sceneObjectArrays)
+            {
+                SceneObjectArray arr = arrayData.Array;
+
+                string name = arr.DefName;
+                GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(name);
+                if (def == null)
                 {
-                    DisplayObject(scene, obj, def, ref selectionID, ref selectionList);
-
-                    GUI.PopNode();
+                    continue;
                 }
 
-                GUI.PopID();
+                ulong id = arrayData.ID;
+                string idStr = $"##A[{id}]{arr.DefName}";
+
+                selectionList.Add(new SelectionObject()
+                {
+                    ID = id,
+                    SelectionMode = SelectionObjectMode.SceneObjectArray,
+                    SceneObjectArray = arr
+                });
+
+                bool visible = arrayData.Visible;
+                if (GUI.ToggleButton($"Visible{idStr}", "Textures/Icons/Hierarchy_Visible.png", "Textures/Icons/Hierarchy_Hidden.png", ref visible, new Vector2(12.0f), false))
+                {
+                    scene.SetVisible(id, visible);
+
+                    break;
+                }
+
+                GUI.SameLine();
+
+                if (GUI.Selectable($"{name}{idStr}"))
+                {
+                    selectionID = id;
+                }
+
+                if (!context && GUI.BeginContextPopup())
+                {
+                    context = true;
+
+                    CreateMenuItem();
+
+                    GUI.EndPopup();
+                }
             }
 
             if (selectionID != ulong.MaxValue)
@@ -279,3 +272,25 @@ namespace IcarianEditor.Windows
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

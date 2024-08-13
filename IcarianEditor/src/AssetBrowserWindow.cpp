@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "Windows/AssetBrowserWindow.h"
 
 #include <filesystem>
@@ -15,18 +19,21 @@
 #include "Modals/CreateAssemblyControlModal.h"
 #include "Modals/CreateComponentModal.h"
 #include "Modals/CreateDefTableModal.h"
+#include "Modals/CreateEmptyScriptModal.h"
 #include "Modals/CreateFileModal.h"
 #include "Modals/CreateSciptableModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
+#include "Runtime/RuntimeManager.h"
 #include "Templates.h"
 #include "Texture.h"
 
-AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary, RuntimeManager* a_runtime) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
 {
     m_app = a_app;
     m_assetLibrary = a_assetLibrary;
     m_project = a_project;
+    m_runtime = a_runtime;
 
     m_fileTree.clear();
     m_curIndex = -1;
@@ -215,6 +222,13 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
         {
             IDEFER(ImGui::EndMenu());
 
+            if (ImGui::MenuItem("Empty"))
+            {
+                m_app->PushModal(new CreateEmptyScriptModal(m_app, m_project, a_path));
+            }
+
+            ImGui::Separator();
+
             if (ImGui::MenuItem("Assembly Control"))
             {
                 m_app->PushModal(new CreateAssemblyControlModal(m_app, m_project, a_path));
@@ -277,11 +291,32 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
 
         ImGui::Separator();
 
+        if (ImGui::MenuItem("Def"))
+        {
+            const std::string pathStr = a_path.string();
+
+            MonoString* str = mono_string_new(m_runtime->GetEditorDomain(), pathStr.c_str());
+
+            void* args[] =
+            {
+                str
+            };
+
+            m_runtime->ExecFunction("IcarianEditor.Modals", "CreateDefModal", ":Create(string)", args);
+        }
+
         if (ImGui::MenuItem("Scene"))
         {
             constexpr uint32_t Length = sizeof(SceneTemplate) / sizeof(*SceneTemplate) - 1;
 
-            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length - 1, "New Scene", ".iscene"));
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, SceneTemplate, Length, "New Scene", ".iscene"));
+        }
+
+        if (ImGui::MenuItem("Canvas"))
+        {
+            constexpr uint32_t Length = sizeof(CanvasTemplate) / sizeof(*CanvasTemplate) - 1;
+
+            m_app->PushModal(new CreateFileModal(m_app, m_project, a_path, CanvasTemplate, Length, "New Canvas", ".ui"));
         }
 
         ImGui::EndMenu();
@@ -342,7 +377,8 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
 
     ImGui::BeginGroup();
 
-    const std::string fileName = path.filename().string();
+    const std::filesystem::path filenamePath = path.filename();
+    const std::string filename = filenamePath.string();
 
     Texture* tex;
 
@@ -355,7 +391,7 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
         tex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
     }
 
-    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+    FlareImGui::ImageButton(filename.c_str(), tex, glm::vec2((float)ItemWidth), false);
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
     {
         m_curIndex = a_index;
@@ -374,7 +410,7 @@ bool AssetBrowserWindow::ShowFolder(bool a_context, uint32_t a_index)
         ret = true;
     }
 
-    ImGui::Text("%s", fileName.c_str());
+    ImGui::Text("%s", filename.c_str());
 
     ImGui::EndGroup();
 
@@ -405,15 +441,17 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     drawList->AddRectFilled(ImVec2(startXPos, startYPos), ImVec2(startXPos + width, startYPos + height), rectColor, 2.0f);
 
-    const std::string fileName = a_path.stem().string();
+    const std::filesystem::path filenamePath = a_path.stem();
+    const std::string filename = filenamePath.string();
     const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
+    const std::string pathStr = a_path.string();
 
     FileHandler::FileCallback* openCallback;
     FileHandler::FileCallback* dragCallback;
     GLuint tex;
     FileHandler::GetFileData(rPath, &openCallback, &dragCallback, &tex);
 
-    FlareImGui::ImageButton(tex, glm::vec2((float)ItemWidth), false);
+    FlareImGui::ImageButton(pathStr.c_str(), tex, glm::vec2((float)ItemWidth), false);
 
     uint32_t size;
     const uint8_t* data;
@@ -422,7 +460,8 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
 
     if (size > 0 && data != nullptr)
     {
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+        const bool hovered = ImGui::IsItemHovered();
+        if (hovered && ImGui::IsMouseDoubleClicked(0))
         {
             if (openCallback == nullptr)
             {
@@ -460,7 +499,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
         }
     }
             
-    ImGui::Text("%s", fileName.c_str());
+    ImGui::Text("%s", filename.c_str());
 
     if (type != AssetType_Null)
     {
@@ -748,3 +787,25 @@ void AssetBrowserWindow::Update(double a_delta)
 
     ImGui::EndGroup();
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

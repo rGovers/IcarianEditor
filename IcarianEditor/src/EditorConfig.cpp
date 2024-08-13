@@ -1,8 +1,13 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "EditorConfig.h"
 
 #include <filesystem>
 #include <tinyxml2.h>
 
+#include "Core/StringUtils.h"
 #include "Runtime/RuntimeManager.h"
 
 static EditorConfig* Instance = nullptr;
@@ -54,55 +59,90 @@ void EditorConfig::Deserialize()
                 {
                     const char* name = element->Name();
 
-                    if (strcmp(name, "UseDegrees") == 0)
+                    switch (StringHash(name))
+                    {
+                    case StringHash("UseDegrees"):
                     {
                         Instance->m_useDegrees = element->BoolText();
+
+                        break;
                     }
-                    else if (strcmp(name, "BackgroundColor") == 0)
+                    case StringHash("BackgroundColor"):
                     {
                         for (const tinyxml2::XMLElement* colorElement = element->FirstChildElement(); colorElement != nullptr; colorElement = colorElement->NextSiblingElement())
                         {
                             const char* colorName = colorElement->Name();
-
-                            if (strcmp(colorName, "R") == 0)
+                            switch (StringHash<uint32_t>(colorName))
+                            {
+                            case StringHash<uint32_t>("R"):
                             {
                                 Instance->m_backgroundColor.r = colorElement->FloatText();
+
+                                break;   
                             }
-                            else if (strcmp(colorName, "G") == 0)
+                            case StringHash<uint32_t>("G"):
                             {
                                 Instance->m_backgroundColor.g = colorElement->FloatText();
+
+                                break;
                             }
-                            else if (strcmp(colorName, "B") == 0)
+                            case StringHash<uint32_t>("B"):
                             {
                                 Instance->m_backgroundColor.b = colorElement->FloatText();
+
+                                break;
                             }
-                            else if (strcmp(colorName, "A") == 0)
+                            case StringHash<uint32_t>("A"):
                             {
                                 Instance->m_backgroundColor.a = colorElement->FloatText();
+
+                                break;
+                            }
                             }
                         }
+
+                        break;
                     }
-                    else if (strcmp(name, "EditorMouseSensitivity") == 0)
+                    case StringHash("EditorMouseSensitivity"):
                     {
                         Instance->m_editorMouseSensitivity = element->FloatText();
+
+                        break;
                     }
-                    else if (strcmp(name, "CodeEditor") == 0)
+                    case StringHash("CodeEditor"):
                     {
                         const char* codeEditor = element->GetText();
-                        if (strcmp(codeEditor, "Default") == 0)
+                        switch (StringHash(codeEditor))
+                        {
+                        case StringHash("Default"):
                         {
                             Instance->m_codeEditor = CodeEditor_Default;
+
+                            break;
                         }
-                        else if (strcmp(codeEditor, "VisualStudioCode") == 0)
+                        case StringHash("VisualStudioCode"):
                         {
                             Instance->m_codeEditor = CodeEditor_VisualStudioCode;
+
+                            break;
                         }
-                        else if (strcmp(codeEditor, "VisualStudio") == 0)
+                        case StringHash("VisualStudio"):
                         {
                             Instance->m_codeEditor = CodeEditor_VisualStudio;
+
+                            break;
                         }
+                        case StringHash("Kate"):
+                        {
+                            Instance->m_codeEditor = CodeEditor_Kate;
+
+                            break;
+                        }
+                        }
+
+                        break;
                     }
-                    else if (strcmp(name, "DefEditor") == 0)
+                    case StringHash("DefEditor"):
                     {
                         const char* defEditor = element->GetText();
                         if (strcmp(defEditor, "Editor") == 0)
@@ -113,8 +153,10 @@ void EditorConfig::Deserialize()
                         {
                             Instance->m_defEditor = DefEditor_VisualStudioCode;
                         }
+
+                        break;
                     }
-                    else 
+                    default:
                     {
                         for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
                         {
@@ -127,6 +169,9 @@ void EditorConfig::Deserialize()
                                 break;
                             }
                         }
+
+                        break;
+                    }
                     }
                 }
             }
@@ -300,3 +345,25 @@ void EditorConfig::SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key)
 {
     Instance->m_keyBinds[a_keyBind] = a_key;
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

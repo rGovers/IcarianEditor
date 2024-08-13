@@ -1,18 +1,22 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "Runtime/RuntimeStorage.h"
 
 #define STBI_NO_STDIO
 #include <stb_image.h>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #include <cstring>
 
 #include "AssetLibrary.h"
-#include "Core/ColladaLoader.h"
-#include "Core/FBXLoader.h"
 #include "Core/FlareShader.h"
-#include "Core/GLTFLoader.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
-#include "Core/OBJLoader.h"
+#include "Core/StringUtils.h"
 #include "KtxHelpers.h"
 #include "Logger.h"
 #include "Model.h"
@@ -24,7 +28,7 @@
 #include "VertexShader.h"
 
 #include "EngineSkeletonInteropStructures.h"
-#include "EngineAnimationDataInteropStructures.h"
+#include "EngineAnimationClipInteropStructures.h"
 
 static RuntimeStorage* Instance = nullptr;
 
@@ -37,10 +41,6 @@ static RuntimeStorage* Instance = nullptr;
     F(RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
     F(void, IcarianEngine.Rendering, Material, SetTexture, { Instance->SetProgramTexture(a_addr, a_slot, a_samplerAddr); }, uint32_t a_addr, uint32_t a_slot, uint32_t a_samplerAddr) \
-    \
-    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadColladaAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadDAEAnimationClip(str); }, MonoString* a_path) \
-    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadFBXAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadFBXAnimationClip(str); }, MonoString* a_path) \
-    F(MonoArray*, IcarianEngine.Rendering.Animation, AnimationClip, LoadGLTFAnimation, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->LoadGLTFAnimationClip(str); }, MonoString* a_path) \
     \
     F(void, IcarianEngine.Rendering, Texture, DestroyTexture, { Instance->DestroyTexture(a_addr); }, uint32_t a_addr) \
     \
@@ -212,6 +212,82 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateModel,
 {
     return M_Model_GenerateModel(a_vertices, a_indices, a_vertexStride);
 }, MonoArray* a_vertices, MonoArray* a_indices, uint16_t a_vertexStride)
+
+static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std::vector<uint32_t>* a_indices, float* a_rSqr)
+{
+    for (uint32_t i = 0; i < a_mesh->mNumVertices; ++i) 
+    {
+        Vertex v;
+
+        const aiVector3D& pos = a_mesh->mVertices[i];
+        v.Position = glm::vec4(pos.x, -pos.y, pos.z, 1.0f);
+
+        *a_rSqr = glm::max(pos.SquareLength(), *a_rSqr);
+
+        if (a_mesh->HasNormals()) 
+        {
+            const aiVector3D& norm = a_mesh->mNormals[i];
+            v.Normal = glm::vec3(norm.x, -norm.y, norm.z);
+        }
+
+        if (a_mesh->HasTextureCoords(0)) 
+        {
+            const aiVector3D& uv = a_mesh->mTextureCoords[0][i];
+            v.TexCoords = glm::vec2(uv.x, uv.y);
+        }
+
+        if (a_mesh->HasVertexColors(0)) 
+        {
+            const aiColor4D& colour = a_mesh->mColors[0][i];
+            v.Color = glm::vec4(colour.r, colour.g, colour.b, colour.a);
+        }
+
+        a_vertices->emplace_back(v);
+    }
+
+    for (uint32_t i = 0; i < a_mesh->mNumFaces; ++i) 
+    {
+        const aiFace& face = a_mesh->mFaces[i];
+
+        a_indices->emplace_back(face.mIndices[0]);
+        a_indices->emplace_back(face.mIndices[2]);
+        a_indices->emplace_back(face.mIndices[1]);
+    }
+}
+
+static void WalkTreeMesh(const aiScene* a_scene, const aiNode* a_node, uint8_t a_data, std::vector<Vertex>* a_vertices, std::vector<uint32_t>* a_indices, float* a_radSqr, uint8_t* a_index)
+{
+    if (a_data == std::numeric_limits<uint8_t>::max())
+    {
+        for (uint32_t i = 0; i < a_node->mNumMeshes; ++i)
+        {
+            LoadMesh(a_scene->mMeshes[a_node->mMeshes[i]], a_vertices, a_indices, a_radSqr);
+        }
+    }
+    else 
+    {
+        if (*a_index > a_data)
+        {
+            return;
+        }
+
+        if (a_data < *a_index + a_node->mNumMeshes)
+        {
+            LoadMesh(a_scene->mMeshes[a_node->mMeshes[a_data - *a_index]], a_vertices, a_indices, a_radSqr);
+            *a_index = std::numeric_limits<uint8_t>::max();
+
+            return;
+        }
+
+        *a_index += a_node->mNumMeshes;
+    }
+
+    for (uint32_t i = 0; i < a_node->mNumChildren; ++i)
+    {
+        WalkTreeMesh(a_scene, a_node->mChildren[i], a_data, a_vertices, a_indices, a_radSqr, a_index);
+    }
+}
+
 RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
@@ -219,61 +295,151 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
 
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
-
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    float radius;
+    const std::string extStr = ext.string();
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".obj")
+    switch (StringHash<uint32_t>(extStr.c_str())) 
+    {
+    case StringHash<uint32_t>(".obj"):
+    case StringHash<uint32_t>(".dae"):
+    case StringHash<uint32_t>(".fbx"):
+    case StringHash<uint32_t>(".glb"):
+    case StringHash<uint32_t>(".gltf"):
     {
         const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::OBJLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
+        if (size <= 0 || dat == nullptr)
         {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
+            Logger::Error(std::string("Cannot find mesh file: ") + str);
+
+            break;
         }
+
+        Assimp::Importer importer; 
+
+        const aiScene* scene = importer.ReadFileFromMemory(dat, (size_t)size, aiProcess_Triangulate | aiProcess_PreTransformVertices, extStr.c_str() + 1);
+        ICARIAN_ASSERT(scene != nullptr);
+        const aiNode* root = scene->mRootNode;
+
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+        float radSqr = 0.0f;
+        uint8_t index = 0;
+        WalkTreeMesh(scene, root, (uint8_t)a_index, &vertices, &indices, &radSqr, &index);
+
+        if (vertices.empty() || indices.empty() || radSqr <= 0.0f)
+        {
+            Logger::Warning(std::string("Empty model: ") + str);
+
+            break;
+        }
+
+        return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
     }
-    else if (ext == ".dae")
+    default:
     {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        Logger::Error(std::string("Mesh invalid file extension: ") + str);
 
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
-        {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
-        }
+        break;
     }
-    else if (ext == ".fbx")
-    {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
-        {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
-        }
     }
-    else if (ext == ".glb" || ext == ".gltf")
-    {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadData((char*)dat, size, &vertices, &indices, &radius))
-        {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(Vertex));
-        }
-    }
-
-    Logger::Warning(std::string("Cannot find file") + str);
 
     return -1;
-}, MonoString* a_path)
+}, MonoString* a_path, uint32_t a_index)
+
+static void LoadSkinnedMesh(const aiMesh* a_mesh, std::vector<SkinnedVertex>* a_vertices, std::vector<uint32_t>* a_indices, const std::unordered_map<std::string, int>& a_boneMap, float* a_rSqr)
+{
+    for (uint32_t i = 0; i < a_mesh->mNumVertices; ++i) 
+    {
+        SkinnedVertex v;
+
+        const aiVector3D& pos = a_mesh->mVertices[i];
+        v.Position = glm::vec4(pos.x, -pos.y, pos.z, 1.0f);
+
+        *a_rSqr = glm::max(pos.SquareLength(), *a_rSqr);
+
+        if (a_mesh->HasNormals()) 
+        {
+            const aiVector3D& norm = a_mesh->mNormals[i];
+            v.Normal = glm::vec3(norm.x, -norm.y, norm.z);
+        }
+
+        if (a_mesh->HasTextureCoords(0)) 
+        {
+            const aiVector3D& uv = a_mesh->mTextureCoords[0][i];
+            v.TexCoords = glm::vec2(uv.x, uv.y);
+        }
+
+        if (a_mesh->HasVertexColors(0)) 
+        {
+            const aiColor4D& colour = a_mesh->mColors[0][i];
+            v.Color = glm::vec4(colour.r, colour.g, colour.b, colour.a);
+        }
+
+        if (a_mesh->HasBones())
+        {
+            const aiBone* bone = a_mesh->mBones[i];
+
+            const uint32_t weights = glm::min(uint32_t(4), (uint32_t)bone->mNumWeights);
+            for (uint32_t j = 0; j < weights; ++j)
+            {
+                const auto iter = a_boneMap.find(bone->mName.C_Str());
+                if (iter == a_boneMap.end())
+                {
+                    continue;
+                }
+
+                v.BoneIndices[j] = iter->second;
+                v.BoneWeights[j] = bone->mWeights[j].mWeight;
+            }
+        }
+
+        a_vertices->emplace_back(v);
+    }
+
+    for (uint32_t i = 0; i < a_mesh->mNumFaces; ++i) 
+    {
+        const aiFace& face = a_mesh->mFaces[i];
+
+        a_indices->emplace_back(face.mIndices[0]);
+        a_indices->emplace_back(face.mIndices[2]);
+        a_indices->emplace_back(face.mIndices[1]);
+    }
+}
+
+static void WalkTreeSkinned(const aiScene* a_scene, const aiNode* a_node, uint8_t a_data, std::vector<SkinnedVertex>* a_vertices, std::vector<uint32_t>* a_indices, const std::unordered_map<std::string, int>& a_boneMap, float* a_radSqr, uint8_t* a_index)
+{
+    if (a_data == std::numeric_limits<uint8_t>::max())
+    {
+        for (uint32_t i = 0; i < a_node->mNumMeshes; ++i)
+        {
+            LoadSkinnedMesh(a_scene->mMeshes[a_node->mMeshes[i]], a_vertices, a_indices, a_boneMap, a_radSqr);
+        }
+    }
+    else
+    {
+        if (*a_index > a_data)
+        {
+            return;
+        }
+
+        if (a_data < *a_index + a_node->mNumMeshes)
+        {
+            LoadSkinnedMesh(a_scene->mMeshes[a_node->mMeshes[a_data - *a_index]], a_vertices, a_indices, a_boneMap, a_radSqr);
+            *a_index = std::numeric_limits<uint8_t>::max();
+
+            return;
+        }
+
+        *a_index += a_node->mNumMeshes;
+    }
+
+    for (uint32_t i = 0; i < a_node->mNumChildren; ++i)
+    {
+        WalkTreeSkinned(a_scene, a_node->mChildren[i], a_data, a_vertices, a_indices, a_boneMap, a_radSqr, a_index);
+    }
+}
 RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile, 
 {
     char* str = mono_string_to_utf8(a_path);
@@ -282,47 +448,83 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
 
-    std::vector<SkinnedVertex> vertices;
-    std::vector<uint32_t> indices;
-    float radius;
+    const std::string extStr = ext.string();
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".dae")
+    
+    switch (StringHash<uint32_t>(extStr.c_str()))
+    {
+    case StringHash<uint32_t>(".dae"):
+    case StringHash<uint32_t>(".fbx"):
+    case StringHash<uint32_t>(".glb"):
+    case StringHash<uint32_t>(".gltf"):
     {
         const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
+        if (size <= 0 || dat == nullptr)
         {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
+            Logger::Error(std::string("Cannot find skinned mesh file: ") + str);
+
+            break;
         }
+
+        Assimp::Importer importer; 
+
+        const aiScene* scene = importer.ReadFileFromMemory(dat, (size_t)size, aiProcess_Triangulate | aiProcess_PreTransformVertices, extStr.c_str() + 1);
+        ICARIAN_ASSERT(scene != nullptr);
+
+        if (scene->mNumSkeletons <= 0)
+        {
+            Logger::Warning(std::string("No skeletons: ") + str);
+
+            break;
+        }
+
+        // Hic sunt dracones
+        // Compiler is being weird this is a dodgy hack
+        // This should not be broken and inserting the arguments directly should work and using a macro should not fix it but it does
+        // I think the compiler has had enough of my preprocessor shannigans
+        // DO NOT REMOVE otherwise compiler error on GCC and clang
+#define MCR_GenerateSkinnedFromFile_MAPKEYS std::string, int
+        std::unordered_map<MCR_GenerateSkinnedFromFile_MAPKEYS> boneMap;
+
+        const aiSkeleton* skeleton = scene->mSkeletons[0];
+        for (int i = 0; i < skeleton->mNumBones; ++i)
+        {
+            const aiSkeletonBone* bone = skeleton->mBones[i];
+            const std::string name = bone->mNode->mName.C_Str();
+
+            boneMap.emplace(name, i);
+        }
+
+        const aiNode* root = scene->mRootNode;
+
+        std::vector<SkinnedVertex> vertices;
+        std::vector<uint32_t> indices;
+        float radSqr = 0.0f;
+        uint8_t index = 0;
+        WalkTreeSkinned(scene, root, (uint8_t)a_index, &vertices, &indices, boneMap, &radSqr, &index);
+
+        if (vertices.empty() || indices.empty() || radSqr <= 0)
+        {
+            Logger::Warning(std::string("Empty Model: ") + str);
+
+            break;
+        }
+
+        return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
     }
-    else if (ext == ".fbx")
+    default:
     {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        Logger::Error(std::string("Skinned mesh invalid file extension: ") + str);
 
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
-        {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
-        }
+        break;
     }
-    else if (ext == ".glb" || ext == ".gltf")
-    {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadSkinnedData((char*)dat, size, &vertices, &indices, &radius))
-        {
-            return Instance->GenerateModel(vertices.data(), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size(), sizeof(SkinnedVertex));
-        }
     }
 
     return -1;
-}, MonoString* a_path)
+}, MonoString* a_path, uint32_t a_index)
 
 RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData, 
 {
@@ -331,114 +533,91 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
 
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
+    const std::string extStr = ext.string();
 
-    RuntimeImportBoneData data;
-
-    data.BindPoses = NULL;
-    data.Names = NULL;
-    data.Parents = NULL;
-
-    std::vector<IcarianCore::BoneData> bones;
+    RuntimeImportBoneData data = { 0 };
 
     AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".dae")
+
+    switch (StringHash<uint32_t>(extStr.c_str())) 
+    {
+    case StringHash<uint32_t>(".dae"):
+    case StringHash<uint32_t>(".fbx"):
+    case StringHash<uint32_t>(".glb"):
+    case StringHash<uint32_t>(".gltf"):
     {
         const uint8_t* dat;
         uint32_t size;
         library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::ColladaLoader_LoadBoneData((char*)dat, size, &bones))
+        if (size <= 0 || dat == nullptr)
         {
-            MonoDomain* domain = mono_domain_get();
-            MonoClass* fClass = mono_get_single_class();
+            Logger::Error(std::string("Cannot find skeleton file: ") + str);
 
-            const uint32_t count = (uint32_t)bones.size();
-            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
-            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
-            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
-
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const IcarianCore::BoneData& bone = bones[i];
-
-                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
-                for (uint32_t j = 0; j < 16; ++j)
-                {
-                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
-                }
-
-                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
-                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
-                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
-            }
-        }   
-    }
-    else if (ext == ".fbx")
-    {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
-
-        if (dat != nullptr && size > 0 && IcarianCore::FBXLoader_LoadBoneData((char*)dat, size, &bones))
-        {
-            MonoDomain* domain = mono_domain_get();
-            MonoClass* fClass = mono_get_single_class();
-
-            const uint32_t count = (uint32_t)bones.size();
-            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
-            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
-            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
-
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const IcarianCore::BoneData& bone = bones[i];
-
-                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
-                for (uint32_t j = 0; j < 16; ++j)
-                {
-                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
-                }
-
-                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
-                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
-                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
-            }
+            break;
         }
-    }
-    else if (ext == ".glb" || ext == ".gltf")
-    {
-        const uint8_t* dat;
-        uint32_t size;
-        library->GetAsset(p, &size, &dat);
 
-        if (dat != nullptr && size > 0 && IcarianCore::GLTFLoader_LoadBones((char*)dat, size, &bones))
+        Assimp::Importer importer;
+
+        const aiScene* scene = importer.ReadFileFromMemory(dat, (size_t)size, 0, extStr.c_str() + 1);
+        ICARIAN_ASSERT(scene != nullptr);
+
+        if (scene->mNumSkeletons <= 0)
         {
-            MonoDomain* domain = mono_domain_get();
-            MonoClass* fClass = mono_get_single_class();
-
-            const uint32_t count = (uint32_t)bones.size();
-            data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)count);
-            data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)count);
-            data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)count);
-
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const IcarianCore::BoneData& bone = bones[i];
-
-                MonoArray* bindPose = mono_array_new(domain, fClass, 16);
-                for (uint32_t j = 0; j < 16; ++j)
-                {
-                    mono_array_set(bindPose, float, j, bone.Transform[j / 4][j % 4]);
-                }
-
-                mono_array_set(data.BindPoses, MonoArray*, i, bindPose);
-                mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone.Name.c_str()));
-                mono_array_set(data.Parents, uint32_t, i, bone.Parent);
-            }
+            break;
         }
+
+        const aiSkeleton* skeleton = scene->mSkeletons[0];
+
+        const uint32_t boneCount = (uint32_t)skeleton->mNumBones;
+        if (boneCount <= 0)
+        {
+            break;
+        }
+
+        MonoDomain* domain = mono_domain_get();
+        MonoClass* fClass = mono_get_single_class();
+
+        data.BindPoses = mono_array_new(domain, mono_get_array_class(), (uintptr_t)boneCount);
+        data.Names = mono_array_new(domain, mono_get_string_class(), (uintptr_t)boneCount);
+        data.Parents = mono_array_new(domain, mono_get_uint32_class(), (uintptr_t)boneCount);
+
+        for (uint32_t i = 0; i < boneCount; ++i)
+        {
+            const aiSkeletonBone* bone = skeleton->mBones[i];
+
+            aiMatrix4x4 bindPose = bone->mOffsetMatrix;
+            bindPose.Inverse();
+
+            MonoArray* bindPoseArr = mono_array_new(domain, fClass, 16);
+            for (uint32_t j = 0; j < 16; ++j)
+            {
+                mono_array_set(bindPoseArr, float, j, bindPose[j / 4][j % 4]);
+            }
+
+            mono_array_set(data.BindPoses, MonoArray*, i, bindPoseArr);
+            mono_array_set(data.Names, MonoString*, i, mono_string_new(domain, bone->mNode->mName.C_Str()));
+            mono_array_set(data.Parents, uint32_t, i, (uint32_t)bone->mParent);
+        }
+
+        break;
+    }
+    default:
+    {
+        Logger::Error(std::string("Skeleton invalid file extension: ") + str);
+
+        break;
+    }
     }
 
     return data;
+}, MonoString* a_path)
+
+RUNTIME_FUNCTION(MonoArray*, AnimationClip, LoadExternalAnimationData, 
+{
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    return Instance->LoadExternalAnimationClip(str);
 }, MonoString* a_path)
 
 RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile, 
@@ -530,6 +709,7 @@ RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, AnimationClip, LoadExternalAnimationData);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Texture, GenerateFromFile);
 
@@ -837,152 +1017,178 @@ void RuntimeStorage::DestroyTextureSampler(uint32_t a_addr)
     m_samplers[a_addr].Data = nullptr;
 }
 
-MonoArray* RuntimeStorage::LoadDAEAnimationClip(const std::filesystem::path& a_path) const
+MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path& a_path)
 {
-    MonoArray* data = NULL;
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.string();
 
-    MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimation");
-    ICARIAN_ASSERT(animationDataClass != NULL);
-    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "DAERAnimationFrame");
-    ICARIAN_ASSERT(animationFrameClass != NULL);
-    MonoClass* floatClass = mono_get_single_class();
-
-    uint32_t size;
-    const uint8_t* dat;
-    m_assets->GetAsset(a_path, &size, &dat);
-
-    std::vector<IcarianCore::ColladaAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::ColladaLoader_LoadAnimationData((char*)dat, size, &animations))
+    AssetLibrary* library = Instance->GetLibrary();
+    switch (StringHash<uint32_t>(extStr.c_str())) 
     {
-        const uint32_t count = (uint32_t)animations.size();
-        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
-        for (uint32_t i = 0; i < count; ++i)
+    case StringHash<uint32_t>(".dae"):
+    case StringHash<uint32_t>(".fbx"):
+    case StringHash<uint32_t>(".glb"):
+    case StringHash<uint32_t>(".gltf"):
+    {
+        uint32_t size;
+        const uint8_t* dat;
+        library->GetAsset(a_path, &size, &dat);
+        if (size <= 0 || dat == nullptr)
         {
-            const IcarianCore::ColladaAnimationData& animation = animations[i];
+            Logger::Error("Cannot find animation clip file: " + a_path.string());
 
-            DAERAnimation animData;
-            animData.Name = mono_string_new(domain, animation.Name.c_str());
+            break;
+        }
 
-            const uint32_t frameCount = (uint32_t)animation.Frames.size();
-            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
-            for (uint32_t j = 0; j < frameCount; ++j)
+        Assimp::Importer importer;
+
+        const aiScene* scene = importer.ReadFileFromMemory(dat, (size_t)size, 0, extStr.c_str() + 1);
+        ICARIAN_ASSERT(scene != nullptr);
+
+        if (scene->mNumAnimations <= 0)
+        {
+            break;
+        }
+
+        const aiAnimation* animation = scene->mAnimations[0];
+
+        std::vector<AnimationDataExternal> dataArray;
+
+        MonoDomain* domain = m_runtime->GetEditorDomain();
+        MonoClass* frameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrameExternal");
+        ICARIAN_ASSERT(frameClass != NULL);
+
+        const uint32_t channelCount = (uint32_t)animation->mNumChannels;
+        for (uint32_t i = 0; i < channelCount; ++i)
+        {
+            const aiNodeAnim* anim = animation->mChannels[i];
+
+            const uint32_t posCount = (uint32_t)anim->mNumPositionKeys;
+            if (posCount > 0)
             {
-                const IcarianCore::ColladaAnimationFrame& frame = animation.Frames[j];
-
-                DAERAnimationFrame animFrame;
-                animFrame.Time = frame.Time;
-
-                const float* t = (float*)&frame.Transform;
-
-                MonoArray* transform = mono_array_new(domain, floatClass, 16);
-                for (uint32_t k = 0; k < 16; ++k)
+                const AnimationDataExternal dat =
                 {
-                    mono_array_set(transform, float, k, t[k]);
+                    .Name = mono_string_new(domain, anim->mNodeName.C_Str()),
+                    .Target = mono_string_new(domain, "Translation"),
+                    .Frames = mono_array_new(domain, frameClass, (uintptr_t)posCount),
+                };
+
+                for (uint32_t j = 0; j < posCount; ++j)
+                {
+                    const aiVectorKey& posKey = anim->mPositionKeys[j];
+
+                    const AnimationFrameExternal frame =
+                    {
+                        .Time = (float)posKey.mTime,
+                        .Data = glm::vec4(posKey.mValue.x, -posKey.mValue.y, posKey.mValue.z, 1.0f),
+                    };
+
+                    mono_array_set(dat.Frames, AnimationFrameExternal, j, frame);
                 }
 
-                animFrame.Transform = transform;
-
-                mono_array_set(animData.Frames, DAERAnimationFrame, j, animFrame);
+                dataArray.emplace_back(dat);
             }
 
-            mono_array_set(data, DAERAnimation, i, animData);
-        }
-    }
-
-    return data;
-}
-
-MonoArray* RuntimeStorage::LoadFBXAnimationClip(const std::filesystem::path& a_path) const
-{
-    MonoArray* data = NULL;
-
-    MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimation");
-    ICARIAN_ASSERT(animationDataClass != NULL);
-    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "FBXRAnimationFrame");
-    ICARIAN_ASSERT(animationFrameClass != NULL);
-
-    uint32_t size;
-    const uint8_t* dat;
-    m_assets->GetAsset(a_path, &size, &dat);
-
-    std::vector<IcarianCore::FBXAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::FBXLoader_LoadAnimationData((char*)dat, size, &animations))
-    {
-        const uint32_t count = (uint32_t)animations.size();
-        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            const IcarianCore::FBXAnimationData& animation = animations[i];
-
-            FBXRAnimation animData;
-            animData.Name = mono_string_new(domain, animation.Name.c_str());
-            animData.Target = mono_string_new(domain, animation.PropertyName.c_str());
-
-            const uint32_t frameCount = (uint32_t)animation.Frames.size();
-            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
-            for (uint32_t j = 0; j < frameCount; ++j)
+            const uint32_t rotCount = (uint32_t)anim->mNumRotationKeys;
+            if (rotCount > 0)
             {
-                const IcarianCore::FBXAnimationFrame& frame = animation.Frames[j];
+                const AnimationDataExternal dat =
+                {
+                    .Name = mono_string_new(domain, anim->mNodeName.C_Str()),
+                    .Target = mono_string_new(domain, "Rotation"),
+                    .Frames = mono_array_new(domain, frameClass, (uintptr_t)rotCount),
+                };
 
-                FBXRAnimationFrame animFrame;
-                animFrame.Time = frame.Time;
-                animFrame.Data = frame.Data;
+                for (uint32_t j = 0; j < rotCount; ++j)
+                {
+                    const aiQuatKey& rotKey = anim->mRotationKeys[j];
 
-                mono_array_set(animData.Frames, FBXRAnimationFrame, j, animFrame);
-            }   
+                    const AnimationFrameExternal frame = 
+                    {
+                        .Time = (float)rotKey.mTime,
+                        .Data = glm::vec4(rotKey.mValue.x, -rotKey.mValue.y, rotKey.mValue.z, rotKey.mValue.w),
+                    };
 
-            mono_array_set(data, FBXRAnimation, i, animData);
-        }
-    }
+                    mono_array_set(dat.Frames, AnimationFrameExternal, j, frame);
+                }
 
-    return data;
-}
+                dataArray.emplace_back(dat);
+            }
 
-MonoArray* RuntimeStorage::LoadGLTFAnimationClip(const std::filesystem::path& a_path) const
-{
-    MonoArray* data = NULL;
-
-    MonoDomain* domain = m_runtime->GetEditorDomain();
-    MonoClass* animationDataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "GLTFRAnimation");
-    ICARIAN_ASSERT(animationDataClass != NULL);
-    MonoClass* animationFrameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "GLTFRAnimationFrame");
-    ICARIAN_ASSERT(animationFrameClass != NULL);
-
-    uint32_t size;
-    const uint8_t* dat;
-    m_assets->GetAsset(a_path, &size, &dat);
-
-    std::vector<IcarianCore::GLTFAnimationData> animations;
-    if (size > 0 && dat != nullptr && IcarianCore::GLTFLoader_LoadAnimationData((char*)dat, size, &animations))
-    {
-        const uint32_t count = (uint32_t)animations.size();
-        data = mono_array_new(domain, animationDataClass, (uintptr_t)count);
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            const IcarianCore::GLTFAnimationData& animation = animations[i];
-
-            GLTFRAnimation animData;
-            animData.Name = mono_string_new(domain, animation.Name.c_str());
-            animData.Target = mono_string_new(domain, animation.Target.c_str());
-
-            const uint32_t frameCount = (uint32_t)animation.Frames.size();
-            animData.Frames = mono_array_new(domain, animationFrameClass, (uintptr_t)frameCount);
-            for (uint32_t j = 0; j < frameCount; ++j)
+            const uint32_t scaleCount = (uint32_t)anim->mNumScalingKeys;
+            if (scaleCount > 0)
             {
-                const IcarianCore::GLTFAnimationFrame& frame = animation.Frames[j];
+                const AnimationDataExternal dat =
+                {
+                    .Name = mono_string_new(domain, anim->mNodeName.C_Str()),
+                    .Target = mono_string_new(domain, "Scale"),
+                    .Frames = mono_array_new(domain, frameClass, (uintptr_t)scaleCount)
+                };
 
-                GLTFRAnimationFrame animFrame;
-                animFrame.Time = frame.Time;
-                animFrame.Data = frame.Data;
+                for (uint32_t j = 0; j < scaleCount; ++j)
+                {
+                    const aiVectorKey& scaleKey = anim->mScalingKeys[j];
 
-                mono_array_set(animData.Frames, GLTFRAnimationFrame, j, animFrame);
-            }   
+                    const AnimationFrameExternal frame = 
+                    {
+                        .Time = (float)scaleKey.mTime,
+                        .Data = glm::vec4(scaleKey.mValue.x, scaleKey.mValue.y, scaleKey.mValue.z, 0.0f)
+                    };
 
-            mono_array_set(data, GLTFRAnimation, i, animData);
+                    mono_array_set(dat.Frames, AnimationFrameExternal, j, frame);
+                }
+
+                dataArray.emplace_back(dat);
+            }
         }
+
+        const uint32_t dataCount = (uint32_t)dataArray.size();
+        if (dataCount > 0)
+        {
+            MonoClass* dataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationDataExternal");
+            ICARIAN_ASSERT(dataClass != NULL);
+
+            MonoArray* array = mono_array_new(domain, dataClass, (uintptr_t)dataCount);
+
+            for (uint32_t i = 0; i < dataCount; ++i)
+            {
+                mono_array_set(array, AnimationDataExternal, i, dataArray[i]);
+            }
+
+            return array;
+        }
+
+        break;
+    }
+    default:
+    {
+        Logger::Error("Animation clip invalid file extension: " + a_path.string());
+
+        break;
+    }
     }
 
-    return data;
+    return NULL;
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

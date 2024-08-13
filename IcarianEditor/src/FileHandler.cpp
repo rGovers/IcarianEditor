@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "FileHandler.h"
 
 #include <ktx.h>
@@ -23,7 +27,6 @@ FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
-
     switch (codeEditor)
     {
     case CodeEditor_VisualStudio:
@@ -35,6 +38,12 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
     case CodeEditor_VisualStudioCode:
     {
         IO::OpenFile("code", a_path);
+
+        break;
+    }
+    case CodeEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
 
         break;
     }
@@ -59,6 +68,12 @@ static void OpenShader(const std::filesystem::path& a_path, const std::filesyste
 
         break;
     }
+    case CodeEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
+
+        break;
+    }
     default:
     {
         IO::OpenFile(a_path);
@@ -80,6 +95,12 @@ static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path,
 
         break;
     }
+    case DefEditor_Kate:
+    {
+        IO::OpenFile("kate", a_path);
+
+        break;
+    }
     default:
     {
         a_workspace->OpenDef(a_relativePath);
@@ -95,7 +116,8 @@ static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path
 
 static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
-    a_workspace->PushDef(a_relativePath, a_size, a_data);
+    const std::string str = a_relativePath.string();
+    ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
 FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace)
@@ -173,6 +195,11 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     {
     case AssetType_Texture:
     {
+        if (!Instance->m_runtime->IsBuilt())
+        {
+            break;
+        }
+
         MonoDomain* domain = Instance->m_runtime->GetEditorDomain();
 
         const std::string pathString = a_path.u8string();
@@ -237,3 +264,25 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
         *a_dragCallback = &dIter->second;
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

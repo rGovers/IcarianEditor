@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 using IcarianEditor.Modals;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
@@ -13,6 +17,8 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetButton(string a_label);
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetToggleButton(string a_str, string a_enabledPath, string a_disabledPath, IntPtr a_state, Vector2 a_size, uint a_background);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetCheckbox(string a_label, IntPtr a_bool);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -21,13 +27,19 @@ namespace IcarianEditor
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetInt(string a_label, IntPtr a_int);
         [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetIntSlider(string a_label, IntPtr a_int, int a_min, int a_max);
+        [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetUInt(string a_label, IntPtr a_int);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetUIntSlider(string a_label, IntPtr a_int, uint a_min, uint a_max);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetBitField(string a_label, IntPtr a_int, uint a_bitCount);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetFloat(string a_label, IntPtr a_float);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        extern static uint GetFloatSlider(string a_label, IntPtr a_float, float a_min, float a_max);
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetVec2(string a_label, IntPtr a_vec);
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -144,6 +156,33 @@ namespace IcarianEditor
         public static bool Button(string a_label)
         {
             return GetButton(a_label) != 0;
+        }
+        public static bool ToggleButton(string a_label, string a_enabledPath, string a_disabledPath, ref bool a_state, Vector2 a_size, bool a_background = true)
+        {
+            uint state = 0;
+            if (a_state)
+            {
+                state = 1;
+            }
+
+            uint background = 0;
+            if (a_background)
+            {
+                background = 1;
+            }
+
+            GCHandle handle = GCHandle.Alloc(state, GCHandleType.Pinned);
+
+            bool ret = false;
+            if (GetToggleButton(a_label, a_enabledPath, a_disabledPath, handle.AddrOfPinnedObject(), a_size, background) != 0)
+            {
+                ret = true;
+                a_state = (uint)handle.Target != 0;
+            }
+
+            handle.Free();
+
+            return ret;
         }
 
         public static bool RCheckbox(string a_label, ref bool a_value, bool a_default)
@@ -312,6 +351,43 @@ namespace IcarianEditor
 
             return ret;
         }
+        public static bool RIntSliderField(string a_label, ref int a_int, int a_min, int a_max, int a_default = default(int))
+        {
+            bool ret = false;
+            if (a_int != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_int = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= IntSliderField(a_label, ref a_int, a_min, a_max);
+
+            return ret;
+        }
+        public static bool IntSliderField(string a_label, ref int a_int, int a_min, int a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_int, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetIntSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_int = (int)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
+        }
         public static bool RUIntField(string a_label, ref uint a_int, uint a_default = default(uint))
         {
             bool ret = false;
@@ -346,6 +422,43 @@ namespace IcarianEditor
             handle.Free();
 
             return ret;
+        }
+        public static bool RUIntSliderField(string a_label, ref uint a_int, uint a_min, uint a_max, uint a_default = default(uint))
+        {
+            bool ret = false;
+            if (a_int != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_int = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= UIntSliderField(a_label, ref a_int, a_min, a_max);
+
+            return ret;
+        }
+        public static bool UIntSliderField(string a_label, ref uint a_int, uint a_min, uint a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_int, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetUIntSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_int = (uint)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
         }
 
         public static bool BitField(string a_label, ref uint a_value, uint a_bitCount = 8)
@@ -398,6 +511,43 @@ namespace IcarianEditor
             handle.Free();
 
             return ret;
+        }
+        public static bool RFloatSliderField(string a_label, ref float a_float, float a_min, float a_max, float a_default = default(float))
+        {
+            bool ret = false;
+            if (a_float != a_default)
+            {
+                if (ResetButton(a_label + "_R") != 0)
+                {
+                    a_float = a_default;
+
+                    ret = true;
+                }
+            }
+
+            ret |= FloatSliderField(a_label, ref a_float, a_min, a_max);
+
+            return ret;
+        }
+        public static bool FloatSliderField(string a_label, ref float a_float, float a_min, float a_max)
+        {
+            GCHandle handle = GCHandle.Alloc(a_float, GCHandleType.Pinned);
+
+            try
+            {
+                if (GetFloatSlider(a_label, handle.AddrOfPinnedObject(), a_min, a_max) != 0)
+                {
+                    a_float = (float)handle.Target;
+
+                    return true;
+                }
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            return false;
         }
 
         public static bool RVec2Field(string a_label, ref Vector2 a_vec, Vector2 a_default = default(Vector2))
@@ -868,3 +1018,25 @@ namespace IcarianEditor
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

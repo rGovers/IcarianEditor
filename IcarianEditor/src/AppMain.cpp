@@ -1,3 +1,8 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
+
 #include "AppMain.h"
 
 #include <imgui.h>
@@ -117,18 +122,21 @@ static void SetImguiStyle()
     style.FrameRounding = 2.0f;
     style.WindowRounding = 2.0f;
     style.ChildRounding = 2.0f;
+
+    style.TabBorderSize = 0.0f;
+    style.DockingSeparatorSize = 0.0f;
     style.WindowBorderSize = 0.0f;
     style.ChildBorderSize = 0.0f;
     style.PopupBorderSize = 0.0f;
     style.FramePadding = ImVec2(6.0f, 3.0f);
-    style.WindowMenuButtonPosition = ImGuiDir_Right;
+    style.WindowMenuButtonPosition = ImGuiDir_None;
 
     ImFont* firaFont = io.Fonts->AddFontFromFileTTF("Fonts/FiraMono-Regular.ttf", 15);
     io.Fonts->AddFontFromFileTTF("Fonts/Cousine-Regular.ttf", 15);
 
     io.FontDefault = firaFont;
 
-    ImVec4* colors = ImGui::GetStyle().Colors;
+    ImVec4* colors = style.Colors;
     colors[ImGuiCol_WindowBg]               = ImVec4(0.10f, 0.10f, 0.10f, 0.94f);
     colors[ImGuiCol_ChildBg]                = ImVec4(0.08f, 0.08f, 0.08f, 1.00f);
     colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.90f);
@@ -220,7 +228,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     m_windows.emplace_back(new ConsoleWindow());
     m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
     m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
-    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets, m_runtime));
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
     m_windows.emplace_back(new SceneDefsWindow(m_runtime));
@@ -422,7 +430,7 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Asset Browser"))
                     {
-                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets, m_runtime));
                     }                
 
                     if (ImGui::MenuItem("Console"))
@@ -846,3 +854,25 @@ void AppMain::DispatchRuntimeModal(const std::string_view& a_title, const glm::v
 
     m_modals.emplace_back(new RuntimeModal(this, m_runtime, a_index, a_title, a_size));
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

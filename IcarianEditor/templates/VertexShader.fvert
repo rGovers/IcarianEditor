@@ -15,7 +15,7 @@ layout(location = 2) out vec2 fragTexCoord;
 void main()
 {
     // Basic vertex shader
-    mat4 modelMat = #!instancedstructure(modelBuffer).Model;
+    mat4 modelMat = #!instancestructure(modelBuffer).Model;
     gl_Position = camBuffer.ViewProj * modelMat * position;
 
     fragColor = color;

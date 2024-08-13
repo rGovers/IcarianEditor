@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "Windows/EditorWindow.h"
 
 #include <glm/ext/matrix_clip_space.hpp>
@@ -198,6 +202,26 @@ void EditorWindow::Update(double a_delta)
 
     ImGui::Image((ImTextureID)(uintptr_t)m_textureHandle, sizeIm);
 
+    bool delivery = false;
+    char* payloadData = nullptr;
+    char payloadTarget[128] = { 0 };
+    if (ImGui::BeginDragDropTarget())
+    {
+        IDEFER(ImGui::EndDragDropTarget());
+
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DefPath", ImGuiDragDropFlags_AcceptPeekOnly);
+        if (payload != nullptr)
+        {
+            payloadData = new char[payload->DataSize + 1] { 0 };
+            memcpy(payloadData, payload->Data, payload->DataSize);
+            memcpy(payloadTarget, payload->DataType, sizeof(payload->DataType));
+
+            delivery = payload->IsDelivery();
+
+            m_refresh = true;
+        }   
+    }
+
     const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
     constexpr glm::vec2 WinSize = glm::vec2(117.0f, 40.0f);
     constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
@@ -257,6 +281,7 @@ void EditorWindow::Update(double a_delta)
         ImGui::Text("Scale");
     }
 
+    bool bind = true;
     if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
     {
         const ImVec2 imPos = ImGui::GetMousePos();
@@ -380,4 +405,67 @@ void EditorWindow::Update(double a_delta)
     {
         Draw();
     }
+
+    if (payloadData != nullptr)
+    {
+        IDEFER(delete[] payloadData);
+
+        const ImVec2 imMousePos = ImGui::GetMousePos();
+        const ImVec2 winPos = ImGui::GetWindowPos();
+        const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
+
+        const glm::vec2 mousePos = glm::vec2(imMousePos.x - (winPos.x + vMinIm.x), imMousePos.y - (winPos.y + vMinIm.y));        
+
+        const glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
+        const glm::mat4 invProj = glm::inverse(proj);
+
+        const glm::mat4 rotMat = glm::toMat4(m_rotation);
+        const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
+
+        const glm::mat4 trans = transMat * rotMat;
+
+        const glm::vec2 sP = (mousePos / glm::vec2((float)m_width, (float)m_height)) * 2.0f - glm::vec2(1.0f);
+
+        glm::vec4 cP = invProj * glm::vec4(sP, 0.975f, 1.0f);
+        cP /= cP.w;
+        const glm::vec4 wP = trans * cP;
+
+        glm::vec3 p = glm::vec3(wP.xyz());
+
+        MonoString* mString = mono_string_new(m_runtime->GetEditorDomain(), payloadData);
+        void* args[] =
+        {
+            mString,
+            &p
+        };
+
+        m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":PeekDefPath(string,Vector3)", args);
+
+        if (delivery)
+        {
+            m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":AcceptDefPath(string,Vector3)", args);        
+        }
+    }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

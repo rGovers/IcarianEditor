@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "FlareImGui.h"
 
 #include "Core/IcarianDefer.h"
@@ -134,7 +138,7 @@ namespace FlareImGui
         return Image(a_path.data(), { a_size.x, a_size.y });
     }
 
-    bool ImageButton(GLuint a_texture, const glm::vec2& a_size, bool a_background)
+    bool ImageButton(const char* a_label, GLuint a_texture, const glm::vec2& a_size, bool a_background)
     {
         if (!a_background)
         {
@@ -151,19 +155,19 @@ namespace FlareImGui
 
         if (a_texture != -1)
         {
-            ret = ImGui::ImageButton((ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
+            ret = ImGui::ImageButton(a_label, (ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
         }
 
         return ret;
     }
-    bool ImageButton(Texture* a_texture, const glm::vec2& a_size, bool a_background)
+    bool ImageButton(const char* a_label, Texture* a_texture, const glm::vec2& a_size, bool a_background)
     {
         if (a_texture == nullptr)
         {
-            return ImageButton(-1, a_size, a_background);
+            return ImageButton(a_label, -1, a_size, a_background);
         }
 
-        return ImageButton(a_texture->GetHandle(), a_size, a_background);
+        return ImageButton(a_label, a_texture->GetHandle(), a_size, a_background);
     }
     bool ImageButton(const char* a_label, const char* a_path, const ImVec2& a_size, bool a_background)
     {
@@ -183,11 +187,7 @@ namespace FlareImGui
         const Texture* tex = Datastore::GetTexture(a_path);
         if (tex != nullptr)
         {
-            const ImGuiID id = ImGui::GetID(a_label);
-
-            ImGui::PushID(id);
-            ret = ImGui::ImageButton(TexToImHandle(tex), a_size);
-            ImGui::PopID();
+            ret = ImGui::ImageButton(a_label, TexToImHandle(tex), a_size);
         }
         else
         {
@@ -251,3 +251,25 @@ namespace FlareImGui
         return ImageSwitchButton(a_label.data(), a_pathEnabled.data(), a_pathDisabled.data(), a_state, { a_size.x, a_size.y });
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

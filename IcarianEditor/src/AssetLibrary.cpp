@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "AssetLibrary.h"
 
 #include <cstdint>
@@ -12,6 +16,7 @@
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/StringUtils.h"
 #include "EditorConfig.h"
 #include "IO.h"
 #include "KtxHelpers.h"
@@ -19,6 +24,7 @@
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
+#include "EditorCreateDefModalInterop.h"
 #include "EditorDefLibraryInterop.h"
 #include "EditorSceneInterop.h"
 
@@ -26,6 +32,7 @@ static AssetLibrary* Instance = nullptr;
 
 #define ASSETLIBRARY_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
 
+EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 EDITORDEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 EDITORSCENE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
@@ -33,6 +40,7 @@ AssetLibrary::AssetLibrary(RuntimeManager* a_runtime)
 {
     m_runtime = a_runtime;
     
+    EDITOR_CREATEDEFMODAL_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
     EDITORDEFLIBRARY_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
     EDITORSCENE_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
 
@@ -55,9 +63,9 @@ constexpr static T ToWInt(const unsigned char* a_data)
     constexpr uint32_t Size = sizeof(T);
 
     T val = 0;
-    for (uint32_t i = 0; i < Size; ++i)
+    for (T i = 0; i < Size; ++i)
     {
-        val |= (T)(a_data[i] << i * 8);
+        val |= (T)(a_data[i]) << (i * 8);
     }
 
     return val;
@@ -75,15 +83,15 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     constexpr uint16_t MagicDLLNumber = 0x5A4D;
     constexpr uint32_t MagicNTAddress = 0x00004550;
     
-    // Is Exe/DLL
-    if (ToWInt<uint16_t>(a_data) != MagicDLLNumber)
+    const bool isExe = ToWInt<uint16_t>(a_data) == MagicDLLNumber;
+    if (!isExe)
     {
         return false;
     }
 
     const uint32_t winNTHdr = ToWInt<uint32_t>(a_data + 60);
-    // Address is valid
-    if (ToWInt<uint32_t>(a_data + winNTHdr) != MagicNTAddress)
+    const bool validAddress = ToWInt<uint32_t>(a_data + winNTHdr) == MagicNTAddress;
+    if (!validAddress)
     {
         return false;
     }
@@ -93,11 +101,11 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     {
         if (a_data[i + lightningAddr])
         {
-            return false;
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::path& a_path, const std::filesystem::path& a_workingDir)
@@ -108,53 +116,95 @@ static void TraverseTree(std::vector<Asset>* a_assets, const std::filesystem::pa
 
         if (iter.is_regular_file())
         {
-            Asset asset;
-
-            asset.Path = IO::GetRelativePath(a_workingDir, path);
-            asset.ModifiedTime = std::filesystem::last_write_time(path);
+            Asset asset = 
+            { 
+                .ModifiedTime = std::filesystem::last_write_time(path),
+                .Path = IO::GetRelativePath(a_workingDir, path),
+            };
 
             const std::filesystem::path ext = asset.Path.extension();
             const std::filesystem::path name = asset.Path.filename();
 
-            if (ext == ".cs")
+            const std::string extStr = ext.string();
+
+            switch (StringHash<uint32_t>(extStr.c_str())) 
+            {
+            case StringHash<uint32_t>(".cs"):
             {
                 asset.AssetType = AssetType_Script;
+
+                break;
             }
-            else if (ext == ".dll" || ext == ".so")
+            case StringHash<uint32_t>(".fvert"):
+            case StringHash<uint32_t>(".fpix"):
+            case StringHash<uint32_t>(".ffrag"):
+            {
+                asset.AssetType = AssetType_Shader;
+
+                break;
+            }
+            case StringHash<uint32_t>(".dll"):
+            case StringHash<uint32_t>(".so"):
             {
                 asset.AssetType = AssetType_Assembly;
+
+                break;
             }
-            else if (ext == ".def")
+            case StringHash<uint32_t>(".def"):
             {
                 asset.AssetType = AssetType_Def;
+
+                break;
             }
-            else if (ext == ".scrb")
+            case StringHash<uint32_t>(".ui"):
+            {
+                asset.AssetType = AssetType_UI;
+
+                break;
+            }
+            case StringHash<uint32_t>(".scrb"):
             {
                 asset.AssetType = AssetType_Scribe;
+
+                break;
             }
-            else if (ext == ".iscene")
+            case StringHash<uint32_t>(".iscene"):
             {
                 asset.AssetType = AssetType_Scene;
+
+                break;
             }
-            else if (ext == ".png" || ext == ".ktx2")
+            case StringHash<uint32_t>(".png"):
+            case StringHash<uint32_t>(".ktx2"):
             {
                 asset.AssetType = AssetType_Texture;
+
+                break;
             }
-            else if (ext == ".dae" || ext == ".fbx" || ext == ".obj")
+            case StringHash<uint32_t>(".obj"):
+            case StringHash<uint32_t>(".dae"):
+            case StringHash<uint32_t>(".fbx"):
+            case StringHash<uint32_t>(".glb"):
+            case StringHash<uint32_t>(".gltf"):
             {
                 asset.AssetType = AssetType_Model;
-            }
-            else if (name == "about.xml")
-            {
-                asset.AssetType = AssetType_About;
-            }
-            else
-            {
-                asset.AssetType = AssetType_Other;
-            }
 
-            asset.Data = nullptr;
-            asset.Size = 0;
+                break;
+            }
+            default:
+            {
+                if (name == "about.xml")
+                {
+                    asset.AssetType = AssetType_About;
+                }
+                else
+                {
+                    asset.AssetType = AssetType_Other;
+                }
+
+                break;
+            }
+            }
 
             a_assets->emplace_back(asset);
         }
@@ -193,6 +243,21 @@ static void ReadAssets(std::vector<Asset>* a_assets, const std::filesystem::path
     }
 }
 
+void AssetLibrary::CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
+{
+    const Asset asset = 
+    {
+        .ModifiedTime = std::filesystem::file_time_type::clock::now(),
+        .Path = a_path,
+        .AssetType = AssetType_Def,
+        .Size = a_size,
+        .Data = a_data,
+        .Flags = 0b1 << Asset::ForceWriteBit
+    };
+
+    m_assets.emplace_back(asset);
+}
+
 void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
@@ -218,7 +283,6 @@ void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size
 
     ICARIAN_ASSERT_MSG(0, "Def not found");
 }
-
 void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
     for (Asset& a : m_assets)
@@ -277,6 +341,7 @@ Next:;
 
 void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 {
+    // TODO: Naive wiping the assets should be smarter about it
     for (const Asset& asset : m_assets)
     {
         if (asset.Data != nullptr)
@@ -542,7 +607,10 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
                         std::filesystem::create_directories(dir);
                     }
 
-                    if (ext == ".png")
+                    const std::string extStr = ext.string();
+                    switch (StringHash<uint32_t>(extStr.c_str()))
+                    {
+                    case StringHash<uint32_t>(".png"):
                     {
                         int width;
                         int height;
@@ -564,7 +632,8 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
                                 .numLevels = 1,
                                 .numLayers = 1,
                                 .numFaces = 1,
-                                .generateMipmaps = KTX_TRUE
+                                // Apparently was changed at some point with block compression not fussed
+                                .generateMipmaps = KTX_FALSE
                             };
 
                             ktxTexture2* ktxTex;
@@ -573,9 +642,14 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
 
                             ICARIAN_ASSERT_R(ktxTexture_SetImageFromMemory((ktxTexture*)ktxTex, 0, 0, 0, data, (ktx_size_t)size) == KTX_SUCCESS);
 
-                            ktxBasisParams basisParam =  { 0 };
+                            // TODO: Expose more project settings to allow some control over this
+                            ktxBasisParams basisParam = { 0 };
                             basisParam.structSize = sizeof(basisParam);
                             basisParam.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL;
+                            // TODO: Investigate it using all assigned cores initially before dropping to 1-4 cores
+                            // This is terrible utilization of something like a 5950X and barely better then single threaded
+                            // More pressing concerns as I have my own performance problems to worry about most notably stb which is why I am this predicament to begin with
+                            // Need to work on moving stuff into the background anyway
                             basisParam.threadCount = std::thread::hardware_concurrency() / 2;
 
                             ICARIAN_ASSERT_R(ktxTexture2_CompressBasisEx(ktxTex, &basisParam) == KTX_SUCCESS);
@@ -586,6 +660,9 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
 
                             WriteData(writePath, (uint8_t*)ktxDat, (uint32_t)ktxDatSize, asset.ModifiedTime);
                         }
+
+                        break;
+                    }
                     }
                 }
 
@@ -605,6 +682,8 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
             break;
         }
         case AssetType_Model:
+        case AssetType_Shader:
+        case AssetType_UI:
         case AssetType_Other:
         {
             WriteData(a_path / "Core" / "Assets" / asset.Path, asset.Data, asset.Size, asset.ModifiedTime);
@@ -730,29 +809,40 @@ void AssetLibrary::Serialize(const Project* a_project)
 
         const e_AssetType type = a.AssetType;
 
-        switch (type) 
+        if (!IISBITSET(a.Flags, Asset::ForceWriteBit))
         {
-        case AssetType_Script:
-        case AssetType_Model:
-        case AssetType_Texture:
-        {
-            continue;
-        }
-        case AssetType_Def:
-        {
-            if (defEditor != DefEditor_Editor)
+            switch (type) 
+            {
+            // Editor does not touch theses files so if there is not a force write just skip
+            case AssetType_Assembly:
+            case AssetType_Script:
+            case AssetType_Shader:
+            case AssetType_Model:
+            case AssetType_Texture:
+            // Not at this point but may change
+            case AssetType_About:
+            case AssetType_Scribe:
+            case AssetType_UI:
             {
                 continue;
             }
+            // Editor only writes theses files if the Editor is the Def editor
+            case AssetType_Def:
+            {
+                if (defEditor != DefEditor_Editor)
+                {
+                    continue;
+                }
 
-            break;
+                break;
+            }
+            default:
+            {
+                break;
+            }
+            }
         }
-        default:
-        {
-            break;
-        }
-        }
-
+        
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
@@ -760,5 +850,28 @@ void AssetLibrary::Serialize(const Project* a_project)
         }
 
         a.ModifiedTime = std::filesystem::file_time_type::clock::now();
+        ICLEARBIT(a.Flags, Asset::ForceWriteBit);
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 #include "Modals/EditorConfigModal.h"
 
 #include <imgui.h>
@@ -16,28 +20,46 @@ static constexpr const char* CodeEditorNames[] =
 {
     "Default",
     "Visual Studio",
-    "Visual Studio Code"
+    "Visual Studio Code",
+    "Kate"
 };
 
 static constexpr const char* DefEditorNames[] =
 {
     "Editor",
-    "Visual Studio Code"
+    "Visual Studio Code",
+    "Kate"
 };
 
 #if WIN32
 constexpr static bool CodeEditorEnabled[] =
 {
-    true,
-    true,
-    true
+    true,   // Default
+    true,   // Visual Studio
+    true,   // VSCode
+    false,  // Kate - Unable to validate it works need someone to confirm before enabling
+};
+
+constexpr static bool DefEditorEnabled[] =
+{
+    true,   // Editor
+    true,   // VSCode
+    false,  // Kate - Unable to validate it works need someone to confirm before enabling
 };
 #else
 constexpr static bool CodeEditorEnabled[] =
 {
-    true,
-    false,
-    true
+    true,   // Default
+    false,  // Visual Studio
+    true,   // VSCode
+    true,   // Kate
+};
+
+constexpr static bool DefEditorEnabled[] =
+{
+    true,   // Editor
+    true,   // VSCode
+    true,   // Kate
 };
 #endif
 
@@ -161,6 +183,12 @@ void EditorConfigModal::ExternalToolsTab()
 
         for (uint32_t i = 0; i < DefEditor_End; ++i)
         {
+            const bool enabled = DefEditorEnabled[i];
+            if (!enabled)
+            {
+                continue;
+            }
+
             const bool selected = defEditor == i;
 
             if (ImGui::Selectable(DefEditorNames[i], selected))
@@ -244,3 +272,25 @@ bool EditorConfigModal::Update()
 
     return true;
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.

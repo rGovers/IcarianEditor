@@ -1,3 +1,7 @@
+// Icarian Editor - Editor for the Icarian Game Engine
+// 
+// License at end of file.
+
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
@@ -11,20 +15,39 @@ WORKSPACE_EXPORT_TABLE(IOP_BIND_FUNCTION)
 
 namespace IcarianEditor
 {
-    
-
     public enum SelectionObjectMode
     {
         SceneObject,
-        GameObjectDef
+        SceneObjectArray
     }
 
+    // May change this down the line to a abstract class if I need more
     public struct SelectionObject
     {
         public ulong ID;
         public SelectionObjectMode SelectionMode;
         public SceneObject SceneObject;
-        public string GameObjectDefName;
+        public SceneObjectArray SceneObjectArray;
+
+        public object Object
+        {
+            get
+            {
+                switch (SelectionMode)
+                {
+                case SelectionObjectMode.SceneObject:
+                {
+                    return SceneObject;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    return SceneObjectArray;
+                }
+                }
+
+                return null;
+            }
+        }
 
         public Vector3 Translation
         {
@@ -32,15 +55,13 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    return def.Translation;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     return SceneObject.Translation;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    return SceneObjectArray.Translation;
                 }
                 }
 
@@ -50,19 +71,15 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    def.Translation = value;
-
-                    EditorDefLibrary.RebuildDefData(def);
-
-                    break;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     SceneObject.Translation = value;
+
+                    break;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    SceneObjectArray.Translation = value;
 
                     break;
                 }
@@ -76,15 +93,13 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    return def.Rotation;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     return SceneObject.Rotation;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    return SceneObjectArray.Rotation;
                 }
                 }
 
@@ -94,19 +109,15 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    def.Rotation = value;
-
-                    EditorDefLibrary.RebuildDefData(def);
-
-                    break;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     SceneObject.Rotation = value;
+
+                    break;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    SceneObjectArray.Rotation = value;
 
                     break;
                 }
@@ -120,15 +131,13 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    return def.Scale;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     return SceneObject.Scale;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
+                    return Vector3.One;
                 }
                 }
 
@@ -138,20 +147,14 @@ namespace IcarianEditor
             {
                 switch (SelectionMode)
                 {
-                case SelectionObjectMode.GameObjectDef:
-                {
-                    GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(GameObjectDefName);
-
-                    def.Scale = value;
-
-                    EditorDefLibrary.RebuildDefData(def);
-
-                    break;
-                }
                 case SelectionObjectMode.SceneObject:
                 {
                     SceneObject.Scale = value;
 
+                    break;
+                }
+                case SelectionObjectMode.SceneObjectArray:
+                {
                     break;
                 }
                 }
@@ -251,23 +254,11 @@ namespace IcarianEditor
 
             return false;
         }
-        public static bool SelectionContains(SceneObject a_obj, string a_def)
+        public static bool SelectionContains(SceneObjectArray a_arr)
         {
             foreach (SelectionObject obj in s_selection)
             {
-                if (obj.SceneObject == a_obj && obj.GameObjectDefName == a_def)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        public static bool SelectionContains(SceneObject a_obj, GameObjectDef a_def)
-        {
-            foreach (SelectionObject obj in s_selection)
-            {
-                if (obj.SceneObject == a_obj && obj.GameObjectDefName == a_def.DefName)
+                if (obj.SceneObjectArray == a_arr)
                 {
                     return true;
                 }
@@ -304,3 +295,25 @@ namespace IcarianEditor
         }
     }
 }
+
+// MIT License
+// 
+// Copyright (c) 2024 River Govers
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
