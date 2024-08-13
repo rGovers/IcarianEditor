@@ -5,10 +5,16 @@
 The editor for Icarian Engine.
 
 ## Prerequisites
-* Vulkan SDK(Validation Layers in Debug not required in Release)
-* Python3(glslang)
+* Vulkan SDK (Validation Layers in Debug not required in Release)
+* Python3 (glslang)
 ### Linux
-* GCC, Clang or Zig
+* GCC, Clang or Zig (GCC primary)
+* Wayland
+* X11
+* XOrg Client
+* Pulse
+* Jack
+* ALSA
 ### Windows
 * MingGW
 
