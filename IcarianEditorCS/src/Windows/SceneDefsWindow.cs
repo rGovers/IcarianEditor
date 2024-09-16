@@ -49,11 +49,12 @@ namespace IcarianEditor.Windows
 
                     if (GUI.Button("-"))
                     {
-                        new ConfirmModal("Delete " + defName + "?", () =>
+                        new ConfirmModal($"Delete {defName}?", () =>
                         {
                             EditorScene scene = Workspace.GetScene();
-
                             scene.RemoveDef(defName);
+
+                            Workspace.ClearSelection();
                         });
 
                         GUI.PopID();

@@ -192,7 +192,7 @@ namespace IcarianEditor
         {
             foreach (DefData defData in s_defs)
             {
-                if (defData.Path == Def.SceneDefPath)
+                if (string.IsNullOrWhiteSpace(defData.Name) || defData.Path == Def.SceneDefPath)
                 {
                     continue;
                 }

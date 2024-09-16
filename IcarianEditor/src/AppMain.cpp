@@ -195,7 +195,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 #endif
 
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    // Disabling keyboary input due to it taking control from the Game window with some binds
+    // Lowers accessibility so may find a more elegant solution down the line
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 

@@ -24,7 +24,8 @@ namespace IcarianEditor.Editor
                 return;
             }
 
-            ColliderRenderer.DrawCollider(a_transform, def.CollisionShape, Color.Blue);
+            CollisionShapeDef shapeDef = EditorDefLibrary.GenerateDef(def.CollisionShape.DefName) as CollisionShapeDef;
+            ColliderRenderer.DrawCollider(a_transform, shapeDef, Color.Blue);
         }
     }
 }
