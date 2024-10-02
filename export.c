@@ -204,6 +204,13 @@ int main(int a_argc, char** a_argv)
     PrintHeader("Building Universal Export");
 
     printf("Compiling IcarianCS...\n");
+    printf("Writing imports to Header files...\n");
+    if (!WriteIcarianCSImportsToHeader("IcarianEngine/IcarianCS"))
+    {
+        printf("Failed to write imports to header files\n");
+
+        return 1;
+    }
 
     icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
 

@@ -35,7 +35,9 @@ static RuntimeStorage* Instance = nullptr;
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
 
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
+    F(uint32_t, IcarianEngine.Rendering, VertexShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GenerateVertexShader(str); }, MonoString* a_path) \
     F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
+    F(uint32_t, IcarianEngine.Rendering, PixelShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GeneratePixelShader(str); }, MonoString* a_path) \
     F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
     \
     F(RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
@@ -58,66 +60,24 @@ static RuntimeStorage* Instance = nullptr;
 
 RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-RUNTIME_FUNCTION(uint32_t, VertexShader, GenerateFromFile, 
+RUNTIME_FUNCTION(void, VertexShader, AddImport,
 {
-    char* str = mono_string_to_utf8(a_path);
-    IDEFER(mono_free(str));
+    char* key = mono_string_to_utf8(a_key);
+    IDEFER(mono_free(key));
+    char* value = mono_string_to_utf8(a_value);
+    IDEFER(mono_free(value));
 
-    const std::filesystem::path p = std::filesystem::path(str);
-    const std::filesystem::path ext = p.extension();
-
-    AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".fvert")
-    {
-        uint32_t size; 
-        const uint8_t* dat;
-        library->GetAsset(p, &size, &dat);
-
-        std::string error;
-        std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
-        if (s.empty())
-        {
-            Logger::Error("Failed to parse vertex shader: " + error);
-
-            return -1;
-        }
-
-        return Instance->GenerateVertexShader(s, inputs.data(), (uint32_t)inputs.size());
-    }
-
-    return -1;
-}, MonoString* a_path)
-RUNTIME_FUNCTION(uint32_t, PixelShader, GenerateFromFile, 
+    Instance->AddVertexImport(key, value);
+}, MonoString* a_key, MonoString* a_value)
+RUNTIME_FUNCTION(void, PixelShader, AddImport,
 {
-    char* str = mono_string_to_utf8(a_path);
-    IDEFER(mono_free(str));
+    char* key = mono_string_to_utf8(a_key);
+    IDEFER(mono_free(key));
+    char* value = mono_string_to_utf8(a_value);
+    IDEFER(mono_free(value));
 
-    const std::filesystem::path p = std::filesystem::path(str);
-    const std::filesystem::path ext = p.extension();
-
-    AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".fpix" || ext == ".ffrag")
-    {
-        uint32_t size;
-        const uint8_t* dat;
-        library->GetAsset(p, &size, &dat);
-
-        std::string error;
-        std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
-        if (s.empty())
-        {
-            Logger::Error("Failed to parse pixel shader: " + error);
-
-            return -1;
-        }
-
-        return Instance->GeneratePixelShader(s, inputs.data(), (uint32_t)inputs.size());
-    }
-
-    return -1;
-}, MonoString* a_path)
+    Instance->AddPixelImport(key, value);
+}, MonoString* a_key, MonoString* a_value)
 
 RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram, 
 {
@@ -698,8 +658,8 @@ RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets
     m_assets = a_assets;
     m_runtime = a_runtime;
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, VertexShader, GenerateFromFile);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, PixelShader, GenerateFromFile);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, VertexShader, AddImport);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, PixelShader, AddImport);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateProgram);
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, DestroyProgram);
@@ -754,6 +714,8 @@ void RuntimeStorage::Clear()
     }
     m_samplers.clear();
 
+    m_vertexImports.clear();
+
     for (const VertexShader* v : m_vertexShaders)
     {
         if (v != nullptr)
@@ -762,6 +724,8 @@ void RuntimeStorage::Clear()
         }
     }
     m_vertexShaders.clear();
+
+    m_pixelImports.clear();
 
     for (const PixelShader* p : m_pixelShaders)
     {
@@ -776,28 +740,70 @@ void RuntimeStorage::Clear()
     m_samplers.clear();
 }
 
-uint32_t RuntimeStorage::GenerateVertexShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
+uint32_t RuntimeStorage::GenerateVertexShader(const std::filesystem::path& a_path)
 {
-    VertexShader* vShader = VertexShader::GenerateShader(a_str, a_inputs, a_inputCount);
-    if (vShader == nullptr)
-    {
-        return -1;
-    }
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.string();
 
-    const uint32_t shaderCount = (uint32_t)m_vertexShaders.size();
-    for (uint32_t i = 0; i < shaderCount; ++i)
+    switch (StringHash<uint32_t>(extStr.c_str())) 
     {
-        if (m_vertexShaders[i] == nullptr)
+    case StringHash<uint32_t>(".fvert"):
+    {
+        uint32_t size; 
+        const uint8_t* dat;
+        m_assets->GetAsset(a_path, &size, &dat);
+
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, m_vertexImports, &inputs, &error);
+        if (s.empty())
         {
-            m_vertexShaders[i] = vShader;
+            Logger::Error("Failed to parse VertexShader: " + error + ":" + a_path.string());
 
-            return i;
+            break;
         }
+
+        VertexShader* vShader = VertexShader::GenerateShader(s, inputs.data(), (uint32_t)inputs.size());
+        if (vShader == nullptr)
+        {
+            Logger::Error("Failed to generate VertexShader: " + a_path.string());
+
+            break;
+        }
+
+        const uint32_t shaderCount = (uint32_t)m_vertexShaders.size();
+        for (uint32_t i = 0; i < shaderCount; ++i)
+        {
+            if (m_vertexShaders[i] == nullptr)
+            {
+                m_vertexShaders[i] = vShader;
+
+                return i;
+            }
+        }
+
+        m_vertexShaders.emplace_back(vShader);
+
+        return shaderCount;
+    }
     }
 
-    m_vertexShaders.emplace_back(vShader);
+    return -1;
+}
+void RuntimeStorage::AddVertexImport(const std::string_view& a_key, const std::string_view& a_value)
+{
+    const std::string key = std::string(a_key);
+    const std::string value = std::string(a_value);
 
-    return shaderCount;
+    auto iter = m_vertexImports.find(key);
+    if (iter != m_vertexImports.end())
+    {
+        iter->second = value;
+
+        return;
+    }
+
+    m_vertexImports.emplace(key, value);
 }
 void RuntimeStorage::DestroyVertexShader(uint32_t a_addr)
 {
@@ -805,28 +811,71 @@ void RuntimeStorage::DestroyVertexShader(uint32_t a_addr)
     m_vertexShaders[a_addr] = nullptr;
 }
 
-uint32_t RuntimeStorage::GeneratePixelShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
+uint32_t RuntimeStorage::GeneratePixelShader(const std::filesystem::path& a_path)
 {
-    PixelShader* pShader = PixelShader::GenerateShader(a_str, a_inputs, a_inputCount);
-    if (pShader == nullptr)
-    {
-        return -1;
-    }
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.string();
 
-    const uint32_t shaderCount = (uint32_t)m_pixelShaders.size();
-    for (uint32_t i = 0; i < shaderCount; ++i)
+    switch (StringHash<uint32_t>(extStr.c_str()))
     {
-        if (m_pixelShaders[i] == nullptr)
+    case StringHash<uint32_t>(".fpix"):
+    case StringHash<uint32_t>(".ffrag"):
+    {
+        uint32_t size; 
+        const uint8_t* dat;
+        m_assets->GetAsset(a_path, &size, &dat);
+
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, m_pixelImports, &inputs, &error);
+        if (s.empty())
         {
-            m_pixelShaders[i] = pShader;
+            Logger::Error("Failed to parse PixelShader: " + error + ":" + a_path.string());
 
-            return i;
+            break;
         }
+
+        PixelShader* pShader = PixelShader::GenerateShader(s, inputs.data(), (uint32_t)inputs.size());
+        if (pShader == nullptr)
+        {
+            Logger::Error("Failed to generate PixelShader: " + a_path.string());
+
+            break;
+        }
+
+        const uint32_t shaderCount = (uint32_t)m_pixelShaders.size();
+        for (uint32_t i = 0; i < shaderCount; ++i)
+        {
+            if (m_pixelShaders[i] == nullptr)
+            {
+                m_pixelShaders[i] = pShader;
+
+                return i;
+            }
+        }
+
+        m_pixelShaders.emplace_back(pShader);
+
+        return shaderCount;
+    }
     }
 
-    m_pixelShaders.emplace_back(pShader);
+    return -1;
+}
+void RuntimeStorage::AddPixelImport(const std::string_view& a_key, const std::string_view& a_value)
+{
+    const std::string key = std::string(a_key);
+    const std::string value = std::string(a_value);
 
-    return shaderCount;
+    auto iter = m_pixelImports.find(key);
+    if (iter != m_pixelImports.end())
+    {
+        iter->second = value;
+
+        return;
+    }
+
+    m_pixelImports.emplace(key, value);
 }
 void RuntimeStorage::DestroyPixelShader(uint32_t a_addr)
 {

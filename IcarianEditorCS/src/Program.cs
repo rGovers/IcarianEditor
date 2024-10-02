@@ -5,6 +5,7 @@
 using IcarianEditor.Windows;
 using IcarianEngine;
 using IcarianEngine.Definitions;
+using IcarianEngine.Mod;
 using System;
 using System.Reflection;
 
@@ -19,6 +20,10 @@ namespace IcarianEditor
             Type assetLibraryType = typeof(AssetLibrary);
             MethodInfo assetLibraryInitMethod = assetLibraryType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
             assetLibraryInitMethod.Invoke(null, new object[] { });
+
+            Type shaderImportType = ModControl.GetTypeValue("IcarianEngine.Rendering.ShaderImports");
+            MethodInfo shaderImportInitMethod = shaderImportType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
+            shaderImportInitMethod.Invoke(null, new object[] { });
 
             ClipBoard.Init();
             PropertiesWindow.Init();
