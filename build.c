@@ -184,7 +184,7 @@ int main(int a_argc, char** a_argv)
 
             free(engineDependencies);
 
-            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
+            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE);
             CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
             projects[offset++] = icarianNativeProject;
 
@@ -383,7 +383,7 @@ int main(int a_argc, char** a_argv)
     }
 
     printf("Creating IcarianCS project...\n");
-    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
+    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBTRUE);
 
     printf("Compiling IcarianCS...\n");
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", compiler, CBNULL, &lines, &lineCount);
@@ -444,7 +444,7 @@ int main(int a_argc, char** a_argv)
     free(dependencyProjects);
 
     printf("Creating IcarianNative project...\n");
-    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE);
+    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE);
 
     printf("Compiling IcarianNative...\n");
     ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount);

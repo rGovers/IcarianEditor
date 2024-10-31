@@ -142,7 +142,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
 
     printf("Compiling IcarianNative...\n");
 
-    icarianNativeProject = BuildIcarianNativeProject(a_platform, BuildConfiguration_Release, CBFALSE, CBFALSE);
+    icarianNativeProject = BuildIcarianNativeProject(a_platform, BuildConfiguration_Release, CBFALSE, CBFALSE, CBFALSE);
 
     ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, a_jobThreads, &lines, &lineCount);
 
@@ -204,6 +204,7 @@ int main(int a_argc, char** a_argv)
     PrintHeader("Building Universal Export");
 
     printf("Compiling IcarianCS...\n");
+
     printf("Writing imports to Header files...\n");
     if (!WriteIcarianCSImportsToHeader("IcarianEngine/IcarianCS"))
     {
@@ -214,7 +215,6 @@ int main(int a_argc, char** a_argv)
 
     icarianCSProject = BuildIcarianCSProject(CBTRUE, CBFALSE);
 
-    // ret = CUBE_CSProject_Compile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", &lines, &lineCount);
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", CUBE_CProjectCompiler_GCC, CBNULL, &lines, &lineCount);
 
     FlushLines(&lines, &lineCount);

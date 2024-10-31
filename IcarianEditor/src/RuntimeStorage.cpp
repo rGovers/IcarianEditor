@@ -175,6 +175,11 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateModel,
 
 static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std::vector<uint32_t>* a_indices, float* a_rSqr)
 {
+    const bool hasNormals = a_mesh->HasNormals();
+    const bool hasTexCoordsA = a_mesh->HasTextureCoords(0);
+    const bool hasTexCoordsB = a_mesh->HasTextureCoords(1);
+    const bool hasColour = a_mesh->HasVertexColors(0);
+
     for (uint32_t i = 0; i < a_mesh->mNumVertices; ++i) 
     {
         Vertex v;
@@ -184,19 +189,25 @@ static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std:
 
         *a_rSqr = glm::max(pos.SquareLength(), *a_rSqr);
 
-        if (a_mesh->HasNormals()) 
+        if (hasNormals) 
         {
             const aiVector3D& norm = a_mesh->mNormals[i];
             v.Normal = glm::vec3(norm.x, -norm.y, norm.z);
         }
 
-        if (a_mesh->HasTextureCoords(0)) 
+        if (hasTexCoordsA) 
         {
             const aiVector3D& uv = a_mesh->mTextureCoords[0][i];
-            v.TexCoords = glm::vec2(uv.x, uv.y);
+            v.TexCoordsA = glm::vec2(uv.x, uv.y);
         }
 
-        if (a_mesh->HasVertexColors(0)) 
+        if (hasTexCoordsB)
+        {
+            const aiVector3D& uv = a_mesh->mTextureCoords[1][i];
+            v.TexCoordsB = glm::vec2(uv.x, uv.y);
+        }
+
+        if (hasColour) 
         {
             const aiColor4D& colour = a_mesh->mColors[0][i];
             v.Color = glm::vec4(colour.r, colour.g, colour.b, colour.a);
