@@ -37,9 +37,35 @@ namespace IcarianEditor.Properties
             }
             }
 
+            if (GUI.FloatField("Emitter Velocity Scale", ref def.EmitterVelocityScale))
+            {
+                def.EmitterVelocityScale = Mathf.Max(0.0f, def.EmitterVelocityScale);
+            }
+
             GUI.UIntField("Max Particles", ref def.MaxParticles);
+            GUI.FloatSliderField("Emitter Ratio", ref def.EmitterRatio, 0.0f, 1.0f);
 
             GUI.BitField("Render Layer", ref def.RenderLayer);
+
+            if (GUI.FloatField("Lifetime", ref def.Lifetime))
+            {
+                def.Lifetime = Mathf.Max(0.0f, def.Lifetime);
+            }
+
+            if (GUI.FloatField("Start Size", ref def.StartSize))
+            {
+                def.StartSize = Mathf.Max(0.0f, def.StartSize);
+            }
+            if (GUI.FloatField("End Size", ref def.EndSize))
+            {
+                def.EndSize = Mathf.Max(0.0f, def.EndSize);
+            }
+
+            GUI.ColorField("Start Color", ref def.StartColor);
+            GUI.ColorField("End Color", ref def.EndColor);
+
+            GUI.Vec3Field("Initial Velocity", ref def.InitialVelocity);
+            GUI.Vec3Field("Gravity", ref def.Gravity);
 
             GUI.Checkbox("Auto Play", ref def.AutoPlay);
             GUI.Checkbox("Burst", ref def.Burst);

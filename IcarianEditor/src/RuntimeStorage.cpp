@@ -82,6 +82,7 @@ RUNTIME_FUNCTION(void, PixelShader, AddImport,
 RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram, 
 {
     RenderProgram program;
+    memset(&program, 0, sizeof(RenderProgram));
     program.VertexShader = a_vertexShader;
     program.PixelShader = a_pixelShader;
     program.ShadowVertexShader = a_shadowVertexShader;
@@ -90,8 +91,6 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     program.PrimitiveMode = (e_PrimitiveMode)a_primitiveMode;
     program.ColorBlendMode = (e_MaterialBlendMode)a_colorBlendMode;
     program.RenderLayer = a_renderLayer;
-    program.Data = nullptr;
-    program.Flags = 0;
 
     if (a_attributes != NULL)
     {
@@ -124,6 +123,30 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
 
     return Instance->GenerateRenderProgram(program);
 }, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, uint32_t a_uboSize, void* a_uboBuffer)
+RUNTIME_FUNCTION(uint32_t, Material, GenerateMeshProgram, 
+{
+    // List initialisers are being drunk so guess zero and init it is
+    RenderProgram program;
+    memset(&program, 0, sizeof(RenderProgram));
+    program.VertexShader = a_meshShader;
+    program.PixelShader = a_pixelShader;
+    program.ShadowVertexShader = a_shadowVertexShader;
+    program.VertexStride = a_vertexStride;
+    program.CullingMode = (e_CullMode)a_cullMode;
+    program.ColorBlendMode = (e_MaterialBlendMode)a_colorBlendMode;
+    program.MaterialMode = MaterialMode_BaseMesh;
+    program.RenderLayer = a_renderLayer;
+
+    if (a_uboData != NULL)
+    {
+        program.UBODataSize = a_uboSize;
+        program.UBOData = malloc((size_t)program.UBODataSize);
+
+        memcpy(program.UBOData, a_uboData, program.UBODataSize);
+    }
+
+    return Instance->GenerateRenderProgram(program);
+}, uint32_t a_meshShader, uint32_t a_pixelShader, uint16_t a_vertexStride, uint32_t a_cullMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, uint32_t a_uboSize, void* a_uboData)
 RUNTIME_FUNCTION(void, Material, DestroyProgram, 
 {
     RenderProgram program = Instance->GetRenderProgram(a_addr);
@@ -673,6 +696,7 @@ RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, PixelShader, AddImport);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateProgram);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateMeshProgram);
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, DestroyProgram);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateModel);
@@ -925,12 +949,37 @@ uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
     ShaderStorage* storage = new ShaderStorage(this);
     program.Data = storage;
 
-    const VertexShader* vShader = GetVertexShader(program.VertexShader);
-    if (vShader != nullptr)
+    switch (program.MaterialMode) 
     {
-        SetRenderBuffers(vShader, program);
+    case MaterialMode_BaseVertex:
+    {
+        const VertexShader* vShader = GetVertexShader(program.VertexShader);
+        if (vShader != nullptr)
+        {
+            SetRenderBuffers(vShader, program);
+        }
+
+        break;
     }
-    
+    case MaterialMode_BaseMesh:
+    {
+        // TODO: Look into this as it seems only Nvidia supports mesh shaders on OpenGL
+        // Not sure if I should move the editor to Vulkan or just have the editor window run in engine as a seperate process
+        // Leaning to the latter
+        // There is also the possibility that AMD does keep their word and add OpenGL support for Mesh shaders
+        // Improving the editor is probably the better choice but over waiting for AMD
+        ICARIAN_ASSERT_MSG(0, "Not implemented yet!");
+
+        break;
+    }
+    default:
+    {
+        Logger::Warning("Generating with invalid material mode");
+
+        break;
+    }
+    }
+
     const PixelShader* pShader = GetPixelShader(program.PixelShader);
     if (pShader != nullptr)
     {

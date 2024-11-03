@@ -185,31 +185,68 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 {
     const RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
 
-    if (program.VertexShader == -1 || program.PixelShader == -1)
+    if (program.PixelShader == -1)
     {
         Instance->m_boundShader = -1;
 
         return;
     }
 
-    VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
-    PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
-
     ShaderProgram* shader = nullptr;
-    const auto iter = Instance->m_shaders.find(a_materialAddr);
-    if (iter == Instance->m_shaders.end())
+
+    const PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
+    Shader* vShader = nullptr;
+
+    switch (program.MaterialMode) 
     {
-        shader = ShaderProgram::GenerateProgram(vShader, pShader);
-        if (shader == nullptr)
+    case MaterialMode_BaseVertex:
+    {
+        if (program.VertexShader == -1)
         {
+            Instance->m_boundShader = -1;
+
             return;
         }
 
-        Instance->m_shaders.emplace(a_materialAddr, shader);
+        vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
+
+        const auto iter = Instance->m_shaders.find(a_materialAddr);
+        if (iter == Instance->m_shaders.end())
+        {
+            shader = ShaderProgram::GenerateProgram((VertexShader*)vShader, pShader);
+            if (shader == nullptr)
+            {
+                return;
+            }
+
+            Instance->m_shaders.emplace(a_materialAddr, shader);
+        }
+        else
+        {
+            shader = iter->second;
+        }
+
+        break;
     }
-    else
+    case MaterialMode_BaseMesh:
     {
-        shader = iter->second;
+        ICARIAN_ASSERT_MSG(0, "Not implemented yet!");
+
+        break;
+    }
+    default:
+    {
+        Logger::Error("Bound with invalid material mode");
+
+        break;
+    }
+    }
+
+    if (shader == nullptr)
+    {
+        Instance->m_boundShader = -1;
+
+        return;
     }
 
     const GLuint handle = shader->GetHandle();
