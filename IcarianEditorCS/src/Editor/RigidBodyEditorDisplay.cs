@@ -19,12 +19,17 @@ namespace IcarianEditor.Editor
             }
 
             RigidBodyDef def = a_component as RigidBodyDef;
-            if (def == null)
+            if (def == null || def.CollisionShape == null)
             {
                 return;
             }
 
             CollisionShapeDef shapeDef = EditorDefLibrary.GenerateDef(def.CollisionShape.DefName) as CollisionShapeDef;
+            if (shapeDef == null)
+            {
+                return;
+            }
+
             ColliderRenderer.DrawCollider(a_transform, shapeDef, Color.Red);
         }
     }
