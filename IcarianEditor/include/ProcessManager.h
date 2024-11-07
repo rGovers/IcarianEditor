@@ -4,6 +4,10 @@
 
 #pragma once
 
+#ifdef WIN32
+#include "Core/WindowsHeaders.h"
+#endif
+
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
@@ -14,43 +18,56 @@
 
 #include "Core/InputBindings.h"
 #include "Core/IPCPipe.h"
-#include "Core/PipeMessage.h"
-#include "Core/WindowsHeaders.h"
 
 #include "EngineInputInteropStructures.h"
+
+struct DMASwapchainImage
+{
+    GLuint MemoryObject;
+    GLuint Texture;
+    GLuint StartSemaphore;
+    GLuint EndSemaphore;
+    uint32_t Width;
+    uint32_t Height;
+    uint64_t Offset;
+};
 
 class ProcessManager
 {
 private:
     static constexpr std::string_view PipeName = "IcarianEngine-IPC";
 
+    uint32_t                       m_curFrame;
+    std::vector<DMASwapchainImage> m_dmaImages;
+
 #if WIN32
-    PROCESS_INFORMATION   m_processInfo;
+    PROCESS_INFORMATION            m_processInfo;
 
     void DestroyProc();
 #else
-    int                   m_process;
+    pid_t                          m_process;
+    int                            m_processFD;
 #endif      
 
-    IcarianCore::IPCPipe* m_pipe;
+    IcarianCore::IPCPipe*          m_pipe;
 
-    bool                  m_resize;
-
-    uint32_t              m_width;
-    uint32_t              m_height;
+    uint32_t                       m_width;
+    uint32_t                       m_height;
                         
-    bool                  m_captureInput;
-    e_CursorState         m_cursorState;
+    bool                           m_resize;
+    bool                           m_dmaMode;
+    bool                           m_captureInput;
+    e_CursorState                  m_cursorState;
 
-    int                   m_updates;
-    double                m_updateTime;
-    double                m_ups;
+    int                            m_updates;
+    double                         m_updateTime;
+    double                         m_ups;
 
-    int                   m_frames;                    
-    double                m_frameTime;
-    double                m_fps;
+    int                            m_frames;                    
+    double                         m_frameTime;
+    double                         m_fps;
                         
-    GLuint                m_tex;
+    GLuint                         m_tex;
     
     void PollMessage(bool a_blockError = false);
 

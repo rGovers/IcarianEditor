@@ -9,6 +9,7 @@
 
 #ifndef WIN32
 #include <csignal>
+#include <sys/syscall.h>
 #include <unistd.h>
 #endif
 
@@ -16,6 +17,7 @@
 #include <filesystem>
 #include <string>
 
+#include "Core/DMASwapBuffer.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Logger.h"
@@ -25,6 +27,25 @@ static std::filesystem::path GetAddr(const std::string_view& a_addr)
 {
     return std::filesystem::temp_directory_path() / a_addr;
 }
+
+#ifndef WIN32
+// Not available in all versions of glibc yet so have to manually invoke syscalls
+// Using wrapper as it takes in va args and want actual arguments
+// NOTE: This should be replaced if it arrives in glibc
+
+// https://man7.org/linux/man-pages/man2/pidfd_open.2.html
+static int sys_pidfd_open(pid_t a_pid, unsigned int a_flags)
+{
+    return (int)syscall(SYS_pidfd_open, a_pid, a_flags);
+}
+
+// NOTE: As it is still new flags is reserved so just pass 0
+// https://man7.org/linux/man-pages/man2/pidfd_getfd.2.html
+static int sys_pidfd_getfd(int a_pidfd, int a_targetfd, unsigned int a_flags)
+{
+    return (int)syscall(SYS_pidfd_getfd, a_pidfd, a_targetfd, a_flags);
+}
+#endif
 
 ProcessManager::ProcessManager()
 {
@@ -43,7 +64,7 @@ ProcessManager::ProcessManager()
     glGenTextures(1, &m_tex);
     glBindTexture(GL_TEXTURE_2D, m_tex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -98,6 +119,9 @@ void ProcessManager::Terminate()
 bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 {
     Logger::Message("Spawning IcarianEngine Instance");
+
+    m_dmaMode = false;
+    m_curFrame = 0;
 
     ProfilerData::Clear();
 
@@ -207,8 +231,20 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             if (m_pipe == nullptr)
             {
                 Logger::Error("Failed to connect to IcarianEngine");
+
                 kill(m_process, SIGTERM);   
                 m_process = -1;
+
+                return false;
+            }
+            
+            // Need to file descriptor for the process for later
+            m_processFD = sys_pidfd_open(m_process, 0);
+            if (m_processFD < 0)
+            {
+                Logger::Error("Failed to get pid fd for IcarianEngine");
+
+                Terminate();
 
                 return false;
             }
@@ -218,6 +254,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
             {
                 Logger::Error("Failed to send resize message to IcarianEngine");
+
                 Terminate();
 
                 return false;
@@ -261,6 +298,8 @@ void ProcessManager::PollMessage(bool a_blockError)
         {
         case IcarianCore::PipeMessageType_PushFrame:
         {
+            m_dmaMode = false;
+
             if (msg.Length == m_width * m_height * 4)
             {
                 glBindTexture(GL_TEXTURE_2D, m_tex);
@@ -283,6 +322,72 @@ void ProcessManager::PollMessage(bool a_blockError)
                 m_frameTime += 0.5;
                 m_frames = 0;
             }
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_PushDMASwapFDBuffer:
+        {
+#ifdef WIN32
+            Logger::Error("DMA FD message on Windows");
+#else
+            m_dmaMode = true;
+
+            const DMASwapBufferFD& swapBuffer = *(DMASwapBufferFD*)msg.Data;
+
+            // I am a fucking idiot it is the process file descriptor it needs not the process id
+            // We need to remap the file descriptors as they will not be valid in this process due to different descriptor tables
+            const int imageFD = sys_pidfd_getfd(m_processFD, swapBuffer.ImageFD, 0);
+            const int startSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.StartSemaphore, 0);
+            const int endSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.EndSemaphore, 0);
+
+            DMASwapchainImage image = 
+            {
+                .Width = swapBuffer.Width,
+                .Height = swapBuffer.Height,
+                .Offset = swapBuffer.Offset,
+            };
+
+            // Hmm weird do not know where the extra data is coming from for swapBuffer.Size but ehh as long as it works
+            glCreateMemoryObjectsEXT(1, &image.MemoryObject);
+            glImportMemoryFdEXT(image.MemoryObject, (GLuint64)swapBuffer.Size + swapBuffer.Offset, GL_HANDLE_TYPE_OPAQUE_FD_EXT, imageFD);
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &image.Texture);
+            glTextureStorageMem2DEXT(image.Texture, 1, GL_RGBA8, (GLsizei)swapBuffer.Width, (GLsizei)swapBuffer.Height, image.MemoryObject, swapBuffer.Offset);
+            glTextureParameteri(image.Texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(image.Texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(image.Texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(image.Texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            glGenSemaphoresEXT(1, &image.StartSemaphore);
+            glImportSemaphoreFdEXT(image.StartSemaphore, GL_HANDLE_TYPE_OPAQUE_FD_EXT, startSemaphore);
+
+            glGenSemaphoresEXT(1, &image.EndSemaphore);
+            glImportSemaphoreFdEXT(image.EndSemaphore, GL_HANDLE_TYPE_OPAQUE_FD_EXT, endSemaphore);
+
+            // Shotgun the semaphores it is fine for it in the first couple frames it will reach a steady state on its own
+            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+            glSignalSemaphoreEXT(image.StartSemaphore, 0, NULL, 1, &image.Texture, &Layout);
+
+            m_dmaImages.emplace_back(image);
+#endif
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_FlushDMASwapFDBuffer:
+        {
+            m_curFrame = 0;
+
+            // for (const DMASwapchainImage& image : m_dmaImages)
+            // {
+            //     glDeleteTextures(1, &image.Texture);
+
+            //     glDeleteMemoryObjectsEXT(1, &image.MemoryObject);
+                
+            //     glDeleteSemaphoresEXT(1, &image.StartSemaphore);
+            //     glDeleteSemaphoresEXT(1, &image.EndSemaphore);
+            // }
+
+            m_dmaImages.clear();
 
             break;
         }
@@ -426,6 +531,27 @@ void ProcessManager::Update()
 
             return;   
         }
+    }
+
+    // TODO: Improve this as the engine is capable of blocking the editor again
+    // Low priority as the majority of code is not run on the render thread but there is somethings
+    // Whole reason I keep it as a seperate process is do that it does not effect the editor
+    // I have no idea if OpenGL will build a command buffer and do it GPU side or it does it will do it on the fly CPU side
+    // The answer is probably depends on the driver
+    if (m_dmaMode && !m_dmaImages.empty())
+    {
+        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+
+        constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+        glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+
+        // glTextureStorageMem2DEXT(img.Texture, 1, GL_RGBA8, (GLsizei)img.Width, (GLsizei)img.Height, img.MemoryObject, img.Offset);
+        glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_tex, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
+
+        m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
+
+        const DMASwapchainImage nextImage = m_dmaImages[m_curFrame];
+        glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
     }
 }
 void ProcessManager::Stop()

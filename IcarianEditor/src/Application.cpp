@@ -36,7 +36,7 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwSetErrorCallback(ErrorCallback);
     
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -292,6 +292,7 @@ void Application::Run()
 
         Update(time - prevTime, time - startTime);
 
+        // ???? Seem to get stuck here ever since I implemented DMA are they interacting and interfering with each other?
         glfwSwapBuffers(m_window);
 
         prevTime = time;
