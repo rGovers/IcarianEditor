@@ -35,10 +35,10 @@ static RuntimeStorage* Instance = nullptr;
 #define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
 
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
-    F(uint32_t, IcarianEngine.Rendering, VertexShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GenerateVertexShader(str); }, MonoString* a_path) \
-    F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
-    F(uint32_t, IcarianEngine.Rendering, PixelShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GeneratePixelShader(str); }, MonoString* a_path) \
-    F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
+    F(uint32_t, IcarianEngine.Rendering.Shaders, VertexShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GenerateVertexShader(str); }, MonoString* a_path) \
+    F(void, IcarianEngine.Rendering.Shaders, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
+    F(uint32_t, IcarianEngine.Rendering.Shaders, PixelShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GeneratePixelShader(str); }, MonoString* a_path) \
+    F(void, IcarianEngine.Rendering.Shaders, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
     \
     F(RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
@@ -692,8 +692,8 @@ RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets
     m_assets = a_assets;
     m_runtime = a_runtime;
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, VertexShader, AddImport);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, PixelShader, AddImport);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Shaders, VertexShader, AddImport);
+    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Shaders, PixelShader, AddImport);
 
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateProgram);
     BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateMeshProgram);
