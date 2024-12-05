@@ -335,6 +335,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     case TargetPlatform_Linux:
     case TargetPlatform_LinuxClang:
     case TargetPlatform_LinuxZig:
+    case TargetPlatform_LinuxSteam:
     {
         CUBE_CProject_AppendSystemIncludePath(&project, "../IcarianEngine/deps/Mono/Linux/include/mono-2.0");
 

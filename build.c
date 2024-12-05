@@ -90,6 +90,10 @@ int main(int a_argc, char** a_argv)
             {
                 targetPlatform = TargetPlatform_LinuxZig;
             }
+            else if (strcmp(platformStr, "linuxsteam") == 0)
+            {
+                targetPlatform = TargetPlatform_LinuxSteam;
+            }
             else
             {
                 printf("Unknown platform: %s\n", platformStr);
@@ -293,6 +297,12 @@ int main(int a_argc, char** a_argv)
 
         break;
     }
+    case TargetPlatform_LinuxSteam:
+    {
+        printf("Steam not allowed in Editor\n");
+
+        return 1;
+    }
     }
 
     icarianEnginePath = CUBE_Path_CreateC("IcarianEngine");
@@ -317,61 +327,61 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    PrintHeader("Building Dependencies");
+    // PrintHeader("Building Dependencies");
 
-    printf("Creating Dependencies projects...\n");
+    // printf("Creating Dependencies projects...\n");
 
-    dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
+    // dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
 
-    printf("Compiling Dependencies...\n");
-    for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
-    {
-        printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
+    // printf("Compiling Dependencies...\n");
+    // for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
+    // {
+    //     printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
 
-        CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
-        CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
+    //     CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
+    //     CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
+    //     ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
 
-        CUBE_String_Destroy(&workingDirectoryStr);
-        CUBE_Path_Destroy(&workingDirectory);
+    //     CUBE_String_Destroy(&workingDirectoryStr);
+    //     CUBE_Path_Destroy(&workingDirectory);
 
-        FlushLines(&lines, &lineCount);
+    //     FlushLines(&lines, &lineCount);
 
-        if (!ret)
-        {
-            printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
+    //     if (!ret)
+    //     {
+    //         printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
 
-            return 1;
-        }
+    //         return 1;
+    //     }
 
-        printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
+    //     printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
 
-        CUBE_CProject_Destroy(&dependencyProjects[i].Project);
-    }
+    //     CUBE_CProject_Destroy(&dependencyProjects[i].Project);
+    // }
 
-    free(dependencyProjects);
+    // free(dependencyProjects);
 
-    PrintHeader("Building IcarianCore");
+    // PrintHeader("Building IcarianCore");
 
-    printf("Creating IcarianCore project...\n");
-    icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+    // printf("Creating IcarianCore project...\n");
+    // icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
 
-    printf("Compiling IcarianCore...\n");
-    ret = CUBE_CProject_MultiCompile(&icarianCoreProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount);
+    // printf("Compiling IcarianCore...\n");
+    // ret = CUBE_CProject_MultiCompile(&icarianCoreProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount);
 
-    FlushLines(&lines, &lineCount);
+    // FlushLines(&lines, &lineCount);
 
-    CUBE_CProject_Destroy(&icarianCoreProject);
+    // CUBE_CProject_Destroy(&icarianCoreProject);
 
-    if (!ret)
-    {
-        printf("Failed to compile IcarianCore\n");
+    // if (!ret)
+    // {
+    //     printf("Failed to compile IcarianCore\n");
 
-        return 1;
-    }
+    //     return 1;
+    // }
 
-    printf("IcarianCore Compiled!\n");
+    // printf("IcarianCore Compiled!\n");
 
     PrintHeader("Building IcarianCS");
     printf("Writing imports to Header files...\n");
@@ -411,37 +421,37 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    printf("Creating IcarianNative Dependencies projects...\n");
-    dependencyProjects = BuildIcarianNativeDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
+    // printf("Creating IcarianNative Dependencies projects...\n");
+    // dependencyProjects = BuildIcarianNativeDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
 
-    printf("Compiling IcarianNative Dependencies...\n");
-    for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
-    {
-        printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
+    // printf("Compiling IcarianNative Dependencies...\n");
+    // for (CBUINT32 i = 0; i < dependencyProjectCount; ++i)
+    // {
+    //     printf("Compiling %s...\n", dependencyProjects[i].Project.Name.Data);
 
-        CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
-        CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
+    //     CUBE_Path workingDirectory = CUBE_Path_CombineC(&icarianEnginePath, dependencyProjects[i].WorkingDirectory);
+    //     CUBE_String workingDirectoryStr = CUBE_Path_ToString(&workingDirectory);
 
-        ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
+    //     ret = CUBE_CProject_MultiCompile(&dependencyProjects[i].Project, compiler, workingDirectoryStr.Data, CBNULL, jobThreads, &lines, &lineCount);
 
-        CUBE_String_Destroy(&workingDirectoryStr);
-        CUBE_Path_Destroy(&workingDirectory);
+    //     CUBE_String_Destroy(&workingDirectoryStr);
+    //     CUBE_Path_Destroy(&workingDirectory);
 
-        FlushLines(&lines, &lineCount);
+    //     FlushLines(&lines, &lineCount);
 
-        if (!ret)
-        {
-            printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
+    //     if (!ret)
+    //     {
+    //         printf("Failed to compile %s\n", dependencyProjects[i].Project.Name.Data);
 
-            return 1;
-        }
+    //         return 1;
+    //     }
 
-        printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
+    //     printf("Compiled %s\n", dependencyProjects[i].Project.Name.Data);
 
-        CUBE_CProject_Destroy(&dependencyProjects[i].Project);
-    }
+    //     CUBE_CProject_Destroy(&dependencyProjects[i].Project);
+    // }
 
-    free(dependencyProjects);
+    // free(dependencyProjects);
 
     printf("Creating IcarianNative project...\n");
     icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE);
@@ -552,6 +562,7 @@ int main(int a_argc, char** a_argv)
     case TargetPlatform_Linux:
     case TargetPlatform_LinuxClang:
     case TargetPlatform_LinuxZig:
+    case TargetPlatform_LinuxSteam:
     {
         CUBE_IO_CopyFileC("IcarianEditor/build/IcarianEditor", "build/IcarianEditor");
         CUBE_IO_CopyFileC("IcarianEngine/IcarianNative/build/IcarianNative", "build/IcarianNative");
