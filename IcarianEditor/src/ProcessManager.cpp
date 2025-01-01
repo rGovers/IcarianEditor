@@ -49,6 +49,8 @@ static int sys_pidfd_getfd(int a_pidfd, int a_targetfd, unsigned int a_flags)
 
 ProcessManager::ProcessManager()
 {
+    m_dmaSwaps = 0;
+
     m_pipe = nullptr;
 
 #if WIN32
@@ -64,7 +66,7 @@ ProcessManager::ProcessManager()
     glGenTextures(1, &m_tex);
     glBindTexture(GL_TEXTURE_2D, m_tex);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -88,6 +90,22 @@ ProcessManager::~ProcessManager()
 #endif
 }
 
+void ProcessManager::FlushDMAImages()
+{
+    m_curFrame = 0;
+    m_dmaSwaps = 0;
+
+    for (const DMASwapchainImage& image : m_dmaImages)
+    {
+        glDeleteTextures(1, &image.Texture);
+        glDeleteMemoryObjectsEXT(1, &image.MemoryObject);
+        
+        glDeleteSemaphoresEXT(1, &image.StartSemaphore);
+        glDeleteSemaphoresEXT(1, &image.EndSemaphore);
+    }
+
+    m_dmaImages.clear();
+}
 void ProcessManager::Terminate()
 {
     if (m_pipe != nullptr)
@@ -121,6 +139,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     Logger::Message("Spawning IcarianEngine Instance");
 
     m_dmaMode = false;
+    m_dmaSwaps = 0;
     m_curFrame = 0;
 
     ProfilerData::Clear();
@@ -375,19 +394,13 @@ void ProcessManager::PollMessage(bool a_blockError)
         }
         case IcarianCore::PipeMessageType_FlushDMASwapFDBuffer:
         {
-            m_curFrame = 0;
+            FlushDMAImages();
 
-            // for (const DMASwapchainImage& image : m_dmaImages)
-            // {
-            //     glDeleteTextures(1, &image.Texture);
-
-            //     glDeleteMemoryObjectsEXT(1, &image.MemoryObject);
-                
-            //     glDeleteSemaphoresEXT(1, &image.StartSemaphore);
-            //     glDeleteSemaphoresEXT(1, &image.EndSemaphore);
-            // }
-
-            m_dmaImages.clear();
+            break;
+        }
+        case IcarianCore::PipeMessageType_DMASwap:
+        {
+            ++m_dmaSwaps;
 
             break;
         }
@@ -504,10 +517,10 @@ void ProcessManager::Update()
         return;
     }
 
-    // Engine only pushes one frame at a time
+    // Engine only pushes one frame at a time in non DMA mode
     // Do it this way so the editor does not get overwhelmed with frame data
     // Cause extreme lag if I do not throttle the push frames ~1 fps
-    // IPCs are only so fast
+    // IPC pipes are only so fast
     if (!m_pipe->Send({ IcarianCore::PipeMessageType_UnlockFrame }))
     {
         Logger::Error("Failed to send unlock frame message to IcarianEngine");
@@ -525,6 +538,8 @@ void ProcessManager::Update()
 
         if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
         {
+            FlushDMAImages();
+
             Logger::Error("Failed to send resize message to IcarianEngine");
 
             Terminate();
@@ -533,25 +548,28 @@ void ProcessManager::Update()
         }
     }
 
-    // TODO: Improve this as the engine is capable of blocking the editor again
-    // Low priority as the majority of code is not run on the render thread but there is somethings
-    // Whole reason I keep it as a seperate process is do that it does not effect the editor
-    // I have no idea if OpenGL will build a command buffer and do it GPU side or it does it will do it on the fly CPU side
-    // The answer is probably depends on the driver
-    if (m_dmaMode && !m_dmaImages.empty())
+    if (m_dmaMode)
     {
-        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+        while (m_dmaSwaps > 0)
+        {
+            IDEFER(--m_dmaSwaps);
 
-        constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-        glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+            const DMASwapchainImage& img = m_dmaImages[m_curFrame];
 
-        // glTextureStorageMem2DEXT(img.Texture, 1, GL_RGBA8, (GLsizei)img.Width, (GLsizei)img.Height, img.MemoryObject, img.Offset);
-        glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_tex, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
+            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+            glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
 
-        m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
+            if (img.Width == m_width && img.Height == m_height)
+            {
+                // glTextureStorageMem2DEXT(img.Texture, 1, GL_RGBA8, (GLsizei)img.Width, (GLsizei)img.Height, img.MemoryObject, img.Offset);
+                glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_tex, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
+            }
 
-        const DMASwapchainImage nextImage = m_dmaImages[m_curFrame];
-        glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+            m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
+
+            const DMASwapchainImage& nextImage = m_dmaImages[m_curFrame];
+            glSignalSemaphoreEXT(nextImage.StartSemaphore, 0, NULL, 1, &nextImage.Texture, &Layout);
+        }
     }
 }
 void ProcessManager::Stop()
@@ -593,6 +611,8 @@ void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
     {
         m_width = a_width;
         m_height = a_height;
+        glBindTexture(GL_TEXTURE_2D, m_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 
         m_resize = true;
     }

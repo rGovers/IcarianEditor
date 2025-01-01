@@ -38,6 +38,7 @@ private:
     static constexpr std::string_view PipeName = "IcarianEngine-IPC";
 
     uint32_t                       m_curFrame;
+    uint32_t                       m_dmaSwaps;
     std::vector<DMASwapchainImage> m_dmaImages;
 
 #if WIN32
@@ -71,6 +72,7 @@ private:
     
     void PollMessage(bool a_blockError = false);
 
+    void FlushDMAImages();
     void Terminate();
 
 protected:
