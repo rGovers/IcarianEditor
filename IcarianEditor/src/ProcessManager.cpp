@@ -182,8 +182,19 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     if (!result)
     {
         Logger::Error("Failed to spawn process: " + std::to_string(GetLastError()));
+
+        return false;
     }
     
+    m_processHandle = OpenProcess(PROCESS_DUP_HANDLE, FALSE, m_processInfo.dwProcessId);
+    if (m_processHandle == INVALID_HANDLE_VALUE)
+    {
+        Logger::Error("Failed to open process: " + std::to_string(GetLastError()));
+        Terminate();
+
+        return false;
+    }
+
     m_pipe = serverPipe->Accept();
     if (m_pipe == nullptr)
     {
@@ -214,7 +225,6 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
             return false;
         }
-        // ICARIAN_DEFER_del(serverPipe);
         IDEFER(delete serverPipe);
 
         // This is a bit odd leaving this here as a note
@@ -236,7 +246,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             // Starting the engine
             // In a weird state cause in a forked process so doing stuff C style
             // Once execution is started state is normal again
-            if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), nullptr) < 0)
+            if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), NULL) < 0)
             {
                 printf("Failed to start process");
                 perror("execl");
@@ -392,7 +402,61 @@ void ProcessManager::PollMessage(bool a_blockError)
 
             break;
         }
+        case IcarianCore::PipeMessageType_PushDMASwapHandleBuffer:
+        {
+#ifndef WIN32
+            Logger::Error("DMA Handle message on non Windows OS");
+#else
+            m_dmaMode = true;
+
+            const DMASwapBufferHandle& swapBuffer = *(DMASwapBufferHandle*)msg.Data;
+
+            HANDLE processHandle = GetCurrentProcess();
+
+            // Different process so need to remap the HANDLE to be valid in the current proccess
+            // Urgh... Had to go through Windows access control documentation and still did not get an answer so fuck it winging it, 
+            // meanwhile Linux was just do they have a Unix domain socket open and sent and recieved data cool they have access
+            // Windows documentation is good until you read other documentation
+            HANDLE imageHandle;
+            HANDLE startSemaphore;
+            HANDLE endSemaphore;
+            DuplicateHandle(m_processHandle, swapBuffer.ImageHandle, processHandle, &imageHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+            DuplicateHandle(m_processHandle, swapBuffer.StartSemaphore, processHandle, &startSemaphore, 0, FALSE, DUPLICATE_SAME_ACCESS);
+            DuplicateHandle(m_processHandle, swapBuffer.EndSemaphore, processHandle, &endSemaphore, 0, FALSE, DUPLICATE_SAME_ACCESS);
+
+            DMASwapchainImage image = 
+            {
+                .Width = swapBuffer.Width,
+                .Height = swapBuffer.Height,
+                .Offset = swapBuffer.Offset,
+            };
+
+            glCreateMemoryObjectsEXT(1, &image.MemoryObject);
+            glImportMemoryWin32HandleEXT(image.MemoryObject, (GLuint64)swapBuffer.Size + swapBuffer.Offset, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, imageHandle);
+
+            glCreateTextures(GL_TEXTURE_2D, 1, &image.Texture);
+            glTextureStorageMem2DEXT(image.Texture, 1, GL_RGBA8, (GLsizei)swapBuffer.Width, (GLsizei)swapBuffer.Height, image.MemoryObject, swapBuffer.Offset);
+            glTextureParameteri(image.Texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(image.Texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(image.Texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(image.Texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            glGenSemaphoresEXT(1, &image.StartSemaphore);
+            glImportSemaphoreWin32HandleEXT(image.StartSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, startSemaphore);
+
+            glGenSemaphoresEXT(1, &image.EndSemaphore);
+            glImportSemaphoreWin32HandleEXT(image.EndSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, endSemaphore);
+
+            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+            glSignalSemaphoreEXT(image.StartSemaphore, 0, NULL, 1, &image.Texture, &Layout);
+
+            m_dmaImages.emplace_back(image);
+#endif
+
+            break;
+        }
         case IcarianCore::PipeMessageType_FlushDMASwapFDBuffer:
+        case IcarianCore::PipeMessageType_FlushDMASwapHandleBuffer:
         {
             FlushDMAImages();
 

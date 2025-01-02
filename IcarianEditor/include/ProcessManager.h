@@ -43,6 +43,7 @@ private:
 
 #if WIN32
     PROCESS_INFORMATION            m_processInfo;
+    HANDLE                         m_processHandle;
 
     void DestroyProc();
 #else
