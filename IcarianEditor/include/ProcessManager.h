@@ -17,9 +17,11 @@
 #include <string_view>
 
 #include "Core/InputBindings.h"
-#include "Core/IPCPipe.h"
+#include "Core/CommunicationPipe.h"
 
 #include "EngineInputInteropStructures.h"
+
+class SSHPipe;
 
 struct DMASwapchainImage
 {
@@ -35,41 +37,43 @@ struct DMASwapchainImage
 class ProcessManager
 {
 private:
-    static constexpr std::string_view PipeName = "IcarianEngine-IPC";
+    uint32_t                        m_curFrame;
+    uint32_t                        m_dmaSwaps;
+    std::vector<DMASwapchainImage>  m_dmaImages;
 
-    uint32_t                       m_curFrame;
-    uint32_t                       m_dmaSwaps;
-    std::vector<DMASwapchainImage> m_dmaImages;
-
-#if WIN32
-    PROCESS_INFORMATION            m_processInfo;
-    HANDLE                         m_processHandle;
+#ifdef WIN32
+    PROCESS_INFORMATION             m_processInfo;
+    HANDLE                          m_processHandle;
 
     void DestroyProc();
 #else
-    pid_t                          m_process;
-    int                            m_processFD;
+    static constexpr char PipeName[] = "IcarianEngine-IPC";
+
+    pid_t                           m_process;
+    int                             m_processFD;
+
+    uint16_t                        m_clientPort;
+    SSHPipe*                        m_remotePipe;
 #endif      
+    IcarianCore::CommunicationPipe* m_ipcPipe;
 
-    IcarianCore::IPCPipe*          m_pipe;
-
-    uint32_t                       m_width;
-    uint32_t                       m_height;
+    uint32_t                        m_width;
+    uint32_t                        m_height;
                         
-    bool                           m_resize;
-    bool                           m_dmaMode;
-    bool                           m_captureInput;
-    e_CursorState                  m_cursorState;
+    bool                            m_resize;
+    bool                            m_dmaMode;
+    bool                            m_captureInput;
+    e_CursorState                   m_cursorState;
 
-    int                            m_updates;
-    double                         m_updateTime;
-    double                         m_ups;
+    int                             m_updates;
+    double                          m_updateTime;
+    double                          m_ups;
 
-    int                            m_frames;                    
-    double                         m_frameTime;
-    double                         m_fps;
+    int                             m_frames;                    
+    double                          m_frameTime;
+    double                          m_fps;
                         
-    GLuint                         m_tex;
+    GLuint                          m_tex;
     
     void PollMessage(bool a_blockError = false);
 
@@ -84,12 +88,20 @@ public:
 
     inline bool IsRunning() const
     {
-#if WIN32
-        return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_pipe != nullptr;
+#ifdef WIN32
+        return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_ipcPipe != nullptr;
 #else
-        return m_process > 0 && m_pipe != nullptr;
+        return m_process > 0 && m_ipcPipe != nullptr && m_ipcPipe->IsAlive();
 #endif
     }
+
+    // This makes me uncomfortable handing over a SSHPipe
+    inline SSHPipe* GetRemotePipe() const
+    {
+        return m_remotePipe;
+    }
+
+    bool IsRemoteConnected() const;
 
     inline GLuint GetImage() const
     {
@@ -133,6 +145,8 @@ public:
     void PushMouseState(uint8_t a_state);
     void PushKeyboardState(const IcarianCore::KeyboardState& a_state);
 
+    bool ConnectRemotePassword(const std::string_view& a_addr, uint16_t a_port, uint16_t a_scpPort, uint16_t a_clientPort);
+
     bool Start(const std::filesystem::path& a_workingDir);
     void Update();
     void Stop();
@@ -140,7 +154,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

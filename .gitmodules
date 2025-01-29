@@ -7,3 +7,6 @@
 [submodule "IcarianEditor/lib/flare-ImGuizmo"]
 	path = IcarianEditor/lib/flare-ImGuizmo
 	url = https://github.com/rGovers/flare-ImGuizmo.git
+[submodule "IcarianEditor/lib/IcarianRemoteProtocol"]
+	path = IcarianEditor/lib/IcarianRemoteProtocol
+	url = https://github.com/rGovers/IcarianRemoteProtocol.git

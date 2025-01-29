@@ -136,26 +136,27 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     CUBE_String_Destroy(&commitDefine);
 
     CUBE_CProject_AppendIncludePaths(&project, 
-        "./include",
+        "./include/",
 
-        "../EditorInterop",
-        "../IcarianEngine/EngineInterop",
+        "../EditorInterop/",
+        "../IcarianEngine/EngineInterop/",
 
-        "../IcarianEngine/IcarianCore/include",
+        "../IcarianEngine/IcarianCore/include/",
 
-        "../IcarianEngine/deps/assimp/include",
-        "../IcarianEngine/deps/gen/assimp",
-        "../IcarianEngine/deps/CUBE/include",
-        "../IcarianEngine/deps/glfw/include",
-        "../IcarianEngine/deps/flare-glm",
-        "../IcarianEngine/deps/flare-stb",
-        "../IcarianEngine/deps/KTX-Software/include",
-        "../IcarianEngine/deps/flare-tinyxml2",
-        "../IcarianEngine/deps/imgui",
-        "../IcarianEngine/deps/glad/include",
+        "../IcarianEngine/deps/assimp/include/",
+        "../IcarianEngine/deps/gen/assimp/",
+        "../IcarianEngine/deps/CUBE/include/",
+        "../IcarianEngine/deps/glfw/include/",
+        "../IcarianEngine/deps/flare-glm/",
+        "../IcarianEngine/deps/flare-stb/",
+        "../IcarianEngine/deps/KTX-Software/include/",
+        "../IcarianEngine/deps/flare-tinyxml2/",
+        "../IcarianEngine/deps/imgui/",
+        "../IcarianEngine/deps/glad/include/",
 
-        "./lib/flare-ImGuizmo",
-        "./lib/implot"
+        "./lib/flare-ImGuizmo/",
+        "./lib/IcarianRemoteProtocol/include/",
+        "./lib/implot/"
     );
 
     CUBE_CProject_AppendSources(&project, 
@@ -228,6 +229,10 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "./src/ShaderProgram.cpp",
         "./src/ShaderStorage.cpp",
         "./src/ShaderStorageObject.cpp",
+        "./src/SocketPipe.cpp",
+        "./src/SSHConnectedModal.cpp",
+        "./src/SSHConnectModal.cpp",
+        "./src/SSHPipe.cpp",
         "./src/TemplateBuilder.cpp",
         "./src/Texture.cpp",
         "./src/TextureSampler.cpp",

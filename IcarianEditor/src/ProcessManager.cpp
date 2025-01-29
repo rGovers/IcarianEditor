@@ -3,6 +3,7 @@
 // License at end of file.
 
 #include "ProcessManager.h"
+#include "Core/IPCPipe.h"
 
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
@@ -18,10 +19,10 @@
 #include <string>
 
 #include "Core/DMASwapBuffer.h"
-#include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Logger.h"
 #include "ProfilerData.h"
+#include "SSHPipe.h"
 
 static std::filesystem::path GetAddr(const std::string_view& a_addr)
 {
@@ -49,9 +50,10 @@ static int sys_pidfd_getfd(int a_pidfd, int a_targetfd, unsigned int a_flags)
 
 ProcessManager::ProcessManager()
 {
+    m_remotePipe = nullptr;
     m_dmaSwaps = 0;
 
-    m_pipe = nullptr;
+    m_ipcPipe = nullptr;
 
 #if WIN32
     WSADATA wsaData = { };
@@ -85,9 +87,19 @@ ProcessManager::~ProcessManager()
 {
     glDeleteTextures(1, &m_tex);
 
+    if (m_remotePipe != nullptr)
+    {
+        delete m_remotePipe;
+    }
+
 #if WIN32    
     WSACleanup();
 #endif
+}
+
+bool ProcessManager::IsRemoteConnected() const
+{
+    return m_remotePipe != nullptr && m_remotePipe->IsAlive();
 }
 
 void ProcessManager::FlushDMAImages()
@@ -108,10 +120,10 @@ void ProcessManager::FlushDMAImages()
 }
 void ProcessManager::Terminate()
 {
-    if (m_pipe != nullptr)
+    if (m_ipcPipe != nullptr)
     {
-        delete m_pipe;
-        m_pipe = nullptr;
+        delete m_ipcPipe;
+        m_ipcPipe = nullptr;
     }
 
 #if WIN32
@@ -132,6 +144,23 @@ void ProcessManager::Terminate()
         m_process = -1;
     }
 #endif
+}
+
+bool ProcessManager::ConnectRemotePassword(const std::string_view& a_addr, uint16_t a_port, uint16_t a_scpPort, uint16_t a_clientPort)
+{
+#ifndef WIN32
+    if (m_remotePipe != nullptr)
+    {
+        return false;
+    }
+
+    m_clientPort = a_clientPort;
+    m_remotePipe = SSHPipe::ConnectPassword(a_addr, a_port, a_scpPort);
+
+    return m_remotePipe != nullptr;
+#endif
+
+    return false;
 }
 
 bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
@@ -248,7 +277,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             // Once execution is started state is normal again
             if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), NULL) < 0)
             {
-                printf("Failed to start process");
+                printf("Failed to start process \n");
                 perror("execl");
                 assert(0);
             }
@@ -256,8 +285,8 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
         else
         {            
             // State is correct cause in the parent process so can use inbuilt stuff
-            m_pipe = serverPipe->Accept();
-            if (m_pipe == nullptr)
+            m_ipcPipe = serverPipe->Accept();
+            if (m_ipcPipe == nullptr)
             {
                 Logger::Error("Failed to connect to IcarianEngine");
 
@@ -279,8 +308,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             }
 
             const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
-
-            if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
+            if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
             {
                 Logger::Error("Failed to send resize message to IcarianEngine");
 
@@ -301,7 +329,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 {
     std::queue<IcarianCore::PipeMessage> messages;
 
-    if (!m_pipe->Receive(&messages))
+    if (!m_ipcPipe->Receive(&messages))
     {
         if (!a_blockError)
         {
@@ -534,9 +562,12 @@ void ProcessManager::PollMessage(bool a_blockError)
             m_processInfo.hThread = INVALID_HANDLE_VALUE;
 #else
             m_process = -1;
-#endif
-            delete m_pipe;
-            m_pipe = nullptr;
+#endif  
+            if (m_ipcPipe != nullptr)
+            {
+                delete m_ipcPipe;
+                m_ipcPipe = nullptr;
+            }
 
             return;
         }
@@ -558,17 +589,17 @@ void ProcessManager::Update()
 {
     if (!IsRunning())
     {
-#if WIN32
+#ifdef WIN32
         m_processInfo.hProcess = INVALID_HANDLE_VALUE;
         m_processInfo.hThread = INVALID_HANDLE_VALUE;
 #else
         m_process = -1;
 #endif
 
-        if (m_pipe != nullptr)
+        if (m_ipcPipe != nullptr)
         {
-            delete m_pipe;
-            m_pipe = nullptr;
+            delete m_ipcPipe;
+            m_ipcPipe = nullptr;
         }
 
         return;
@@ -576,7 +607,7 @@ void ProcessManager::Update()
 
     PollMessage();
 
-    if (m_pipe == nullptr)
+    if (m_ipcPipe == nullptr)
     {
         return;
     }
@@ -585,7 +616,7 @@ void ProcessManager::Update()
     // Do it this way so the editor does not get overwhelmed with frame data
     // Cause extreme lag if I do not throttle the push frames ~1 fps
     // IPC pipes are only so fast
-    if (!m_pipe->Send({ IcarianCore::PipeMessageType_UnlockFrame }))
+    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_UnlockFrame }))
     {
         Logger::Error("Failed to send unlock frame message to IcarianEngine");
 
@@ -600,7 +631,7 @@ void ProcessManager::Update()
 
         const glm::ivec2 size = glm::ivec2((int)m_width, (int)m_height);
 
-        if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
+        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
         {
             FlushDMAImages();
 
@@ -640,7 +671,7 @@ void ProcessManager::Stop()
 {
     Logger::Message("Stopping IcarianEngine Instance");
 
-    if (!m_pipe->Send({ IcarianCore::PipeMessageType_Close }))
+    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Close }))
     {
         Logger::Error("Failed to send close message to IcarianEngine");
 
@@ -685,7 +716,7 @@ void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ IcarianCore::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
+        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
         {
             Logger::Error("Failed to send cursor position message to IcarianEngine");
 
@@ -699,7 +730,7 @@ void ProcessManager::PushMouseState(uint8_t a_state)
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(uint8_t), (char*)&a_state }))
+        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(uint8_t), (char*)&a_state }))
         {
             Logger::Error("Failed to send mouse state message to IcarianEngine");
 
@@ -713,7 +744,7 @@ void ProcessManager::PushKeyboardState(const IcarianCore::KeyboardState& a_state
 {
     if (m_captureInput && IsRunning())
     {
-        if (!m_pipe->Send({ IcarianCore::PipeMessageType_KeyboardState, IcarianCore::KeyboardState::ElementCount, (char*)a_state.ToData() }))
+        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_KeyboardState, IcarianCore::KeyboardState::ElementCount, (char*)a_state.ToData() }))
         {
             Logger::Error("Failed to send keyboard state message to IcarianEngine");
 
@@ -726,7 +757,7 @@ void ProcessManager::PushKeyboardState(const IcarianCore::KeyboardState& a_state
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -10,6 +10,7 @@
 #include "Core/InputBindings.h"
 #include "FlareImGui.h"
 #include "Modals/ErrorModal.h"
+#include "Modals/SSHConnectModal.h"
 #include "ProcessManager.h"
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
@@ -252,7 +253,7 @@ void GameWindow::Update(double a_delta)
     ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
 
     const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
-    constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);
+    constexpr glm::vec2 WinSize = glm::vec2(90.0f, 40.0f);
     constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
 
     const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
@@ -284,11 +285,18 @@ void GameWindow::Update(double a_delta)
             m_app->SetCursorState(CursorState_Normal);
         }
     }
+
+    ImGui::SameLine();
+
+    if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Stop.png", glm::vec2(25.0f), false))
+    {
+        m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
+    }
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
