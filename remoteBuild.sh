@@ -13,7 +13,7 @@ if [ -d "build" ]; then
     rm -rf build
 fi
 
-source "build.sh" "$@" --platform=windows --remote --disable-mod -R
+source "build.sh" "$@" --platform=windows --remote --disable-mod --enable-profiler -R
 if [ $? -ne 0 ]; then
     echo "Windows remote build failed"
     exit 1
@@ -29,7 +29,7 @@ if [ -d "build" ]; then
     rm -rf build
 fi
 
-source "build.sh" "$@" --platform=linux --remote --disable-mod -R
+source "build.sh" "$@" --platform=linux --remote --disable-mod --enable-profiler -R
 if [ $? -ne 0 ]; then
     echo "Linux remote build failed"
     exit 1

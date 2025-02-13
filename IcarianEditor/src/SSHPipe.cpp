@@ -576,7 +576,7 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::str
                     auth = true;
                 }
 
-                printf("%s \n", e.c_str());
+                // printf("%s \n", e.c_str());
             }
 
             const std::vector<std::string> readLines = pipe->Read(500);
