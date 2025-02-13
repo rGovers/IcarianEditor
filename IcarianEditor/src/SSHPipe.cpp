@@ -3,6 +3,8 @@
 // License at end of file.
 
 #include "SSHPipe.h"
+#include "Core/IcarianDefer.h"
+#include "Core/IcarianError.h"
 
 #include <cassert>
 #include <cstring>
@@ -15,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-#include "Core/IcarianError.h"
+#include "Core/IcarianAssert.h"
 #include "Logger.h"
 
 SSHPipe::SSHPipe()
@@ -38,6 +40,7 @@ SSHPipe::~SSHPipe()
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+#ifndef WIN32
     if (IsAlive())
     {
         kill(m_process, SIGTERM);
@@ -55,6 +58,7 @@ SSHPipe::~SSHPipe()
     {
         close(m_writePipe);
     }
+#endif
 }
 
 void SSHPipe::FindHostOS()
@@ -147,25 +151,35 @@ void SSHPipe::FindHostArchitecture()
         break;
     }
     case SSHHostOS_WindowsPowerCMD:
-    case SSHHostOS_WindowsPowershell:
     {
-        // In a pseudo terminal so only have 24 lines so need to trim it on the other side hence findstr
-        // If we do not the head of the command will get cuttoff
-        Send("systeminfo | findstr /C:\"System Type:\"");
+        // Windows is annoying so have to support both Powershell and CMD
+        Send("echo %PROCESSOR_ARCHITECTURE%");
 
-        // This command can take a while but cannot seem to find a better way as others seem to rely upon .NET(Fuck you PowerShell)
-        // Fuck you Windows and a fucking 5 second timeout WTF
-        const std::vector<std::string> readLines = Read(5000);
+        const std::vector<std::string> readLines = Read(500);
         for (const std::string& s : readLines)
         {
-            if (s.find("System Type:") != std::string::npos)
+            if (s.find("AMD64") != std::string::npos)
             {
-                if (s.find("x64") != std::string::npos)
-                {
-                    m_hostArchitecture = SSHHostArchitecture_AMD64;
+                m_hostArchitecture = SSHHostArchitecture_AMD64;
 
-                    return;
-                }
+                return;
+            }
+        }
+
+        break;
+    }
+    case SSHHostOS_WindowsPowershell:
+    {
+        Send("echo $env:PROCESSOR_ARCHITECTURE");
+
+        const std::vector<std::string> readLines = Read(500);
+        for (const std::string& s : readLines)
+        {
+            if (s.find("AMD64") != std::string::npos)
+            {
+                m_hostArchitecture = SSHHostArchitecture_AMD64;
+
+                return;
             }
         }
 
@@ -310,8 +324,19 @@ std::vector<std::string> SSHPipe::Read(uint32_t a_timeout)
 
         IDEFER(m_readBuffer.erase(0, pos + 1));
 
-        const std::string s = m_readBuffer.substr(0, pos + 1);
-        if (s != "\n" && s != "\r\n")
+        std::string s;
+
+        const size_t rPos = m_readBuffer.find("\r");
+        if (rPos != std::string::npos && rPos < pos)
+        {
+            s = m_readBuffer.substr(0, rPos);
+        }
+        else
+        {
+            s = m_readBuffer.substr(0, pos);
+        }
+
+        if (!s.empty())
         {
             lines.push_back(s);
         }
@@ -408,9 +433,40 @@ bool SSHPipe::Send(const char* a_data)
     return write(m_writePipe, TerminateStr, TerminateStrLen) != TerminateStrLen;
 }
 
-SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_connectionAddr, uint16_t a_port, uint16_t a_scpPort)
+
+static std::string FormatWindowsPathStr(const std::string_view& a_str)
+{
+    const size_t endPos = a_str.find_last_of('/');
+
+    if (endPos == std::string::npos)
+    {
+        return std::string();
+    }
+
+    // Get and reformat the string to a valid path format because Windows is weird
+    std::string str = std::string(a_str.substr(0, endPos));
+    while (true) 
+    {
+        constexpr char SlashStr[] = "\\";
+        constexpr uint32_t SlashStrLen = sizeof(SlashStr) - 1;
+
+        const size_t pos = str.find(SlashStr);
+        if (pos == std::string::npos)
+        {
+            break;
+        }
+
+        str.replace(pos, SlashStrLen, "/");
+    }
+
+    return str;
+}
+
+SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress)
 {
     IERRBLOCK;
+
+    const std::string userAddr = std::string(a_user) + "@" + std::string(a_addr);
 
 #ifndef WIN32
     int readPipes[2];
@@ -465,25 +521,29 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_connectionAddr, uint
 
         // Technically gets leaked as the process is about to be changed but OS should handle it
         // Today I found out argument order does matter and you can get stuck connecting when they are not urgh...
-        const std::string connectionStr = "ssh " + 
-            std::string(a_connectionAddr) + 
+        std::string sshStr = "ssh " + 
+            std::string(userAddr) + 
             " -tt" 
             " -v"
-            " -o ControlMaster=auto"
-            " -o ControlPath=~/.ssh/control:%h:%p:%r"
+            " -M"
+            " -S ~/.ssh/IcarianSSHControl:%h:%p:%r"
             " -o NumberOfPasswordPrompts=1"
             " -o PubkeyAuthentication=no"
+            " -o ControlPersist=1m"
             " -o PreferredAuthentications=password" + 
-            " -p " + std::to_string(a_port) +
-            " -R " + std::to_string(a_scpPort) + ":localhost:" + std::to_string(a_port);
+            " -p " + std::to_string(a_port);
+
+        if (a_compress)
+        {
+            sshStr += " -C";
+        }
 
         // In a weird state because of fork so do stuff C style
-        if (execl("/bin/sh", "/bin/sh", "-c", connectionStr.c_str(), NULL) < 0)
-        {
-            printf("Failed to start ssh process \n");
-            perror("execl");
-            assert(0);
-        }
+        execl("/bin/sh", "/bin/sh", "-c", sshStr.c_str(), NULL);
+
+        printf("Failed to start ssh process \n");
+        perror("execl");
+        assert(0);
     }
     else
     {
@@ -495,8 +555,9 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_connectionAddr, uint
         IERRDEFER(delete pipe);
 
         pipe->m_process = process;
-        pipe->m_addr = std::string(a_connectionAddr);
-        pipe->m_scpPort = a_scpPort;
+        pipe->m_sshPort = a_port;
+        pipe->m_addr = a_addr;
+        pipe->m_user = a_user;
         pipe->m_readPipe = readPipes[0];
         pipe->m_errorPipe = errPipes[0];
         pipe->m_writePipe = writePipes[1];
@@ -556,6 +617,58 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_connectionAddr, uint
         }
 
         IERRCHECKRET(pipe->m_hostArchitecture != SSHHostArchitecture_Unknown, nullptr);
+
+        pipe->Flush();
+        switch (pipe->m_hostOS)
+        {
+        case SSHHostOS_WindowsPowerCMD:
+        {
+            // Getting weird formating so just put a slash at the end
+            pipe->Send("echo %TEMP%/");
+
+            const std::vector<std::string> lines = pipe->Read(500);
+            IERRCHECKRET(lines.size() >= 2, nullptr);
+
+            const std::string lineStr = FormatWindowsPathStr(lines[1]);
+            IERRCHECKRET(!lineStr.empty(), nullptr);
+
+            pipe->m_tempPath = std::filesystem::path(lineStr);
+
+            break;
+        }
+        case SSHHostOS_WindowsPowershell:
+        {
+            pipe->Send("echo $env:TEMP/");
+
+            const std::vector<std::string> lines = pipe->Read(500);
+            IERRCHECKRET(lines.size() >= 2, nullptr);
+
+            const std::string lineStr = FormatWindowsPathStr(lines[1]);
+            IERRCHECKRET(!lineStr.empty(), nullptr);
+
+            pipe->m_tempPath = std::filesystem::path(lineStr);
+
+            break;
+        }
+        case SSHHostOS_Linux:
+        {
+            pipe->Send("mktemp -d");
+
+            const std::vector<std::string> lines = pipe->Read(500);
+            IERRCHECKRET(lines.size() >= 2, nullptr);
+            IERRCHECKRET(!lines[1].empty(), nullptr);
+
+            pipe->m_tempPath = std::filesystem::path(lines[1]);
+
+            break;
+        }
+        default:
+        {
+            ICARIAN_ASSERT(0);
+
+            break;
+        }
+        }
 
         return pipe;
     }

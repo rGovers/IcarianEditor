@@ -6,12 +6,13 @@
 
 #include "Modals/Modal.h"
 
+class SCPPipe;
 class SSHPipe;
 
 class SSHConnectedModal : public Modal
 {
 private:
-    SSHPipe* m_pipe;
+    SCPPipe*  m_scpPipe;
 
 protected:
 

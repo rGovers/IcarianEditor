@@ -12,6 +12,8 @@
 #define STBI_NO_PNM
 #include <stb_image.h>
 
+#include <enet/enet.h>
+
 #define CUBE_IMPLEMENTATION
 #ifndef NDEBUG
 #define CUBE_PRINT_COMMANDS
@@ -19,6 +21,7 @@
 #include "CUBE/CUBE.h"
 
 #include "AppMain.h"
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 
 #define ICARIANEDITOR_VERSION_STRX(x) #x
@@ -35,6 +38,9 @@ int main(int a_argc, char* a_argv[])
 {
     PrintVersion();
 
+    enet_initialize();
+    IDEFER(enet_deinitialize());
+    
     srand(time(NULL));
 
     AppMain app;
@@ -45,7 +51,7 @@ int main(int a_argc, char* a_argv[])
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

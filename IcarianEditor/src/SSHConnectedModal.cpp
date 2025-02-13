@@ -4,22 +4,108 @@
 
 #include "Modals/SSHConnectedModal.h"
 
+#include <filesystem>
 #include <imgui.h>
 
+#include "Core/IcarianAssert.h"
+#include "Core/IcarianError.h"
+#include "SCPPipe.h"
 #include "SSHPipe.h"
+
+static std::string FormatWindowsStr(const std::string_view& a_str)
+{
+    const size_t endPos = a_str.find_last_of('/');
+
+    if (endPos == std::string::npos)
+    {
+        return std::string();
+    }
+
+    // Get and reformat the string to a valid path format because Windows is weird
+    std::string str = std::string(a_str.substr(0, endPos));
+    while (true) 
+    {
+        constexpr char SlashStr[] = "\\";
+        constexpr uint32_t SlashStrLen = sizeof(SlashStr) - 1;
+
+        const size_t pos = str.find(SlashStr);
+        if (pos == std::string::npos)
+        {
+            break;
+        }
+
+        str.replace(pos, SlashStrLen, "/");
+    }
+
+    return str;
+}
 
 SSHConnectedModal::SSHConnectedModal(SSHPipe* a_pipe) : Modal("Syncing SSH")
 {
-    m_pipe = a_pipe;
+    IERRBLOCK;
+
+    m_scpPipe = nullptr;
+
+    IERRDEFER(
+    if (m_scpPipe != nullptr)
+    {
+        delete m_scpPipe;
+        m_scpPipe = nullptr;
+    });
+
+    IERRCHECK(a_pipe != nullptr);
+    IERRCHECK(a_pipe->IsAlive());
+
+    const bool compress = a_pipe->IsCompressed();
+    const uint16_t port = a_pipe->GetSSHPort();
+    const std::string user = a_pipe->GetUser();
+    const std::string addr = a_pipe->GetAddr();
+
+    const std::filesystem::path tmpPath = a_pipe->GetTempDirectory();
+    const std::filesystem::path remotePath = tmpPath / "IcarianRemote";
+
+    const std::filesystem::path cwd = std::filesystem::current_path();
+
+    std::filesystem::path srcPath;
+
+    switch (a_pipe->GetHostOS()) 
+    {
+    case SSHHostOS_WindowsPowerCMD:
+    case SSHHostOS_WindowsPowershell:
+    {
+        srcPath = cwd / "RemoteFiles" / "Windows" / "bin" / ".";
+
+        break;
+    }
+    case SSHHostOS_Linux:
+    {
+        srcPath = cwd / "RemoteFiles" / "Linux" / "bin" / ".";
+
+        break;
+    }
+    default:
+    {
+        ICARIAN_ASSERT(0);
+
+        break;
+    }
+    }
+
+    m_scpPipe = SCPPipe::Create(user, addr, srcPath, remotePath, port, compress);
+    IERRCHECK(m_scpPipe != nullptr);
+    IERRCHECK(m_scpPipe->IsAlive());
 }
 SSHConnectedModal::~SSHConnectedModal()
 {
-    
+    if (m_scpPipe != nullptr)
+    {
+        delete m_scpPipe;
+    }   
 }
 
 bool SSHConnectedModal::Update()
 {
-    if (!m_pipe->IsAlive())
+    if (m_scpPipe == nullptr || !m_scpPipe->IsAlive())
     {
         return false;
     }

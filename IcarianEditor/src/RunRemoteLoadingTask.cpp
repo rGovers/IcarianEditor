@@ -2,48 +2,23 @@
 // 
 // License at end of file.
 
-#pragma once
+#include "LoadingTasks/RunRemoteLoadingTask.h"
 
-#include <cstdint>
-#include <string_view>
+#include "ProcessManager.h"
 
-#include "Core/CommunicationPipe.h"
-#include "RemotePipeMessage.h"
-
-class SocketPipe : public IcarianCore::CommunicationPipe
+RunRemoteLoadingTask::RunRemoteLoadingTask(ProcessManager* a_process)
 {
-private:
-    constexpr static RemotePipeMessage MalformedMessage =
-    {
-        .Type = RemoteMessageType_Malformed
-    };
+    m_process = a_process;
+}
+RunRemoteLoadingTask::~RunRemoteLoadingTask()
+{
 
-    constexpr static RemotePipeMessage PongMessage =
-    {
-        .Type = RemoteMessageType_Pong
-    };
+}
 
-    RemotePipeMessage m_lastPipeMessage;
-    uint32_t          m_retries;
-
-#ifndef WIN32
-    int               m_socket;
-#endif
-
-    SocketPipe();
-
-protected:
-
-public:
-    virtual ~SocketPipe();
-
-    bool IsAlive() const;
-    
-    // void SendRemote(const RemotePipeMessage& a_msg);
-    // bool ReceiveRemote(RemotePipeMessage* a_msg, uint32_t a_timeout = 0);
-
-    static SocketPipe* Connect(const std::string_view& a_addr, uint16_t a_port, const std::string_view& a_passcode);
-};
+void RunRemoteLoadingTask::Run()
+{
+    m_process->StartRemote();
+}
 
 // MIT License
 // 

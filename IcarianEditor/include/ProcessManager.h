@@ -60,6 +60,7 @@ private:
     uint32_t                        m_width;
     uint32_t                        m_height;
                         
+    bool                            m_remoteMode;
     bool                            m_resize;
     bool                            m_dmaMode;
     bool                            m_captureInput;
@@ -86,14 +87,7 @@ public:
     ProcessManager();
     ~ProcessManager();
 
-    inline bool IsRunning() const
-    {
-#ifdef WIN32
-        return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_ipcPipe != nullptr;
-#else
-        return m_process > 0 && m_ipcPipe != nullptr && m_ipcPipe->IsAlive();
-#endif
-    }
+    bool IsRunning() const;
 
     // This makes me uncomfortable handing over a SSHPipe
     inline SSHPipe* GetRemotePipe() const
@@ -145,10 +139,13 @@ public:
     void PushMouseState(uint8_t a_state);
     void PushKeyboardState(const IcarianCore::KeyboardState& a_state);
 
-    bool ConnectRemotePassword(const std::string_view& a_addr, uint16_t a_port, uint16_t a_scpPort, uint16_t a_clientPort);
+    bool ConnectRemotePassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress);
 
     bool Start(const std::filesystem::path& a_workingDir);
+    bool StartRemote();
+    
     void Update();
+
     void Stop();
 };
 

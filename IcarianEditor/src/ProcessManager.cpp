@@ -3,7 +3,6 @@
 // License at end of file.
 
 #include "ProcessManager.h"
-#include "Core/IPCPipe.h"
 
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
@@ -17,9 +16,13 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <thread>
 
 #include "Core/DMASwapBuffer.h"
+#include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IPCPipe.h"
+#include "Core/SocketPipe.h"
 #include "Logger.h"
 #include "ProfilerData.h"
 #include "SSHPipe.h"
@@ -55,7 +58,7 @@ ProcessManager::ProcessManager()
 
     m_ipcPipe = nullptr;
 
-#if WIN32
+#ifdef WIN32
     WSADATA wsaData = { };
     ICARIAN_ASSERT_MSG_R(WSAStartup(MAKEWORD(2, 2), &wsaData) == 0, "Failed to start WSA");
 #endif
@@ -92,8 +95,22 @@ ProcessManager::~ProcessManager()
         delete m_remotePipe;
     }
 
-#if WIN32    
+#ifdef WIN32    
     WSACleanup();
+#endif
+}
+
+bool ProcessManager::IsRunning() const
+{
+    if (m_remoteMode)
+    {
+        return m_ipcPipe != nullptr && m_ipcPipe->IsAlive();
+    }
+
+#ifdef WIN32
+    return m_processInfo.hProcess != INVALID_HANDLE_VALUE && m_processInfo.hThread != INVALID_HANDLE_VALUE && m_ipcPipe != nullptr;
+#else
+    return m_process > 0 && m_ipcPipe != nullptr && m_ipcPipe->IsAlive();
 #endif
 }
 
@@ -126,7 +143,7 @@ void ProcessManager::Terminate()
         m_ipcPipe = nullptr;
     }
 
-#if WIN32
+#ifdef WIN32
     if (m_processInfo.hProcess != INVALID_HANDLE_VALUE)
     {
         CloseHandle(m_processInfo.hProcess);
@@ -146,7 +163,7 @@ void ProcessManager::Terminate()
 #endif
 }
 
-bool ProcessManager::ConnectRemotePassword(const std::string_view& a_addr, uint16_t a_port, uint16_t a_scpPort, uint16_t a_clientPort)
+bool ProcessManager::ConnectRemotePassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress)
 {
 #ifndef WIN32
     if (m_remotePipe != nullptr)
@@ -155,7 +172,7 @@ bool ProcessManager::ConnectRemotePassword(const std::string_view& a_addr, uint1
     }
 
     m_clientPort = a_clientPort;
-    m_remotePipe = SSHPipe::ConnectPassword(a_addr, a_port, a_scpPort);
+    m_remotePipe = SSHPipe::ConnectPassword(a_user, a_addr, a_port, a_compress);
 
     return m_remotePipe != nullptr;
 #endif
@@ -165,6 +182,11 @@ bool ProcessManager::ConnectRemotePassword(const std::string_view& a_addr, uint1
 
 bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 {
+    if (m_ipcPipe != nullptr)
+    {
+        return false;
+    }
+
     Logger::Message("Spawning IcarianEngine Instance");
 
     m_dmaMode = false;
@@ -177,7 +199,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     m_cursorState = CursorState_Normal;
 
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
-#if WIN32
+#ifdef WIN32
     const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(GetAddr(PipeName).string());
     if (serverPipe == nullptr)
     {
@@ -242,6 +264,8 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
         return false;
     }
+
+    m_remoteMode = false;
 
     return true;
 #else
@@ -317,12 +341,107 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
                 return false;
             }
 
+            m_remoteMode = false;
+
             return true;
         }
     }
 #endif
 
     return false;
+}
+bool ProcessManager::StartRemote()
+{
+    if (m_ipcPipe != nullptr)
+    {
+        return false;
+    }
+
+    if (m_remotePipe == nullptr || !m_remotePipe->IsAlive())
+    {
+        return false;
+    }
+
+    Logger::Message("Spawning Remote IcarianEngine Instance");
+
+    m_process = -1;
+
+    m_dmaMode = false;
+    m_dmaSwaps = 0;
+    m_curFrame = 0;
+
+    ProfilerData::Clear();
+
+    m_captureInput = true;
+    m_cursorState = CursorState_Normal;
+
+    const std::string addr = m_remotePipe->GetAddr();
+
+    const std::filesystem::path tempPath = m_remotePipe->GetTempDirectory();
+    const std::filesystem::path path = tempPath / "IcarianRemote";
+
+    const std::string pathStr = path.generic_string();
+    const std::string cmd = "cd \"" + pathStr + "\"";
+
+    m_remotePipe->Send(cmd.c_str());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    const std::string args = "--remote-headless"
+        " --remote-port=" + std::to_string(m_clientPort);
+
+    switch (m_remotePipe->GetHostOS()) 
+    {
+    case SSHHostOS_WindowsPowerCMD:
+    case SSHHostOS_WindowsPowershell:
+    {
+        const std::string cmdStr = "IcarianNative.exe " + args;
+
+        m_remotePipe->Send(cmdStr.c_str());
+
+        break;
+    }
+    case SSHHostOS_Linux:
+    {
+        const std::filesystem::path exePath = path / "IcarianNative";
+
+        const std::string pathStr = exePath.generic_string();
+
+        const std::string cmdStr = pathStr + " " + args;
+
+        m_remotePipe->Send(cmdStr.c_str());
+
+        break;
+    }
+    default:
+    {
+        ICARIAN_ASSERT(0);
+
+        break;
+    }
+    }
+
+    m_ipcPipe = IcarianCore::SocketPipe::Connect(addr, m_clientPort);
+    if (m_ipcPipe == nullptr)
+    {
+        Logger::Error("Failed to create connection to IcarianEngine");
+
+        return false;
+    }
+
+    const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
+    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
+    {
+        Logger::Error("Failed to send resize message to IcarianEngine");
+
+        Terminate();
+
+        return false;
+    }
+
+    m_remoteMode = true;
+
+    return true;
 }
 
 void ProcessManager::PollMessage(bool a_blockError)
@@ -557,7 +676,7 @@ void ProcessManager::PollMessage(bool a_blockError)
         }
         case IcarianCore::PipeMessageType_Close:
         {
-#if WIN32
+#ifdef WIN32
             m_processInfo.hProcess = INVALID_HANDLE_VALUE;
             m_processInfo.hThread = INVALID_HANDLE_VALUE;
 #else

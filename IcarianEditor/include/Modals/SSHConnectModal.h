@@ -18,10 +18,11 @@ private:
     AppMain*        m_app;
     ProcessManager* m_processManager;
 
-    char            m_addr[1024];
+    char            m_addr[256];
+    char            m_user[256];
     int             m_port;
-    int             m_scpPort;
     int             m_clientPort;
+    bool            m_compress;
 
 protected:
 

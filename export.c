@@ -142,7 +142,7 @@ CBBOOL BuildPlatform(const CUBE_Path* a_enginePath, e_TargetPlatform a_platform,
 
     printf("Compiling IcarianNative...\n");
 
-    icarianNativeProject = BuildIcarianNativeProject(a_platform, BuildConfiguration_Release, CBFALSE, CBFALSE, CBFALSE);
+    icarianNativeProject = BuildIcarianNativeProject(a_platform, BuildConfiguration_Release, CBFALSE, CBFALSE, CBFALSE, CBFALSE);
 
     ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, a_jobThreads, &lines, &lineCount);
 

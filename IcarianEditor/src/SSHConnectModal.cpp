@@ -7,6 +7,7 @@
 #include <imgui.h>
 
 #include "AppMain.h"
+#include "FlareImGui.h"
 #include "Modals/ErrorModal.h"
 #include "Modals/SSHConnectedModal.h"
 #include "ProcessManager.h"
@@ -16,12 +17,14 @@ SSHConnectModal::SSHConnectModal(AppMain* a_app, ProcessManager* a_processManage
     m_app = a_app;
     m_processManager = a_processManager;
 
+    m_user[0] = 0;
     m_addr[0] = 0;
     m_port = 22;
 
+    m_compress = true;
+
     // *Crushes Scouter*
-    m_clientPort = 9002;
-    m_scpPort = 9001;
+    m_clientPort = 9001;
 }
 SSHConnectModal::~SSHConnectModal()
 {
@@ -30,26 +33,33 @@ SSHConnectModal::~SSHConnectModal()
 
 bool SSHConnectModal::Update()
 {
-    ImGui::InputText("Address", m_addr, sizeof(m_addr));
-    ImGui::DragInt("SSH Port", &m_port, 1.0f, 0, 65535);
-    ImGui::DragInt("SCP Port", &m_scpPort, 1.0f, 0, 65535);
+    FlareImGui::Label("User");
+    ImGui::SameLine();
+    ImGui::InputText("##User", m_user, sizeof(m_user));
+
+    FlareImGui::Label("Address");
+    ImGui::SameLine();
+    ImGui::InputText("##Address", m_addr, sizeof(m_addr));
+
+    FlareImGui::Label("SSH Port");
+    ImGui::SameLine();
+    ImGui::DragInt("##SSHPort", &m_port, 1.0f, 0, 65535);
+
+    FlareImGui::Label("Compress");
+    ImGui::SameLine();
+    ImGui::Checkbox("##Compress", &m_compress);
 
     ImGui::Separator();
 
-    ImGui::DragInt("Client Port", &m_clientPort, 1.0f, 0, 65535);
+    FlareImGui::Label("Client Port");
+    ImGui::SameLine();
+    ImGui::DragInt("##ClientPort", &m_clientPort, 1.0f, 0, 65535);
 
     if (ImGui::Button("Connect"))
     {
         if (m_port > 65535 || m_port < 0)
         {
             m_app->PushModal(new ErrorModal("Invalid SSH Port"));
-
-            return true;
-        }
-
-        if (m_scpPort > 65535 || m_scpPort < 0)
-        {
-            m_app->PushModal(new ErrorModal("Invalid SCP Port"));
 
             return true;
         }
@@ -61,7 +71,7 @@ bool SSHConnectModal::Update()
             return true;
         }
 
-        if (!m_processManager->ConnectRemotePassword(m_addr, (uint16_t)m_port, (uint16_t)m_scpPort, (uint16_t)m_clientPort))
+        if (!m_processManager->ConnectRemotePassword(m_user, m_addr, (uint16_t)m_port, (uint16_t)m_clientPort, m_compress))
         {
             m_app->PushModal(new ErrorModal("Failed to connect"));
 

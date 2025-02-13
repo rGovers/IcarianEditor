@@ -4,25 +4,24 @@
 
 #pragma once
 
-#include <filesystem>
+#include "LoadingTask.h"
 
-class SCPConnection
+class ProcessManager;
+class Project;
+
+class RemoteBuildLoadingTask : public LoadingTask
 {
 private:
-#ifndef WIN32
-    pid_t m_process;
-#endif
-
-    SCPConnection();
+    ProcessManager* m_process;
+    Project*        m_project;
 
 protected:
 
-public: 
-    ~SCPConnection();
+public:
+    RemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project);
+    virtual ~RemoteBuildLoadingTask();
 
-    bool IsAlive() const;
-
-    static SCPConnection* Create(const std::filesystem::path& a_srcPath, const std::filesystem::path& a_dstPath, uint16_t a_port);
+    virtual void Run();
 };
 
 // MIT License

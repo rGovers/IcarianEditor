@@ -184,7 +184,7 @@ int main(int a_argc, char** a_argv)
 
             free(engineDependencies);
 
-            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE);
+            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE, CBFALSE);
             CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
             projects[offset++] = icarianNativeProject;
 
@@ -444,7 +444,7 @@ int main(int a_argc, char** a_argv)
     free(dependencyProjects);
 
     printf("Creating IcarianNative project...\n");
-    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE);
+    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE, CBFALSE);
 
     printf("Compiling IcarianNative...\n");
     ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount);

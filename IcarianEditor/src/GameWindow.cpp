@@ -9,7 +9,13 @@
 #include "AppMain.h"
 #include "Core/InputBindings.h"
 #include "FlareImGui.h"
+#include "LoadingTasks/GenerateConfigLoadingTask.h"
+#include "LoadingTasks/RemoteBuildLoadingTask.h"
+#include "LoadingTasks/RunRemoteLoadingTask.h"
+#include "LoadingTasks/SerializeAssetsLoadingTask.h"
+#include "LoadingTasks/SyncRemoteBuildLoadingTask.h"
 #include "Modals/ErrorModal.h"
+#include "Modals/LoadingModal.h"
 #include "Modals/SSHConnectModal.h"
 #include "ProcessManager.h"
 #include "Project.h"
@@ -146,10 +152,11 @@ static constexpr ImGuiKey GameKeyTable[] =
     ImGuiKey_Menu
 };
 
-GameWindow::GameWindow(AppMain* a_app, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
 
+    m_library = a_library;
     m_processManager = a_processManager;
     m_runtimeManager = a_runtime;
     m_project = a_project;
@@ -253,7 +260,11 @@ void GameWindow::Update(double a_delta)
     ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
 
     const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+#ifdef WIN32
+    constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);
+#else
     constexpr glm::vec2 WinSize = glm::vec2(90.0f, 40.0f);
+#endif
     constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
 
     const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
@@ -286,12 +297,47 @@ void GameWindow::Update(double a_delta)
         }
     }
 
+#ifndef WIN32
     ImGui::SameLine();
 
-    if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Stop.png", glm::vec2(25.0f), false))
+    if (m_processManager->IsRemoteConnected())
     {
-        m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
+        if (FlareImGui::ImageSwitchButton("Remote Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
+        {
+            if (running)
+            {
+                const std::filesystem::path cachePath = m_project->GetCachePath();
+                const std::filesystem::path remotePath = cachePath / "RemoteCore";
+
+                const std::string name = m_project->GetName();
+
+                LoadingTask* tasks[] = 
+                {
+                    new RemoteBuildLoadingTask(m_processManager, m_project),
+                    new GenerateConfigLoadingTask(remotePath, name, "Vulkan"),
+                    new SerializeAssetsLoadingTask(remotePath, m_project, m_library),
+                    new SyncRemoteBuildLoadingTask(m_processManager, m_project),
+                    new RunRemoteLoadingTask(m_processManager)
+                };
+
+                m_app->PushModal(new LoadingModal(tasks, sizeof(tasks) / sizeof(*tasks)));
+            }
+            else
+            {
+                m_processManager->Stop();
+
+                m_app->SetCursorState(CursorState_Normal);
+            }
+        }
     }
+    else
+    {
+        if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Stop.png", glm::vec2(25.0f), false))
+        {
+            m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
+        }
+    }
+#endif
 }
 
 // MIT License

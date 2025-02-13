@@ -10,6 +10,7 @@
 #include "Windows/Window.h"
 
 class AppMain;
+class AssetLibrary;
 class ProcessManager;
 class Project;
 class RuntimeManager;
@@ -19,6 +20,7 @@ class GameWindow : public Window
 private:
     AppMain*        m_app;
 
+    AssetLibrary*   m_library;
     ProcessManager* m_processManager;
     RuntimeManager* m_runtimeManager;
     Project*        m_project;
@@ -27,7 +29,7 @@ private:
 protected:
 
 public:
-    GameWindow(AppMain* a_app, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project);
+    GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project);
     ~GameWindow();
 
     virtual void Update(double a_delta);
@@ -35,7 +37,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

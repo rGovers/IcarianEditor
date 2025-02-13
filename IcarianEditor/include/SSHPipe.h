@@ -5,19 +5,20 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <sys/types.h>
 #include <vector>
 
-enum e_SSHHostOS
+enum e_SSHHostOS : uint8_t
 {
     SSHHostOS_Unknown,
     SSHHostOS_Linux,
     SSHHostOS_WindowsPowerCMD,
     SSHHostOS_WindowsPowershell
 };
-enum e_SSHHostArchitecture
+enum e_SSHHostArchitecture : uint8_t
 {
     SSHHostArchitecture_Unknown,
     SSHHostArchitecture_AMD64
@@ -26,16 +27,13 @@ enum e_SSHHostArchitecture
 class SSHPipe
 {
 private:
-    e_SSHHostOS           m_hostOS;
-    e_SSHHostArchitecture m_hostArchitecture;
-
-    uint16_t              m_sshPort;
-    uint16_t              m_scpPort;
-
+    std::string           m_user;
     std::string           m_addr;
 
     std::string           m_readBuffer;
     std::string           m_errorBuffer;
+
+    std::filesystem::path m_tempPath;
 
 #ifndef WIN32
     pid_t                 m_process;
@@ -44,6 +42,13 @@ private:
     int                   m_errorPipe;
     int                   m_writePipe;
 #endif
+
+    e_SSHHostOS           m_hostOS;
+    e_SSHHostArchitecture m_hostArchitecture;
+
+    uint16_t              m_sshPort;
+
+    bool                  m_compressed;
 
     void FindHostOS();
     void FindHostArchitecture();
@@ -70,9 +75,24 @@ public:
     {
         return m_sshPort;
     }
-    inline uint16_t GetSCPPort() const
+
+    inline bool IsCompressed() const
     {
-        return m_scpPort;
+        return m_compressed;
+    }
+
+    inline std::string GetUser() const
+    {
+        return m_user;
+    }
+    inline std::string GetAddr() const
+    {
+        return m_addr;
+    }
+
+    inline std::filesystem::path GetTempDirectory() const
+    {
+        return m_tempPath;
     }
 
     bool IsAlive() const;
@@ -84,7 +104,7 @@ public:
 
     // Cannot make guarantees about std::string_view so pointer it is for the password
     // NOTE: This is fucking terrible I am a bumbling buffon do not do this
-    static SSHPipe* ConnectPassword(const std::string_view& a_connectionAddr, uint16_t a_port, uint16_t a_scpPort);
+    static SSHPipe* ConnectPassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress);
 };
 
 // MIT License
