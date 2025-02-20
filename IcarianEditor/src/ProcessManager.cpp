@@ -58,18 +58,32 @@ ProcessManager::ProcessManager()
 
     m_ipcPipe = nullptr;
 
-#ifdef WIN32
-    WSADATA wsaData = { };
-    ICARIAN_ASSERT_MSG_R(WSAStartup(MAKEWORD(2, 2), &wsaData) == 0, "Failed to start WSA");
-#endif
-
-    m_resize = false;
+    m_flags = 0;
 
     m_width = 1280;
     m_height = 720;
 
-    glGenTextures(1, &m_tex);
-    glBindTexture(GL_TEXTURE_2D, m_tex);
+    // Drivers where being inconsistant so need 2 textures one for normal textures and another for copying from DMA textures
+    // OpenGL is doing the fun thing of it is great when only working with OpenGL but falls apart when you need to interact with something from the outside world
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Hic sunt dracones
+    // Be very careful when doing stuff with this texture in this class OpenGL can do fun stuff and cause race conditions in the driver that cannot be controlled 
+    // as OpenGL does not allow sync without bring the driver to a grinding halt
+    // Keep in mind the data this is being populated with is from Vulkan so take appropriate measures
+    // Once the data has been copied it is safe to use externally
+    // You are doing something that the driver normal handles for you yes even in Vulkan
+    // YOU HAVE BEEN WARNED, If you do not have a basic understanding of GPU drivers good luck!~ 
+    glGenTextures(1, &m_dmaTexture);
+    glBindTexture(GL_TEXTURE_2D, m_dmaTexture);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -88,21 +102,18 @@ ProcessManager::ProcessManager()
 }   
 ProcessManager::~ProcessManager()
 {
-    glDeleteTextures(1, &m_tex);
+    glDeleteTextures(1, &m_texture);
+    glDeleteTextures(1, &m_dmaTexture);
 
     if (m_remotePipe != nullptr)
     {
         delete m_remotePipe;
     }
-
-#ifdef WIN32    
-    WSACleanup();
-#endif
 }
 
 bool ProcessManager::IsRunning() const
 {
-    if (m_remoteMode)
+    if (IISBITSET(m_flags, RemoteModeBit))
     {
         return m_ipcPipe != nullptr && m_ipcPipe->IsAlive();
     }
@@ -117,6 +128,16 @@ bool ProcessManager::IsRunning() const
 bool ProcessManager::IsRemoteConnected() const
 {
     return m_remotePipe != nullptr && m_remotePipe->IsAlive();
+}
+
+GLuint ProcessManager::GetImage() const
+{
+    if (IISBITSET(m_flags, DMAModeBit))
+    {
+        return m_dmaTexture;
+    }
+
+    return m_texture;
 }
 
 void ProcessManager::FlushDMAImages()
@@ -189,26 +210,17 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
     Logger::Message("Spawning IcarianEngine Instance");
 
-    m_dmaMode = false;
+    ICLEARBIT(m_flags, DMAModeBit);
     m_dmaSwaps = 0;
     m_curFrame = 0;
 
     ProfilerData::Clear();
 
-    m_captureInput = true;
+    ISETBIT(m_flags, CaptureInputBit);
     m_cursorState = CursorState_Normal;
 
     const std::string workingDirArg = "--wDir=" + a_workingDir.string();
 #ifdef WIN32
-    const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(GetAddr(PipeName).string());
-    if (serverPipe == nullptr)
-    {
-        Logger::Error("Failed to create IPC Pipe");
-
-        return false;
-    }
-    IDEFER(delete serverPipe);
-
     const std::string args = "IcarianNative.exe --headless " + workingDirArg;
 
     STARTUPINFO si;
@@ -246,8 +258,10 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
         return false;
     }
 
-    m_pipe = serverPipe->Accept();
-    if (m_pipe == nullptr)
+    // Been having issues with IPC on Windows so using a socket on localhost instead
+    // Not the best but it works
+    m_ipcPipe = IcarianCore::SocketPipe::Connect("127.0.0.1", 9001);
+    if (m_ipcPipe == nullptr)
     {
         Logger::Error("Failed to connect to IcarianEngine");
         Terminate();
@@ -257,7 +271,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 
     const glm::ivec2 data = glm::ivec2((int)m_width, (int)m_height);
 
-    if (!m_pipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
+    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }))
     {
         Logger::Error("Failed to send resize message to IcarianEngine");
         Terminate();
@@ -265,7 +279,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
         return false;
     }
 
-    m_remoteMode = false;
+    ICLEARBIT(m_flags, RemoteModeBit);
 
     return true;
 #else
@@ -341,7 +355,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
                 return false;
             }
 
-            m_remoteMode = false;
+            ICLEARBIT(m_flags, RemoteModeBit);
 
             return true;
         }
@@ -352,6 +366,11 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 }
 bool ProcessManager::StartRemote()
 {
+#ifdef WIN32
+    // Disable for now and keep as Linux only until I figure out details
+    return false;
+#endif
+
     if (m_ipcPipe != nullptr)
     {
         return false;
@@ -364,15 +383,22 @@ bool ProcessManager::StartRemote()
 
     Logger::Message("Spawning Remote IcarianEngine Instance");
 
-    m_process = -1;
+#ifdef WIN32
+    m_processInfo.hProcess = INVALID_HANDLE_VALUE;
+    m_processInfo.hThread = INVALID_HANDLE_VALUE;
 
-    m_dmaMode = false;
+    m_processHandle = INVALID_HANDLE_VALUE;
+#else    
+    m_process = -1;
+#endif
+
+    ICLEARBIT(m_flags, DMAModeBit);
     m_dmaSwaps = 0;
     m_curFrame = 0;
 
     ProfilerData::Clear();
 
-    m_captureInput = true;
+    ISETBIT(m_flags, CaptureInputBit);
     m_cursorState = CursorState_Normal;
 
     const std::string addr = m_remotePipe->GetAddr();
@@ -439,7 +465,7 @@ bool ProcessManager::StartRemote()
         return false;
     }
 
-    m_remoteMode = true;
+    ISETBIT(m_flags, RemoteModeBit);
 
     return true;
 }
@@ -474,11 +500,11 @@ void ProcessManager::PollMessage(bool a_blockError)
         {
         case IcarianCore::PipeMessageType_PushFrame:
         {
-            m_dmaMode = false;
+            ICLEARBIT(m_flags, DMAModeBit);
 
             if (msg.Length == m_width * m_height * 4)
             {
-                glBindTexture(GL_TEXTURE_2D, m_tex);
+                glBindTexture(GL_TEXTURE_2D, m_texture);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, msg.Data);
             }
 
@@ -506,7 +532,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 #ifdef WIN32
             Logger::Error("DMA FD message on Windows");
 #else
-            m_dmaMode = true;
+            ISETBIT(m_flags, DMAModeBit);
 
             const DMASwapBufferFD& swapBuffer = *(DMASwapBufferFD*)msg.Data;
 
@@ -554,7 +580,7 @@ void ProcessManager::PollMessage(bool a_blockError)
 #ifndef WIN32
             Logger::Error("DMA Handle message on non Windows OS");
 #else
-            m_dmaMode = true;
+            ISETBIT(m_flags, DMAModeBit);
 
             const DMASwapBufferHandle& swapBuffer = *(DMASwapBufferHandle*)msg.Data;
 
@@ -744,9 +770,9 @@ void ProcessManager::Update()
         return; 
     }
 
-    if (m_resize)
+    if (IISBITSET(m_flags, ResizeBit))
     {
-        m_resize = false;
+        ICLEARBIT(m_flags, ResizeBit);
 
         const glm::ivec2 size = glm::ivec2((int)m_width, (int)m_height);
 
@@ -762,7 +788,7 @@ void ProcessManager::Update()
         }
     }
 
-    if (m_dmaMode)
+    if (IISBITSET(m_flags, DMAModeBit))
     {
         while (m_dmaSwaps > 0)
         {
@@ -775,8 +801,7 @@ void ProcessManager::Update()
 
             if (img.Width == m_width && img.Height == m_height)
             {
-                // glTextureStorageMem2DEXT(img.Texture, 1, GL_RGBA8, (GLsizei)img.Width, (GLsizei)img.Height, img.MemoryObject, img.Offset);
-                glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_tex, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
+                glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_dmaTexture, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
             }
 
             m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
@@ -825,15 +850,32 @@ void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
     {
         m_width = a_width;
         m_height = a_height;
-        glBindTexture(GL_TEXTURE_2D, m_tex);
+
+        glBindTexture(GL_TEXTURE_2D, m_dmaTexture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)m_width, (GLsizei)m_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 
-        m_resize = true;
+        ISETBIT(m_flags, ResizeBit);
     }
 }
+
+void ProcessManager::CaptureFrame()
+{
+    if (IsRunning())
+    {
+        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_CaptureFrame }))
+        {
+            Logger::Error("Failed to send capture frame message to IcarianEngine");
+
+            Terminate();
+
+            return;
+        }
+    }
+}
+
 void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 {
-    if (m_captureInput && IsRunning())
+    if (IISBITSET(m_flags, CaptureInputBit) && IsRunning())
     {
         if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
         {
@@ -847,7 +889,7 @@ void ProcessManager::PushCursorPos(const glm::vec2& a_cPos)
 }
 void ProcessManager::PushMouseState(uint8_t a_state)
 {
-    if (m_captureInput && IsRunning())
+    if (IISBITSET(m_flags, CaptureInputBit) && IsRunning())
     {
         if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(uint8_t), (char*)&a_state }))
         {
@@ -861,7 +903,7 @@ void ProcessManager::PushMouseState(uint8_t a_state)
 }
 void ProcessManager::PushKeyboardState(const IcarianCore::KeyboardState& a_state)
 {
-    if (m_captureInput && IsRunning())
+    if (IISBITSET(m_flags, CaptureInputBit) && IsRunning())
     {
         if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_KeyboardState, IcarianCore::KeyboardState::ElementCount, (char*)a_state.ToData() }))
         {

@@ -7,6 +7,7 @@
 #include <imgui.h>
 
 #include "AppMain.h"
+#include "Core/IcarianLambda.h"
 #include "Core/InputBindings.h"
 #include "FlareImGui.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
@@ -259,26 +260,73 @@ void GameWindow::Update(double a_delta)
 
     ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
 
-    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
-#ifdef WIN32
-    constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);
-#else
-    constexpr glm::vec2 WinSize = glm::vec2(90.0f, 40.0f);
-#endif
-    constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
+    const bool isRunning = m_processManager->IsRunning();
+    const bool isRemote = m_processManager->IsRemoteConnected();
+    const bool isRemoteRunning = m_processManager->IsRemoteRunning();
 
-    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
-    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + 40.0f + WinSize.y);
+    const uint32_t buttonCount = ILAMBDA(
+    {
+        if (isRunning)
+        {
+            if (isRemoteRunning)
+            {
+                ILRETURN 1;
+            }
+
+            ILRETURN 2;
+        }
+        
+#ifdef WIN32
+        ILRETURN 1;
+#else
+        ILRETURN 2;
+#endif
+    });
+
+    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+
+    const glm::vec2 winSize = glm::vec2(buttonCount * 45.0f, 40.0f);
+    const glm::vec2 winHalfSize = winSize * 0.5f;
+
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - winHalfSize.x, winPos.y + 40.0f);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + winHalfSize.x, winPos.y + 40.0f + winSize.y);
 
     drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + 5.0f, 45.0f));
+    ImGui::SetCursorPos(ImVec2(halfSize.x - winHalfSize.x + 5.0f, 45.0f));
 
-    bool running = m_processManager->IsRunning();
-
-    if (FlareImGui::ImageSwitchButton("Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
+    if (isRunning)
     {
-        if (running)
+        const char* stopTexture = ILAMBDA(
+        {
+            if (isRemoteRunning)
+            {
+                ILRETURN "Textures/Icons/Controls_StopRemote.png";
+            }
+
+            ILRETURN "Textures/Icons/Controls_Stop.png";
+        });
+
+        if (FlareImGui::ImageButton("Stop Game", stopTexture, glm::vec2(25.0f), false))
+        {
+            m_processManager->Stop();
+
+            m_app->SetCursorState(CursorState_Normal);
+        }
+
+        if (!isRemoteRunning)
+        {
+            ImGui::SameLine();
+
+            if (FlareImGui::ImageButton("Capture Frame", "Textures/Icons/Controls_Screencapture.png", glm::vec2(25.0f), false))
+            {
+                m_processManager->CaptureFrame();
+            }
+        }
+    }
+    else
+    {
+        if (FlareImGui::ImageButton("Run Game", "Textures/Icons/Controls_Play.png", glm::vec2(25.0f), false))
         {
             if (!m_runtimeManager->IsBuilt())
             {
@@ -287,24 +335,17 @@ void GameWindow::Update(double a_delta)
                 return;
             }
 
-            m_processManager->Start(m_project->GetCachePath());
-        }
-        else
-        {
-            m_processManager->Stop();
+            const std::filesystem::path cachePath = m_project->GetCachePath();
 
-            m_app->SetCursorState(CursorState_Normal);
+            m_processManager->Start(cachePath);
         }
-    }
 
 #ifndef WIN32
-    ImGui::SameLine();
+        ImGui::SameLine();
 
-    if (m_processManager->IsRemoteConnected())
-    {
-        if (FlareImGui::ImageSwitchButton("Remote Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
+        if (isRemote)
         {
-            if (running)
+            if (FlareImGui::ImageButton("Remote Run Game", "Textures/Icons/Controls_PlayRemote.png", glm::vec2(25.0f), false))
             {
                 const std::filesystem::path cachePath = m_project->GetCachePath();
                 const std::filesystem::path remotePath = cachePath / "RemoteCore";
@@ -322,22 +363,16 @@ void GameWindow::Update(double a_delta)
 
                 m_app->PushModal(new LoadingModal(tasks, sizeof(tasks) / sizeof(*tasks)));
             }
-            else
+        }
+        else
+        {
+            if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Remote.png", glm::vec2(25.0f), false))
             {
-                m_processManager->Stop();
-
-                m_app->SetCursorState(CursorState_Normal);
+                m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
             }
         }
-    }
-    else
-    {
-        if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Stop.png", glm::vec2(25.0f), false))
-        {
-            m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
-        }
-    }
 #endif
+    }
 }
 
 // MIT License

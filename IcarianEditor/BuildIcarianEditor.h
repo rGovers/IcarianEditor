@@ -323,8 +323,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
+            "../IcarianEngine/deps/KTX-Software/writec/build/ktxwritec.lib",
+            "../IcarianEngine/deps/KTX-Software/writecpp/build/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
             "../IcarianEngine/deps/zlib/build/zlib.lib",
@@ -354,8 +354,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
+            "../IcarianEngine/deps/KTX-Software/build/writec/libktxwritec.a",
+            "../IcarianEngine/deps/KTX-Software/build/writecpp/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
             "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/assimp/build/libassimp.a",

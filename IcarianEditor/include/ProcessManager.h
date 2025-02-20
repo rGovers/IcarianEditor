@@ -36,10 +36,13 @@ struct DMASwapchainImage
 
 class ProcessManager
 {
-private:
-    uint32_t                        m_curFrame;
-    uint32_t                        m_dmaSwaps;
-    std::vector<DMASwapchainImage>  m_dmaImages;
+    private:
+    static constexpr char PipeName[] = "IcarianEngine-IPC";
+    
+    static constexpr uint32_t RemoteModeBit = 0;
+    static constexpr uint32_t ResizeBit = 1;
+    static constexpr uint32_t DMAModeBit = 2;
+    static constexpr uint32_t CaptureInputBit = 3;
 
 #ifdef WIN32
     PROCESS_INFORMATION             m_processInfo;
@@ -47,35 +50,37 @@ private:
 
     void DestroyProc();
 #else
-    static constexpr char PipeName[] = "IcarianEngine-IPC";
-
     pid_t                           m_process;
     int                             m_processFD;
+#endif   
 
-    uint16_t                        m_clientPort;
+    uint32_t                        m_curFrame;
+    uint32_t                        m_dmaSwaps;
+    std::vector<DMASwapchainImage>  m_dmaImages;
+
     SSHPipe*                        m_remotePipe;
-#endif      
     IcarianCore::CommunicationPipe* m_ipcPipe;
 
-    uint32_t                        m_width;
-    uint32_t                        m_height;
-                        
-    bool                            m_remoteMode;
-    bool                            m_resize;
-    bool                            m_dmaMode;
-    bool                            m_captureInput;
-    e_CursorState                   m_cursorState;
-
-    int                             m_updates;
     double                          m_updateTime;
     double                          m_ups;
 
-    int                             m_frames;                    
     double                          m_frameTime;
     double                          m_fps;
-                        
-    GLuint                          m_tex;
+
+    uint32_t                        m_width;
+    uint32_t                        m_height;
+
+    int                             m_updates;
+    int                             m_frames;                    
+
+    GLuint                          m_texture;
+    GLuint                          m_dmaTexture;
+
+    e_CursorState                   m_cursorState;
+    uint16_t                        m_clientPort;
     
+    uint8_t                         m_flags;
+
     void PollMessage(bool a_blockError = false);
 
     void FlushDMAImages();
@@ -92,15 +97,20 @@ public:
     // This makes me uncomfortable handing over a SSHPipe
     inline SSHPipe* GetRemotePipe() const
     {
+#ifdef WIN32
+        return nullptr;
+#else
         return m_remotePipe;
+#endif
     }
 
     bool IsRemoteConnected() const;
-
-    inline GLuint GetImage() const
+    inline bool IsRemoteRunning() const
     {
-        return m_tex;
+        return IISBITSET(m_flags, RemoteModeBit) && IsRunning();
     }
+
+    GLuint GetImage() const;
 
     inline uint32_t GetWidth()
     {
@@ -122,11 +132,11 @@ public:
 
     inline bool GetCaptureInput() const
     {
-        return m_captureInput;
+        return IISBITSET(m_flags, CaptureInputBit);
     }
     inline void SetCaptureInput(bool a_capture)
     {
-        m_captureInput = a_capture;
+        ITOGGLEBIT(a_capture, m_flags, CaptureInputBit);
     }
     inline e_CursorState GetCursorState() const
     {
@@ -135,6 +145,8 @@ public:
 
     void SetSize(uint32_t a_width, uint32_t a_height);
    
+    void CaptureFrame();
+
     void PushCursorPos(const glm::vec2& a_cPos);
     void PushMouseState(uint8_t a_state);
     void PushKeyboardState(const IcarianCore::KeyboardState& a_state);

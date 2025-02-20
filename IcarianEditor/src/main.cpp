@@ -2,6 +2,9 @@
 // 
 // License at end of file.
 
+// Windows headers need to be included first otherwise stuff breaks
+#include "Core/WindowsHeaders.h"
+
 #include <ctime>
 #include <string>
 
@@ -11,8 +14,6 @@
 #define STBI_NO_PIC
 #define STBI_NO_PNM
 #include <stb_image.h>
-
-#include <enet/enet.h>
 
 #define CUBE_IMPLEMENTATION
 #ifndef NDEBUG
@@ -38,8 +39,22 @@ int main(int a_argc, char* a_argv[])
 {
     PrintVersion();
 
-    enet_initialize();
-    IDEFER(enet_deinitialize());
+#ifdef WIN32
+    // Whatever enet needs we will do ourselves
+    // We need a newer version and enet does not allow overriding
+    WSADATA wsaData;
+    if (WSAStartup (MAKEWORD(2, 0), &wsaData))
+    {
+        return 1;
+    }
+    timeBeginPeriod(1);
+
+    IDEFER(
+    {
+        timeEndPeriod(1);
+        WSACleanup();
+    });
+#endif
     
     srand(time(NULL));
 

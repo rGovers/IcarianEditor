@@ -22,14 +22,16 @@
 
 SSHPipe::SSHPipe()
 {
-    m_process = -1;
-
     m_hostOS = SSHHostOS_Unknown;
     m_hostArchitecture = SSHHostArchitecture_Unknown;
-
+    
+#ifndef WIN32
+    m_process = -1;
+    
     m_readPipe = -1;
     m_errorPipe = -1;
     m_writePipe = -1;
+#endif
 }
 SSHPipe::~SSHPipe()
 {
@@ -402,6 +404,9 @@ std::vector<std::string> SSHPipe::ReadError(uint32_t a_timeout)
 }
 bool SSHPipe::Send(const char* a_data)
 {
+#ifdef WIN32
+    return false;
+#else
     const char* slider = a_data;
     while (*slider != 0)
     {
@@ -431,6 +436,7 @@ bool SSHPipe::Send(const char* a_data)
     constexpr uint32_t TerminateStrLen = sizeof(TerminateStr) - 1;
 
     return write(m_writePipe, TerminateStr, TerminateStrLen) != TerminateStrLen;
+#endif
 }
 
 
@@ -575,8 +581,6 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::str
                 {
                     auth = true;
                 }
-
-                // printf("%s \n", e.c_str());
             }
 
             const std::vector<std::string> readLines = pipe->Read(500);
