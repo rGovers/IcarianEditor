@@ -2,41 +2,27 @@
 // 
 // License at end of file.
 
-#include "Modals/LoadingModal.h"
-
-#include <imgui.h>
+#pragma once
 
 #include "LoadingTasks/LoadingTask.h"
 
-LoadingModal::LoadingModal(LoadingTask* const* a_tasks, uint32_t a_taskCount) : Modal("Loading", glm::vec2(200, 100))
+class ProcessManager;
+class Project;
+class SCPPipe;
+
+class SyncRemoteBuildLoadingTask : public LoadingTask
 {
-    m_taskCount = a_taskCount;
-    m_currentTask = 0;
+private:
+    SCPPipe* m_scpPipe;
 
-    m_tasks = new LoadingTask*[a_taskCount];
-    for (uint32_t i = 0; i < a_taskCount; ++i)
-    {
-        m_tasks[i] = a_tasks[i];
-    }
-}
-LoadingModal::~LoadingModal()
-{
-    for (uint32_t i = 0; i < m_taskCount; ++i)
-    {
-        delete m_tasks[i];
-    }
+protected:
 
-    delete[] m_tasks;
-}
+public:
+    SyncRemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project);
+    virtual ~SyncRemoteBuildLoadingTask();
 
-bool LoadingModal::Update()
-{
-    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
-
-    m_tasks[m_currentTask++]->Run();
-
-    return m_currentTask < m_taskCount;
-}
+    virtual void Run();
+};
 
 // MIT License
 // 

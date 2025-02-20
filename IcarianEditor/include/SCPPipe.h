@@ -2,41 +2,28 @@
 // 
 // License at end of file.
 
-#include "Modals/LoadingModal.h"
+#pragma once
 
-#include <imgui.h>
+#include <filesystem>
 
-#include "LoadingTasks/LoadingTask.h"
-
-LoadingModal::LoadingModal(LoadingTask* const* a_tasks, uint32_t a_taskCount) : Modal("Loading", glm::vec2(200, 100))
+class SCPPipe
 {
-    m_taskCount = a_taskCount;
-    m_currentTask = 0;
+private:
+#ifndef WIN32
+    pid_t m_process;
+#endif
 
-    m_tasks = new LoadingTask*[a_taskCount];
-    for (uint32_t i = 0; i < a_taskCount; ++i)
-    {
-        m_tasks[i] = a_tasks[i];
-    }
-}
-LoadingModal::~LoadingModal()
-{
-    for (uint32_t i = 0; i < m_taskCount; ++i)
-    {
-        delete m_tasks[i];
-    }
+    SCPPipe();
 
-    delete[] m_tasks;
-}
+protected:
 
-bool LoadingModal::Update()
-{
-    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
+public: 
+    ~SCPPipe();
 
-    m_tasks[m_currentTask++]->Run();
+    bool IsAlive() const;
 
-    return m_currentTask < m_taskCount;
-}
+    static SCPPipe* Create(const std::string_view& a_user, const std::string_view& a_addr, const std::filesystem::path& a_srcPath, const std::filesystem::path& a_dstPath, uint16_t a_port, bool a_compress);
+};
 
 // MIT License
 // 

@@ -2,41 +2,26 @@
 // 
 // License at end of file.
 
-#include "Modals/LoadingModal.h"
+#pragma once
 
-#include <imgui.h>
+#include "Modals/Modal.h"
 
-#include "LoadingTasks/LoadingTask.h"
+class SCPPipe;
+class SSHPipe;
 
-LoadingModal::LoadingModal(LoadingTask* const* a_tasks, uint32_t a_taskCount) : Modal("Loading", glm::vec2(200, 100))
+class SSHConnectedModal : public Modal
 {
-    m_taskCount = a_taskCount;
-    m_currentTask = 0;
+private:
+    SCPPipe*  m_scpPipe;
 
-    m_tasks = new LoadingTask*[a_taskCount];
-    for (uint32_t i = 0; i < a_taskCount; ++i)
-    {
-        m_tasks[i] = a_tasks[i];
-    }
-}
-LoadingModal::~LoadingModal()
-{
-    for (uint32_t i = 0; i < m_taskCount; ++i)
-    {
-        delete m_tasks[i];
-    }
+protected:
 
-    delete[] m_tasks;
-}
+public:
+    SSHConnectedModal(SSHPipe* a_pipe);  
+    virtual ~SSHConnectedModal();
 
-bool LoadingModal::Update()
-{
-    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
-
-    m_tasks[m_currentTask++]->Run();
-
-    return m_currentTask < m_taskCount;
-}
+    virtual bool Update();
+};
 
 // MIT License
 // 

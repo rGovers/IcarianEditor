@@ -2,6 +2,9 @@
 // 
 // License at end of file.
 
+// Windows headers need to be included first otherwise stuff breaks
+#include "Core/WindowsHeaders.h"
+
 #include <ctime>
 #include <string>
 
@@ -19,6 +22,7 @@
 #include "CUBE/CUBE.h"
 
 #include "AppMain.h"
+#include "Core/IcarianDefer.h"
 #include "Logger.h"
 
 #define ICARIANEDITOR_VERSION_STRX(x) #x
@@ -35,6 +39,23 @@ int main(int a_argc, char* a_argv[])
 {
     PrintVersion();
 
+#ifdef WIN32
+    // Whatever enet needs we will do ourselves
+    // We need a newer version and enet does not allow overriding
+    WSADATA wsaData;
+    if (WSAStartup (MAKEWORD(2, 0), &wsaData))
+    {
+        return 1;
+    }
+    timeBeginPeriod(1);
+
+    IDEFER(
+    {
+        timeEndPeriod(1);
+        WSACleanup();
+    });
+#endif
+    
     srand(time(NULL));
 
     AppMain app;
@@ -45,7 +66,7 @@ int main(int a_argc, char* a_argv[])
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

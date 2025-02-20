@@ -2,41 +2,36 @@
 // 
 // License at end of file.
 
-#include "Modals/LoadingModal.h"
+#pragma once
 
-#include <imgui.h>
+#include "Modals/Modal.h"
 
-#include "LoadingTasks/LoadingTask.h"
+class AppMain;
+class ProcessManager;
 
-LoadingModal::LoadingModal(LoadingTask* const* a_tasks, uint32_t a_taskCount) : Modal("Loading", glm::vec2(200, 100))
+class SSHConnectModal : public Modal
 {
-    m_taskCount = a_taskCount;
-    m_currentTask = 0;
+private:
+    // DO NOT GET THE PASSWORD FROM THE USER LET SSH PROMPT FOR IT WE DO NOT WANT TO HANDLE THAT
+    // IF THE CLIENT HAS A MECHANISM TO HANDLE IT IT CAN PROBABLY DO IT MORE SECURELY OTHERWISE GET USERS TO USE A DIFFERENT CLIENT
+    // I KNOW ALOT DESPITE BEING CONSOLE APPLICATIONS DO HAVE ENOUGH TO POP UP A GUI TO ENTER THE PASSWORD AUTOMATICALLY
+    AppMain*        m_app;
+    ProcessManager* m_processManager;
 
-    m_tasks = new LoadingTask*[a_taskCount];
-    for (uint32_t i = 0; i < a_taskCount; ++i)
-    {
-        m_tasks[i] = a_tasks[i];
-    }
-}
-LoadingModal::~LoadingModal()
-{
-    for (uint32_t i = 0; i < m_taskCount; ++i)
-    {
-        delete m_tasks[i];
-    }
+    char            m_addr[256];
+    char            m_user[256];
+    int             m_port;
+    int             m_clientPort;
+    bool            m_compress;
 
-    delete[] m_tasks;
-}
+protected:
 
-bool LoadingModal::Update()
-{
-    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
+public:
+    SSHConnectModal(AppMain* a_app, ProcessManager* a_processManager);
+    virtual ~SSHConnectModal();
 
-    m_tasks[m_currentTask++]->Run();
-
-    return m_currentTask < m_taskCount;
-}
+    virtual bool Update();
+};
 
 // MIT License
 // 

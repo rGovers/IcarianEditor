@@ -15,16 +15,24 @@ The editor for Icarian Engine.
 * Pulse
 * Jack
 * ALSA
+### Linux Steam version
+* podman
 ### Windows
 * MingGW
+
+## Windows Support
+
+Currently mileage may very for editor support on Windows and core functionality may be broken focus has been on working 1st Windows later
 
 ## Building
 
 Building is done via CUBE.
 
-The project can be built by running the following.
+Building can be done by running the following scripts.
 ```
 ./build.sh
+./export.sh
+./remoteBuild.sh
 ```
 
 For extra options refer to --help on build.sh.
@@ -33,17 +41,3 @@ Output is in the build folder.
 
 Windows builds are done via cross compilation with MinGW.
 MSVC is currently not supported.
-
-## Export
-In order to get editor exports you need to build the export files. Editor exports are not included in the main build process as they can take a very long time to compile on some systems as it requires compiling the engine for all platforms. Note that the editor will crash if you try to export builds without building them at this stage.
-### Prerequisites
-* GCC
-* MingGW
-#### Linux Steam version
-* podman
-
-### Building
-They can be generated with by running the following
-```
-./export.sh
-```

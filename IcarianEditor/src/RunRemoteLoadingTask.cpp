@@ -2,40 +2,22 @@
 // 
 // License at end of file.
 
-#include "Modals/LoadingModal.h"
+#include "LoadingTasks/RunRemoteLoadingTask.h"
 
-#include <imgui.h>
+#include "ProcessManager.h"
 
-#include "LoadingTasks/LoadingTask.h"
-
-LoadingModal::LoadingModal(LoadingTask* const* a_tasks, uint32_t a_taskCount) : Modal("Loading", glm::vec2(200, 100))
+RunRemoteLoadingTask::RunRemoteLoadingTask(ProcessManager* a_process)
 {
-    m_taskCount = a_taskCount;
-    m_currentTask = 0;
-
-    m_tasks = new LoadingTask*[a_taskCount];
-    for (uint32_t i = 0; i < a_taskCount; ++i)
-    {
-        m_tasks[i] = a_tasks[i];
-    }
+    m_process = a_process;
 }
-LoadingModal::~LoadingModal()
+RunRemoteLoadingTask::~RunRemoteLoadingTask()
 {
-    for (uint32_t i = 0; i < m_taskCount; ++i)
-    {
-        delete m_tasks[i];
-    }
 
-    delete[] m_tasks;
 }
 
-bool LoadingModal::Update()
+void RunRemoteLoadingTask::Run()
 {
-    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
-
-    m_tasks[m_currentTask++]->Run();
-
-    return m_currentTask < m_taskCount;
+    m_process->StartRemote();
 }
 
 // MIT License

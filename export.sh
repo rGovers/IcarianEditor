@@ -63,7 +63,7 @@ else
         -it \
         -w /IcarianEngine \
         registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest \
-        /bin/bash /IcarianEngine/build.sh "$@" --platform=linuxsteam -R
+        /bin/bash /IcarianEngine/build.sh "$@" --platform=linuxsteam -R --rebuild
 
     if [ $? -ne 0 ]; then
         echo "Linux Steam export failed"

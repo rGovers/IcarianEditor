@@ -7,9 +7,17 @@
 #include <imgui.h>
 
 #include "AppMain.h"
+#include "Core/IcarianLambda.h"
 #include "Core/InputBindings.h"
 #include "FlareImGui.h"
+#include "LoadingTasks/GenerateConfigLoadingTask.h"
+#include "LoadingTasks/RemoteBuildLoadingTask.h"
+#include "LoadingTasks/RunRemoteLoadingTask.h"
+#include "LoadingTasks/SerializeAssetsLoadingTask.h"
+#include "LoadingTasks/SyncRemoteBuildLoadingTask.h"
 #include "Modals/ErrorModal.h"
+#include "Modals/LoadingModal.h"
+#include "Modals/SSHConnectModal.h"
 #include "ProcessManager.h"
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
@@ -145,10 +153,11 @@ static constexpr ImGuiKey GameKeyTable[] =
     ImGuiKey_Menu
 };
 
-GameWindow::GameWindow(AppMain* a_app, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
 
+    m_library = a_library;
     m_processManager = a_processManager;
     m_runtimeManager = a_runtime;
     m_project = a_project;
@@ -251,22 +260,73 @@ void GameWindow::Update(double a_delta)
 
     ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
 
-    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
-    constexpr glm::vec2 WinSize = glm::vec2(45.0f, 40.0f);
-    constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
+    const bool isRunning = m_processManager->IsRunning();
+    const bool isRemote = m_processManager->IsRemoteConnected();
+    const bool isRemoteRunning = m_processManager->IsRemoteRunning();
 
-    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
-    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + 40.0f + WinSize.y);
+    const uint32_t buttonCount = ILAMBDA(
+    {
+        if (isRunning)
+        {
+            if (isRemoteRunning)
+            {
+                ILRETURN 1;
+            }
+
+            ILRETURN 2;
+        }
+        
+#ifdef WIN32
+        ILRETURN 1;
+#else
+        ILRETURN 2;
+#endif
+    });
+
+    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+
+    const glm::vec2 winSize = glm::vec2(buttonCount * 45.0f, 40.0f);
+    const glm::vec2 winHalfSize = winSize * 0.5f;
+
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - winHalfSize.x, winPos.y + 40.0f);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + winHalfSize.x, winPos.y + 40.0f + winSize.y);
 
     drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + 5.0f, 45.0f));
+    ImGui::SetCursorPos(ImVec2(halfSize.x - winHalfSize.x + 5.0f, 45.0f));
 
-    bool running = m_processManager->IsRunning();
-
-    if (FlareImGui::ImageSwitchButton("Run Game", "Textures/Icons/Controls_Stop.png", "Textures/Icons/Controls_Play.png", &running, glm::vec2(25.0f)))
+    if (isRunning)
     {
-        if (running)
+        const char* stopTexture = ILAMBDA(
+        {
+            if (isRemoteRunning)
+            {
+                ILRETURN "Textures/Icons/Controls_StopRemote.png";
+            }
+
+            ILRETURN "Textures/Icons/Controls_Stop.png";
+        });
+
+        if (FlareImGui::ImageButton("Stop Game", stopTexture, glm::vec2(25.0f), false))
+        {
+            m_processManager->Stop();
+
+            m_app->SetCursorState(CursorState_Normal);
+        }
+
+        if (!isRemoteRunning)
+        {
+            ImGui::SameLine();
+
+            if (FlareImGui::ImageButton("Capture Frame", "Textures/Icons/Controls_Screencapture.png", glm::vec2(25.0f), false))
+            {
+                m_processManager->CaptureFrame();
+            }
+        }
+    }
+    else
+    {
+        if (FlareImGui::ImageButton("Run Game", "Textures/Icons/Controls_Play.png", glm::vec2(25.0f), false))
         {
             if (!m_runtimeManager->IsBuilt())
             {
@@ -275,20 +335,49 @@ void GameWindow::Update(double a_delta)
                 return;
             }
 
-            m_processManager->Start(m_project->GetCachePath());
+            const std::filesystem::path cachePath = m_project->GetCachePath();
+
+            m_processManager->Start(cachePath);
+        }
+
+#ifndef WIN32
+        ImGui::SameLine();
+
+        if (isRemote)
+        {
+            if (FlareImGui::ImageButton("Remote Run Game", "Textures/Icons/Controls_PlayRemote.png", glm::vec2(25.0f), false))
+            {
+                const std::filesystem::path cachePath = m_project->GetCachePath();
+                const std::filesystem::path remotePath = cachePath / "RemoteCore";
+
+                const std::string name = m_project->GetName();
+
+                LoadingTask* tasks[] = 
+                {
+                    new RemoteBuildLoadingTask(m_processManager, m_project),
+                    new GenerateConfigLoadingTask(remotePath, name, "Vulkan"),
+                    new SerializeAssetsLoadingTask(remotePath, m_project, m_library),
+                    new SyncRemoteBuildLoadingTask(m_processManager, m_project),
+                    new RunRemoteLoadingTask(m_processManager)
+                };
+
+                m_app->PushModal(new LoadingModal(tasks, sizeof(tasks) / sizeof(*tasks)));
+            }
         }
         else
         {
-            m_processManager->Stop();
-
-            m_app->SetCursorState(CursorState_Normal);
+            if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Remote.png", glm::vec2(25.0f), false))
+            {
+                m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
+            }
         }
+#endif
     }
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

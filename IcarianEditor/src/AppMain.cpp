@@ -228,7 +228,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     
     m_windows.emplace_back(new ConsoleWindow());
     m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
-    m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
+    m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_runtime, m_project));
     m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets, m_runtime));
     m_windows.emplace_back(new HierarchyWindow(m_runtime));
     m_windows.emplace_back(new PropertiesWindow(m_runtime));
@@ -426,7 +426,7 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Game"))
                     {
-                        m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
+                        m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_runtime, m_project));
                     }
 
                     if (ImGui::MenuItem("Asset Browser"))
@@ -858,7 +858,7 @@ void AppMain::DispatchRuntimeModal(const std::string_view& a_title, const glm::v
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
