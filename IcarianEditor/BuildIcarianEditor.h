@@ -278,7 +278,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendCFlag(&project, "-g");
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
-        CUBE_CProject_AppendCFlag(&project, "-flto");
+        CUBE_CProject_AppendCFlag(&project, "-flto=auto");
         CUBE_CProject_AppendCFlag(&project, "-fwhole-program");
 
         break;
@@ -300,7 +300,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
-        CUBE_CProject_AppendCFlag(&project, "-flto");
+        CUBE_CProject_AppendCFlag(&project, "-flto=auto");
         CUBE_CProject_AppendCFlag(&project, "-fwhole-program");
 
         break;
