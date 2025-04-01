@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-class RuntimeManager;
 class RuntimeStorage;
 class Shader;
 class ShaderProgram;
@@ -56,7 +55,7 @@ protected:
 public:
     ~RenderCommand();
 
-    static void Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage);
+    static void Init(RuntimeStorage* a_storage);
     static void Clear();
     static void Destroy();
 
@@ -75,7 +74,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

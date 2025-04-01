@@ -17,7 +17,7 @@ using System.Xml;
 #include "InteropBinding.h"
 #include "EditorDefLibraryInterop.h"
 
-EDITORDEFLIBRARY_EXPORT_TABLE(IOP_BIND_FUNCTION);
+EDITOR_DEFLIBRARY_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {

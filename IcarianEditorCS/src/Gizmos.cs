@@ -6,25 +6,12 @@ using IcarianEngine.Maths;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+#include "EditorGizmosInteropStructures.h"
+
 namespace IcarianEditor
 {
-    public enum ManipulationMode : ushort
-    {
-        Translate = 0,
-        Rotate = 1,
-        Scale = 2
-    }
-
     public static class Gizmos
     {
-        [StructLayout(LayoutKind.Sequential, Pack = 0)]
-        struct TransformValue
-        {
-            public Vector3 Translation;
-            public Quaternion Rotation;
-            public Vector3 Scale;
-        }
-
         [MethodImpl(MethodImplOptions.InternalCall)]
         extern static uint GetManipulating();
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -32,6 +19,8 @@ namespace IcarianEditor
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void DrawLine(Vector3 a_start, Vector3 a_end, float a_width, Vector4 a_color);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void MultiDrawLine(Vector3 a_start, Vector3 a_end, float a_width, Vector4 a_color, Vector3 a_dir, float a_delta, uint a_count);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void DrawUVSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Vector4 a_color);
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -52,6 +41,10 @@ namespace IcarianEditor
         public static void DrawLine(Vector3 a_start, Vector3 a_end, float a_width, Color a_color)
         {
             DrawLine(a_start, a_end, a_width, a_color.ToVector4());
+        }
+        public static void MultiDrawLine(Vector3 a_start, Vector3 a_end, float a_width, Color a_color, Vector3 a_dir, float a_delta, uint a_count)
+        {
+            MultiDrawLine(a_start, a_end, a_width, a_color.ToVector4(), a_dir, a_delta, a_count);
         }
 
         public static void DrawUVSphere(Vector3 a_pos, float a_radius, uint a_subDivisions, float a_width, Color a_color)

@@ -13,7 +13,6 @@
 class AssetLibrary;
 class Model;
 class PixelShader;
-class RuntimeManager;
 class Texture;
 class VertexShader;
 
@@ -24,7 +23,6 @@ class RuntimeStorage
 {
 private:
     AssetLibrary*                                m_assets;
-    RuntimeManager*                              m_runtime;
      
     std::vector<Model*>                          m_models;
     std::vector<Texture*>                        m_textures;
@@ -41,7 +39,7 @@ private:
 protected:
 
 public:
-    RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets);
+    RuntimeStorage(AssetLibrary* a_assets);
     ~RuntimeStorage();
 
     inline AssetLibrary* GetLibrary() const
@@ -106,7 +104,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -10,6 +10,7 @@
 
 #include "Core/IcarianDefer.h"
 #include "EditorConfig.h"
+#include "EditorInputManager.h"
 #include "FlareImGui.h"
 #include "Gizmos.h"
 #include "PixelShader.h"
@@ -23,23 +24,21 @@
 uint32_t EditorWindow::RefCount = 0;
 ShaderProgram* EditorWindow::GridShader = nullptr;
 
-EditorWindow::EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace) : Window("Editor", "Textures/WindowIcons/WindowIcon_Editor.png")
+EditorWindow::EditorWindow(Workspace* a_workspace) : Window("Editor", "Textures/WindowIcons/WindowIcon_Editor.png")
 {
     if (GridShader == nullptr)
     {
         const VertexShader* v = VertexShader::GenerateShader(GridVertexShader);
+        IDEFER(delete v);
         const PixelShader* p = PixelShader::GenerateShader(GridPixelShader);
+        IDEFER(delete p);
 
         GridShader = ShaderProgram::GenerateProgram(v, p);
-
-        delete v;
-        delete p;
     }
 
     ++RefCount;
 
     m_workspace = a_workspace;
-    m_runtime = a_runtime;
 
     m_width = -1;
     m_height = -1;
@@ -124,7 +123,7 @@ void EditorWindow::Draw()
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
 
-    const glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
+    glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
     const glm::mat4 invProj = glm::inverse(proj);
 
     const glm::vec3 zoomAxis = m_rotation * glm::vec3(0.0f, 0.0f, m_zoom);
@@ -133,7 +132,7 @@ void EditorWindow::Draw()
     const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
 
     const glm::mat4 trans = transMat * rotMat;
-    const glm::mat4 view = glm::inverse(trans);
+    glm::mat4 view = glm::inverse(trans);
 
     const IcarianCore::ShaderCameraBuffer camBuffer =
     {
@@ -147,7 +146,15 @@ void EditorWindow::Draw()
     RenderCommand::PushCameraBuffer(camBuffer);
     Gizmos::SetMatrices(view, proj);
 
-    m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI()", nullptr);
+    void* args[] =
+    {
+        &view,
+        &proj,
+        &m_width,
+        &m_height
+    };
+
+    RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI(Matrix4,Matrix4,uint,uint)", args);
 
     const GLuint handle = GridShader->GetHandle();
 
@@ -281,7 +288,6 @@ void EditorWindow::Update(double a_delta)
         ImGui::Text("Scale");
     }
 
-    bool bind = true;
     if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
     {
         const ImVec2 imPos = ImGui::GetMousePos();
@@ -397,13 +403,47 @@ void EditorWindow::Update(double a_delta)
             }
         }
 
+        for (uint32_t i = 0; i < MouseButton_Last; ++i)
+        {
+            EditorInputManager::SetMouseButton((e_MouseButton)i, ImGui::IsMouseDown((ImGuiMouseButton)i));
+        }
+
+        for (uint32_t i = 0; i < KeyCode_Last; ++i)
+        {
+            const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
+            if (key != ImGuiKey_None)
+            {
+                EditorInputManager::SetKeyboardKey((e_KeyCode)i, ImGui::IsKeyDown(key));
+            }
+        }
+
+        const glm::vec2 cPos = glm::vec2(mPos.x - (winPos.x + vMinIm.x), mPos.y - (winPos.y + vMinIm.y));
+        EditorInputManager::SetCursorPos(cPos);
+
         m_prevMousePos = mPos;
 
         Draw();
     }   
-    else if (m_refresh)
+    else 
     {
-        Draw();
+        for (uint32_t i = 0; i < MouseButton_Last; ++i)
+        {
+            EditorInputManager::SetMouseButton((e_MouseButton)i, false);
+        }
+
+        for (uint32_t i = 0; i < KeyCode_Last; ++i)
+        {
+            const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
+            if (key != ImGuiKey_None)
+            {
+                EditorInputManager::SetKeyboardKey((e_KeyCode)i, false);
+            }
+        }
+
+        if (m_refresh)
+        {
+            Draw();
+        }
     }
 
     if (payloadData != nullptr)
@@ -416,13 +456,14 @@ void EditorWindow::Update(double a_delta)
 
         const glm::vec2 mousePos = glm::vec2(imMousePos.x - (winPos.x + vMinIm.x), imMousePos.y - (winPos.y + vMinIm.y));        
 
-        const glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
+        glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
         const glm::mat4 invProj = glm::inverse(proj);
 
         const glm::mat4 rotMat = glm::toMat4(m_rotation);
         const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
 
         const glm::mat4 trans = transMat * rotMat;
+        glm::mat4 view = glm::inverse(trans);
 
         const glm::vec2 sP = (mousePos / glm::vec2((float)m_width, (float)m_height)) * 2.0f - glm::vec2(1.0f);
 
@@ -432,25 +473,29 @@ void EditorWindow::Update(double a_delta)
 
         glm::vec3 p = glm::vec3(wP.xyz());
 
-        MonoString* mString = mono_string_new(m_runtime->GetEditorDomain(), payloadData);
+        MonoString* mString = mono_string_new(RuntimeManager::GetEditorDomain(), payloadData);
         void* args[] =
         {
             mString,
-            &p
+            &p,
+            &view,
+            &proj,
+            &m_width,
+            &m_height
         };
 
-        m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":PeekDefPath(string,Vector3)", args);
+        RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":PeekDefPath(string,Vector3,Matrix4,Matrix4,uint,uint)", args);
 
         if (delivery)
         {
-            m_runtime->ExecFunction("IcarianEditor.Windows", "EditorWindow", ":AcceptDefPath(string,Vector3)", args);        
+            RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":AcceptDefPath(string,Vector3)", args);        
         }
     }
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

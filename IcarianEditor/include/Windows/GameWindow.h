@@ -13,7 +13,6 @@ class AppMain;
 class AssetLibrary;
 class ProcessManager;
 class Project;
-class RuntimeManager;
 
 class GameWindow : public Window
 {
@@ -22,14 +21,13 @@ private:
 
     AssetLibrary*   m_library;
     ProcessManager* m_processManager;
-    RuntimeManager* m_runtimeManager;
     Project*        m_project;
     
     glm::vec2       m_lastCursorPos;
 protected:
 
 public:
-    GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, RuntimeManager* a_runtime, Project* a_project);
+    GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, Project* a_project);
     ~GameWindow();
 
     virtual void Update(double a_delta);

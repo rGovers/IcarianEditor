@@ -14,7 +14,6 @@
 class AssetLibrary;
 class Project;
 class ProcessManager;
-class RuntimeManager;
 class RuntimeStorage;
 class Workspace;
 
@@ -45,7 +44,6 @@ private:
     AssetLibrary*        m_assets;
     Project*             m_project;
     ProcessManager*      m_process;
-    RuntimeManager*      m_runtime;
     RuntimeStorage*      m_rStorage;
     Workspace*           m_workspace;
 
@@ -79,7 +77,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

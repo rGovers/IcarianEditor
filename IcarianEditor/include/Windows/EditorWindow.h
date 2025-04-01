@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <glad/glad.h>
 
-class RuntimeManager;
 class ShaderProgram;
 class Workspace;
 
@@ -27,7 +26,6 @@ private:
 
     bool            m_refresh;
 
-    RuntimeManager* m_runtime;
     Workspace*      m_workspace;
 
     glm::vec3       m_translation;
@@ -48,7 +46,7 @@ private:
 protected:
 
 public:
-    EditorWindow(RuntimeManager* a_runtime, Workspace* a_workspace);
+    EditorWindow(Workspace* a_workspace);
     virtual ~EditorWindow();
 
     void Draw();
@@ -63,7 +61,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

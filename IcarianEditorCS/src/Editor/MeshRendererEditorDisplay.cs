@@ -12,35 +12,37 @@ namespace IcarianEditor.Editor
     [EDisplay(typeof(MeshRenderer))]
     public class MeshRendererEditorDisplay : EditorDisplay
     {
-        public override void Render(bool a_selected, Def a_component, Matrix4 a_transform)
+        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             MeshRendererDef def = a_component as MeshRendererDef;
             if (def == null)
             {
-                return;
+                return false;
             }
 
             Model mdl = AssetLibrary.LoadModel(def.ModelPath);
             if (mdl == null)
             {
-                return;
+                return false;
             }
 
             MaterialDef matDef = EditorDefLibrary.GenerateDef<MaterialDef>(def.MaterialDef.DefName);
             if (matDef == null)
             {
-                return;
+                return false;
             }
             matDef.PostResolve();
 
             Material mat = AssetLibrary.GetMaterial(matDef);
             if (mat == null)
             {
-                return;
+                return false;
             }
 
             RenderCommand.BindMaterial(mat);
             RenderCommand.DrawModel(a_transform, mdl);
+
+            return false;
         }
     }
 }

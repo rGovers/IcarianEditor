@@ -32,8 +32,6 @@
 
 static RuntimeStorage* Instance = nullptr;
 
-#define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
     F(uint32_t, IcarianEngine.Rendering.Shaders, VertexShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GenerateVertexShader(str); }, MonoString* a_path) \
     F(void, IcarianEngine.Rendering.Shaders, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
@@ -687,28 +685,27 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
     return -1;
 }, MonoString* a_path)
 
-RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets)
+RuntimeStorage::RuntimeStorage(AssetLibrary* a_assets)
 {
     m_assets = a_assets;
-    m_runtime = a_runtime;
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Shaders, VertexShader, AddImport);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Shaders, PixelShader, AddImport);
+    BIND_FUNCTION(IcarianEngine.Rendering.Shaders, VertexShader, AddImport);
+    BIND_FUNCTION(IcarianEngine.Rendering.Shaders, PixelShader, AddImport);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateProgram);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateMeshProgram);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, DestroyProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, GenerateProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, GenerateMeshProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, DestroyProgram);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateModel);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateFromFile);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateModel);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, AnimationClip, LoadExternalAnimationData);
+    BIND_FUNCTION(IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
+    BIND_FUNCTION(IcarianEngine.Rendering.Animation, AnimationClip, LoadExternalAnimationData);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Texture, GenerateFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Texture, GenerateFromFile);
 
-    RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIMESTORAGE_RUNTIME_ATTACH);
+    RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
 
     Instance = this;
 }
@@ -1163,8 +1160,8 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
 
         std::vector<AnimationDataExternal> dataArray;
 
-        MonoDomain* domain = m_runtime->GetEditorDomain();
-        MonoClass* frameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrameExternal");
+        MonoDomain* domain = RuntimeManager::GetEditorDomain();
+        MonoClass* frameClass = RuntimeManager::GetClass("IcarianEngine.Rendering.Animation", "AnimationFrameExternal");
         ICARIAN_ASSERT(frameClass != NULL);
 
         const uint32_t channelCount = (uint32_t)animation->mNumChannels;
@@ -1254,7 +1251,7 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
         const uint32_t dataCount = (uint32_t)dataArray.size();
         if (dataCount > 0)
         {
-            MonoClass* dataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationDataExternal");
+            MonoClass* dataClass = RuntimeManager::GetClass("IcarianEngine.Rendering.Animation", "AnimationDataExternal");
             ICARIAN_ASSERT(dataClass != NULL);
 
             MonoArray* array = mono_array_new(domain, dataClass, (uintptr_t)dataCount);
@@ -1282,7 +1279,7 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

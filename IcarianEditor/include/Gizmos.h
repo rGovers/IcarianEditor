@@ -10,7 +10,6 @@
 #include <glad/glad.h>
 #include <vector>
 
-class RuntimeManager;
 class ShaderProgram;
 
 struct GizmoVertex
@@ -26,12 +25,7 @@ struct GizmoVertex
     }
 };
 
-enum e_ManipulationMode : uint16_t
-{
-    ManipulationMode_Translate = 0,
-    ManipulationMode_Rotate = 1,
-    ManipulationMode_Scale = 2
-};
+#include "EditorGizmosInteropStructures.h"
 
 class Gizmos
 {
@@ -50,34 +44,35 @@ private:
 
     Gizmos();
     
-    static void DrawUVHemisphere(const glm::vec3& a_pos, float a_dir, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
+    static void DrawUVHemisphere(const glm::vec3& a_pos, float a_dir, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
 
 protected:
 
 public:
     ~Gizmos();
 
-    static void Init(RuntimeManager* a_runtime);
+    static void Init();
     static void Destroy();
 
     static void SetMatrices(const glm::mat4& a_view, const glm::mat4& a_proj);
 
     static bool Manipulation(e_ManipulationMode a_mode, glm::vec3* a_translation, glm::quat* a_rotation, glm::vec3* a_scale);
 
-    static void DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
+    static void DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
+    static void MultiDrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width, const glm::vec4& a_colour, const glm::vec3& a_dir, float a_delta, uint32_t a_count);
     
-    static void DrawIcoSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
-    static void DrawUVSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
+    static void DrawIcoSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
+    static void DrawUVSphere(const glm::vec3& a_pos, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
 
-    static void DrawCylinder(const glm::vec3& a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
-    static void DrawCapsule(const glm::vec3& a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_color = glm::vec4(1.0f));
+    static void DrawCylinder(const glm::vec3& a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
+    static void DrawCapsule(const glm::vec3& a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width = 0.1f, const glm::vec4& a_colour = glm::vec4(1.0f));
 
     static void Render();
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

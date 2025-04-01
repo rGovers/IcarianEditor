@@ -5,18 +5,14 @@
 #pragma once
 
 #include <filesystem>
-#include <functional>
 
 class EditorWindow;
-class RuntimeManager;
 
 #include "Gizmos.h"
 
 class Workspace
 {
 private:
-    RuntimeManager*            m_runtime;
-
     std::filesystem::path      m_currentScene;
 
     std::filesystem::path      m_selectionPath;
@@ -28,7 +24,7 @@ private:
 protected:
 
 public:
-    Workspace(RuntimeManager* a_runtime);
+    Workspace();
     ~Workspace();
 
     inline std::filesystem::path GetCurrentScene() const
@@ -49,11 +45,6 @@ public:
         m_manipulationMode = a_mode;
     }
 
-    inline RuntimeManager* GetRuntime() const
-    {
-        return m_runtime;
-    }
-
     void AddEditorWindow(EditorWindow* a_window);
     void RemoveEditorWindow(EditorWindow* a_window);
 
@@ -64,7 +55,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

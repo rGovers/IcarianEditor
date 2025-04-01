@@ -6,7 +6,7 @@
 
 #include "InteropTypes.h"
 
-#define EDITORDEFLIBRARY_EXPORT_TABLE(F) \
+#define EDITOR_DEFLIBRARY_EXPORT_TABLE(F) \
     F(void, IcarianEditor, EditorDefLibraryInterop, WriteDef, \
     { \
         mono_unichar4* str = mono_string_to_utf32(a_path); \

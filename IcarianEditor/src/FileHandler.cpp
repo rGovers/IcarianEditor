@@ -20,8 +20,6 @@
 
 FileHandler* Instance = nullptr;
 
-#define FILEHANDLER_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
-
 FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
 static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
@@ -120,11 +118,10 @@ static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path,
     ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
-FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace)
+FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace)
 {
     m_assets = a_assets;
 
-    m_runtime = a_runtime;
     m_storage = a_storage;
 
     m_extTex.emplace(".cs", Datastore::GetTexture("Textures/FileIcons/FileIcon_CSharpScript.png"));
@@ -147,18 +144,18 @@ FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, Runt
 
     m_extDragCallback.emplace(".def", FileCallback(std::bind(PushDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-    FILEHANDLER_EXPORT_TABLE(FILEHANDLER_RUNTIME_ATTACH);
+    FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
 }
 FileHandler::~FileHandler()
 {
     
 }
 
-void FileHandler::Init(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace)
+void FileHandler::Init(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace)
 {
     if (Instance == nullptr)
     {
-        Instance = new FileHandler(a_assets, a_runtime, a_storage, a_workspace);
+        Instance = new FileHandler(a_assets, a_storage, a_workspace);
     }
 }
 void FileHandler::Destroy()
@@ -195,12 +192,12 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     {
     case AssetType_Texture:
     {
-        if (!Instance->m_runtime->IsBuilt())
+        if (!RuntimeManager::IsBuilt())
         {
             break;
         }
 
-        MonoDomain* domain = Instance->m_runtime->GetEditorDomain();
+        MonoDomain* domain = RuntimeManager::GetEditorDomain();
 
         const std::string pathString = a_path.u8string();
         MonoString* str = mono_string_new(domain, pathString.c_str());
@@ -210,7 +207,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
             str
         };
 
-        Instance->m_runtime->ExecFunction("IcarianEditor", "FileHandler", ":GetFileHandle(string)", args);
+        RuntimeManager::ExecFunction("IcarianEditor", "FileHandler", ":GetFileHandle(string)", args);
 
         const FileTextureHandle& handle = Instance->m_runtimeTexHandle;
 
@@ -267,7 +264,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

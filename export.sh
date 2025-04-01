@@ -6,42 +6,12 @@ if [ -d "../build/BuildFiles" ]; then
     rm -rf ../build/BuildFiles
 fi
 
-if [ -d "build" ]; then
-    rm -rf build
-fi
-
-source "build.sh" "$@" --platform=windows -R
-if [ $? -ne 0 ]; then
-    echo "Windows export failed"
-    exit 1
-fi
-
-mkdir -p ../build/BuildFiles/Windows/bin
-mkdir -p ../build/BuildFiles/Windows/lib
-
-cp -r build/. ../build/BuildFiles/Windows/bin
-cp build/IcarianCS.dll ../build/BuildFiles/Windows/lib/IcarianCS.dll
-
-if [ -d "build" ]; then
-    rm -rf build
-fi
-
-source "build.sh" "$@" --platform=linux -R
-if [ $? -ne 0 ]; then
-    echo "Linux export failed"
-    exit 1
-fi
-
-mkdir -p ../build/BuildFiles/Linux/bin
-mkdir -p ../build/BuildFiles/Linux/lib
-
-cp -r build/. ../build/BuildFiles/Linux/bin
-cp build/IcarianCS.dll ../build/BuildFiles/Linux/lib/IcarianCS.dll
-
 if ! command -v podman 2>&1 > /dev/null 
 then
     echo "No Podman skipping Linux Steam version"
 else
+    # LTO is acting weird and sticking between rebuilds need to investigate 
+    # For now just compile the Steam version then Windows then the normal Linux version
     podman pull registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
 
     if [ $? -ne 0 ]; then
@@ -76,6 +46,38 @@ else
     cp -r build/. "../build/BuildFiles/LinuxSteam/bin"
     cp build/IcarianCS.dll "../build/BuildFiles/LinuxSteam/lib/IcarianCS.dll"
 fi
+
+if [ -d "build" ]; then
+    rm -rf build
+fi
+
+source "build.sh" "$@" --platform=windows -R --rebuild
+if [ $? -ne 0 ]; then
+    echo "Windows export failed"
+    exit 1
+fi
+
+mkdir -p ../build/BuildFiles/Windows/bin
+mkdir -p ../build/BuildFiles/Windows/lib
+
+cp -r build/. ../build/BuildFiles/Windows/bin
+cp build/IcarianCS.dll ../build/BuildFiles/Windows/lib/IcarianCS.dll
+
+if [ -d "build" ]; then
+    rm -rf build
+fi
+
+source "build.sh" "$@" --platform=linux -R --rebuild
+if [ $? -ne 0 ]; then
+    echo "Linux export failed"
+    exit 1
+fi
+
+mkdir -p ../build/BuildFiles/Linux/bin
+mkdir -p ../build/BuildFiles/Linux/lib
+
+cp -r build/. ../build/BuildFiles/Linux/bin
+cp build/IcarianCS.dll ../build/BuildFiles/Linux/lib/IcarianCS.dll
 
 echo "-------------------------------------------"
 echo

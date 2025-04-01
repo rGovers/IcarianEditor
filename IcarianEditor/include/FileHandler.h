@@ -10,7 +10,6 @@
 #include <unordered_map>
 
 class AssetLibrary;
-class RuntimeManager;
 class RuntimeStorage;
 class Texture;
 class Workspace;
@@ -26,14 +25,13 @@ private:
     FileTextureHandle                             m_runtimeTexHandle;
 
     AssetLibrary*                                 m_assets;
-    RuntimeManager*                               m_runtime;
     RuntimeStorage*                               m_storage;
 
     std::unordered_map<std::string, Texture*>     m_extTex;
     std::unordered_map<std::string, FileCallback> m_extOpenCallback;
     std::unordered_map<std::string, FileCallback> m_extDragCallback;
 
-    FileHandler(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace);
+    FileHandler(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace);
     
 protected:
 
@@ -42,7 +40,7 @@ public:
 
     static void SetFileHandle(const FileTextureHandle& a_handle);
 
-    static void Init(AssetLibrary* a_assets, RuntimeManager* a_runtime, RuntimeStorage* a_storage, Workspace* a_workspace);
+    static void Init(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace);
     static void Destroy();
 
     static void GetFileData(const std::filesystem::path& a_path, FileCallback** a_openCallback, FileCallback** a_dragCallback, GLuint* a_texture);
@@ -50,7 +48,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -9,9 +9,9 @@
 #include "GUI.h"
 #include "Runtime/RuntimeManager.h"
 
-SceneDefsWindow::SceneDefsWindow(RuntimeManager* a_runtime) : Window("Scene Definitions", "Textures/WindowIcons/WindowIcon_SceneDefs.png")
+SceneDefsWindow::SceneDefsWindow() : Window("Scene Definitions", "Textures/WindowIcons/WindowIcon_SceneDefs.png")
 {
-    m_runtime = a_runtime;
+
 }
 SceneDefsWindow::~SceneDefsWindow()
 {
@@ -22,12 +22,12 @@ void SceneDefsWindow::Update(double a_delta)
 {
     GUI::SetWidth(ImGui::GetWindowSize().x);
 
-    m_runtime->ExecFunction("IcarianEditor.Windows", "SceneDefsWindow", ":OnGUI()", nullptr);
+    RuntimeManager::ExecFunction("IcarianEditor.Windows", "SceneDefsWindow", ":OnGUI()", nullptr);
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

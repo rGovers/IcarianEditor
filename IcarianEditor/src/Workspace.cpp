@@ -14,17 +14,13 @@ static Workspace* Instance = nullptr;
 
 #include "WorkspaceInterop.h"
 
-#define WORKSPACE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
-
 WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-Workspace::Workspace(RuntimeManager* a_runtime)
+Workspace::Workspace()
 {
-    m_runtime = a_runtime;
-
     m_manipulationMode = ManipulationMode_Translate;
 
-    WORKSPACE_EXPORT_TABLE(WORKSPACE_RUNTIME_ATTACH);
+    WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
 
     Instance = this;
 }
@@ -62,7 +58,7 @@ void Workspace::SetScene(const std::filesystem::path& a_path)
 
 void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
-    MonoDomain* editorDomain = m_runtime->GetEditorDomain();
+    MonoDomain* editorDomain = RuntimeManager::GetEditorDomain();
 
     const std::u32string str = a_path.u32string();
     MonoString* pathString = mono_string_from_utf32((mono_unichar4*)str.c_str());
@@ -72,12 +68,12 @@ void Workspace::OpenDef(const std::filesystem::path& a_path)
         pathString
     };
 
-    m_runtime->ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
+    RuntimeManager::ExecFunction("IcarianEditor", "Workspace", ":PushDef(string)", args);
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

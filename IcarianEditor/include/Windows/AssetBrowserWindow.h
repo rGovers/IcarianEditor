@@ -13,7 +13,6 @@
 class AppMain;
 class AssetLibrary;
 class Project;
-class RuntimeManager;
 
 struct DirectoryNode
 {
@@ -33,7 +32,6 @@ private:
     AppMain*                   m_app;
     AssetLibrary*              m_assetLibrary;
     Project*                   m_project;
-    RuntimeManager*            m_runtime;
 
     std::vector<DirectoryNode> m_fileTree;
     uint32_t                   m_curIndex;
@@ -53,7 +51,7 @@ private:
 protected:
 
 public:
-    AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary, RuntimeManager* a_runtime);
+    AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary);
     virtual ~AssetBrowserWindow();
     
     virtual void Refresh();
@@ -62,7 +60,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

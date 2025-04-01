@@ -11,26 +11,28 @@ namespace IcarianEditor.Editor
     [EDisplay(typeof(RigidBody))]
     public class RigidBodyEditorDisplay : EditorDisplay
     {
-        public override void Render(bool a_selected, Def a_component, Matrix4 a_transform)
+        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             if (!a_selected)
             {
-                return;
+                return false;
             }
 
             RigidBodyDef def = a_component as RigidBodyDef;
             if (def == null || def.CollisionShape == null)
             {
-                return;
+                return false;
             }
 
             CollisionShapeDef shapeDef = EditorDefLibrary.GenerateDef(def.CollisionShape.DefName) as CollisionShapeDef;
             if (shapeDef == null)
             {
-                return;
+                return false;
             }
 
             ColliderRenderer.DrawCollider(a_transform, shapeDef, Color.Red);
+
+            return false;
         }
     }
 }

@@ -15,7 +15,7 @@ using System.Xml;
 #include "InteropBinding.h"
 #include "EditorSceneInterop.h"
 
-EDITORSCENE_EXPORT_TABLE(IOP_BIND_FUNCTION);
+EDITOR_SCENE_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {

@@ -2,40 +2,31 @@
 // 
 // License at end of file.
 
-using IcarianEngine.Definitions;
-using IcarianEngine.Maths;
-using IcarianEngine.Physics;
+#pragma once
 
-namespace IcarianEditor.Editor
+#include "InteropTypes.h"
+
+#ifdef CUBE_LANGUAGE_CSHARP
+namespace IcarianEditor {
+#endif
+
+IOP_PACKED IOP_CSINTERNAL struct TransformValue
 {
-    [EDisplay(typeof(TriggerBody))]
-    public class TriggerBodyEditorDisplay : EditorDisplay
-    {
-        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
-        {
-            if (!a_selected)
-            {
-                return false;
-            }
+    IOP_CSPUBLIC IOP_VEC3 Translation;
+    IOP_CSPUBLIC IOP_QUAT Rotation;
+    IOP_CSPUBLIC IOP_VEC3 Scale;
+};
 
-            TriggerBodyDef def = a_component as TriggerBodyDef;
-            if (def == null || def.CollisionShape == null)
-            {
-                return false;
-            }
+IOP_CSPUBLIC enum IOP_ENUM_NAME(ManipulationMode) : IOP_UINT16
+{
+    IOP_ENUM_VALUE(ManipulationMode, Translate) = 0,
+    IOP_ENUM_VALUE(ManipulationMode, Rotate) = 1,
+    IOP_ENUM_VALUE(ManipulationMode, Scale) = 2,
+};
 
-            CollisionShapeDef shapeDef = EditorDefLibrary.GenerateDef(def.CollisionShape.DefName) as CollisionShapeDef;
-            if (shapeDef == null)
-            {
-                return false;
-            }
-
-            ColliderRenderer.DrawCollider(a_transform, shapeDef, Color.Blue);
-
-            return false;
-        }
-    }
+#ifdef CUBE_LANGUAGE_CSHARP
 }
+#endif
 
 // MIT License
 // 

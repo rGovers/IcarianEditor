@@ -29,7 +29,7 @@ namespace IcarianEditor.Editor
 
     public abstract class EditorDisplay
     {
-        public abstract void Render(bool a_selected, Def a_component, Matrix4 a_transform); 
+        public abstract bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight); 
     };
 }
 
