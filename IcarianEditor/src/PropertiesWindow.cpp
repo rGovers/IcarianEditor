@@ -9,9 +9,9 @@
 #include "GUI.h"
 #include "Runtime/RuntimeManager.h"
 
-PropertiesWindow::PropertiesWindow(RuntimeManager* a_runtime) : Window("Properties", "Textures/WindowIcons/WindowIcon_Properties.png")
+PropertiesWindow::PropertiesWindow() : Window("Properties", "Textures/WindowIcons/WindowIcon_Properties.png")
 {
-    m_runtime = a_runtime;
+
 }
 PropertiesWindow::~PropertiesWindow()
 {
@@ -22,12 +22,12 @@ void PropertiesWindow::Update(double a_delta)
 {
     GUI::SetWidth(ImGui::GetWindowSize().x);
 
-    m_runtime->ExecFunction("IcarianEditor.Windows", "PropertiesWindow", ":OnGUI", NULL);
+    RuntimeManager::ExecFunction("IcarianEditor.Windows", "PropertiesWindow", ":OnGUI", NULL);
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

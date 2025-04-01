@@ -6,9 +6,9 @@
 
 #include "Runtime/RuntimeManager.h"
 
-HierarchyWindow::HierarchyWindow(RuntimeManager* a_runtime) : Window("Hierarchy", "Textures/WindowIcons/WindowIcon_Hierarchy.png")
+HierarchyWindow::HierarchyWindow() : Window("Hierarchy", "Textures/WindowIcons/WindowIcon_Hierarchy.png")
 {
-    m_runtime = a_runtime;
+
 }
 HierarchyWindow::~HierarchyWindow()
 {
@@ -17,12 +17,12 @@ HierarchyWindow::~HierarchyWindow()
 
 void HierarchyWindow::Update(double a_delta)
 {
-    m_runtime->ExecFunction("IcarianEditor.Windows", "HierarchyWindow", ":OnGUI()", nullptr);
+    RuntimeManager::ExecFunction("IcarianEditor.Windows", "HierarchyWindow", ":OnGUI()", nullptr);
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

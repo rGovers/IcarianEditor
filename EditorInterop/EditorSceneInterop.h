@@ -6,7 +6,7 @@
 
 #include "InteropTypes.h"
 
-#define EDITORSCENE_EXPORT_TABLE(F) \
+#define EDITOR_SCENE_EXPORT_TABLE(F) \
     F(void, IcarianEditor, EditorSceneInterop, WriteScene, \
     { \
         mono_unichar4* str = mono_string_to_utf32(a_path); \

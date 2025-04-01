@@ -7,12 +7,12 @@
 #include <cstdint>
 #include <filesystem>
 #include <mono/metadata/object.h>
+#include <unordered_map>
 #include <vector>
 
 class AssetLibrary;
 class Model;
 class PixelShader;
-class RuntimeManager;
 class Texture;
 class VertexShader;
 
@@ -22,22 +22,24 @@ class VertexShader;
 class RuntimeStorage
 {
 private:
-    AssetLibrary*                     m_assets;
-    RuntimeManager*                   m_runtime;
+    AssetLibrary*                                m_assets;
      
-    std::vector<Model*>               m_models;
-    std::vector<Texture*>             m_textures;
-    std::vector<TextureSamplerBuffer> m_samplers;
+    std::vector<Model*>                          m_models;
+    std::vector<Texture*>                        m_textures;
+    std::vector<TextureSamplerBuffer>            m_samplers;
 
-    std::vector<VertexShader*>        m_vertexShaders;
-    std::vector<PixelShader*>         m_pixelShaders;
+    std::unordered_map<std::string, std::string> m_vertexImports;
+    std::unordered_map<std::string, std::string> m_pixelImports;
 
-    std::vector<RenderProgram>        m_renderPrograms;
+    std::vector<VertexShader*>                   m_vertexShaders;
+    std::vector<PixelShader*>                    m_pixelShaders;
+
+    std::vector<RenderProgram>                   m_renderPrograms;
 
 protected:
 
 public:
-    RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets);
+    RuntimeStorage(AssetLibrary* a_assets);
     ~RuntimeStorage();
 
     inline AssetLibrary* GetLibrary() const
@@ -45,14 +47,16 @@ public:
         return m_assets;
     }
 
-    uint32_t GenerateVertexShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
+    uint32_t GenerateVertexShader(const std::filesystem::path& a_path);
+    void AddVertexImport(const std::string_view& a_key, const std::string_view& a_value);
     void DestroyVertexShader(uint32_t a_addr);
     inline VertexShader* GetVertexShader(uint32_t a_addr) const
     {
         return m_vertexShaders[a_addr];
     }
 
-    uint32_t GeneratePixelShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount);
+    uint32_t GeneratePixelShader(const std::filesystem::path& a_path);
+    void AddPixelImport(const std::string_view& a_key, const std::string_view& a_value);
     void DestroyPixelShader(uint32_t a_addr);
     inline PixelShader* GetPixelShader(uint32_t a_addr) const
     {
@@ -100,7 +104,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

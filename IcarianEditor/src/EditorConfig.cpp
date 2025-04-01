@@ -12,8 +12,6 @@
 
 static EditorConfig* Instance = nullptr;
 
-#define EDITORCONFIG_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name)
-
 #define EDITORCONFIG_BINDING_FUNCTION_TABLE(F) \
     F(uint32_t, IcarianEditor, EditorConfig, GetUseDegrees, { return (uint32_t)EditorConfig::GetUseDegrees(); }) \
 
@@ -269,14 +267,14 @@ void EditorConfig::Serialize()
     doc.SaveFile(ConfigFile);
 }
 
-void EditorConfig::Init(RuntimeManager* a_runtime)
+void EditorConfig::Init()
 {
     if (Instance == nullptr)
     {
         Instance = new EditorConfig();
         Deserialize();
 
-        EDITORCONFIG_BINDING_FUNCTION_TABLE(EDITORCONFIG_RUNTIME_ATTACH);
+        EDITORCONFIG_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
     }
 }
 void EditorConfig::Destroy()
@@ -348,7 +346,7 @@ void EditorConfig::SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

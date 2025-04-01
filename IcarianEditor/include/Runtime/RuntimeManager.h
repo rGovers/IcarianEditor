@@ -9,20 +9,21 @@
 #include <mono/metadata/assembly.h>
 #include <string_view>
 
-#if WIN32
-#define FLARE_MONO_EXPORT(ret, func, ...) __declspec(dllexport) ret func(__VA_ARGS__)
+#ifdef WIN32
+#define ICARIAN_MONO_EXPORT(ret, func, ...) __declspec(dllexport) ret func(__VA_ARGS__)
 #else
-#define FLARE_MONO_EXPORT(ret, func, ...) static ret func(__VA_ARGS__)
+#define ICARIAN_MONO_EXPORT(ret, func, ...) static ret func(__VA_ARGS__)
 #endif
 
 #define RUNTIME_FUNCTION_NAME(klass, name) MRF_##klass##_##name
 #define RUNTIME_FUNCTION_STRING(namespace, klass, name) #namespace "." #klass "::" #name
 
-#define RUNTIME_FUNCTION(ret, klass, name, code, ...) FLARE_MONO_EXPORT(ret, RUNTIME_FUNCTION_NAME(klass, name), __VA_ARGS__) code
+#define RUNTIME_FUNCTION(ret, klass, name, code, ...) ICARIAN_MONO_EXPORT(ret, RUNTIME_FUNCTION_NAME(klass, name), __VA_ARGS__) code
 
 #define RUNTIME_FUNCTION_DEFINITION(ret, namespace, klass, name, code, ...) RUNTIME_FUNCTION(ret, klass, name, code, __VA_ARGS__)
+#define RUNTIME_FUNCTION_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(namespace, klass, name);
 
-#define BIND_FUNCTION(runtime, namespace, klass, name) runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name))
+#define BIND_FUNCTION(namespace, klass, name) RuntimeManager::BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name))
 
 class RuntimeManager
 {
@@ -43,43 +44,37 @@ private:
 
     bool          m_built;
     
-    void UnloadEditorDomain();
+    static void UnloadEditorDomain();
 
+    RuntimeManager();
 protected:
 
 public:
-    RuntimeManager();
     ~RuntimeManager();
 
-    inline bool IsBuilt() const
-    {
-        return m_built;
-    }
-    inline bool IsRunning() const
-    {
-        return m_editorDomain != NULL;
-    }
+    static void Init();
+    static void Destroy();
 
-    inline MonoDomain* GetEditorDomain() const
-    {
-        return m_editorDomain;
-    }
+    static bool IsBuilt();
+    static bool IsRunning();
 
-    bool Build(const std::filesystem::path& a_path, const std::string_view& a_name);
+    static MonoDomain* GetEditorDomain();
 
-    void Start(const std::filesystem::path& a_path, const std::string_view& a_name);
+    static bool Build(const std::filesystem::path& a_path, const std::string_view& a_name);
 
-    void Update(double a_delta);
+    static void Start(const std::filesystem::path& a_path, const std::string_view& a_name);
 
-    MonoClass* GetClass(const std::string_view& a_namespace, const std::string_view& a_name) const;
+    static void Update(double a_delta);
 
-    void BindFunction(const std::string_view& a_location, void* a_function);
-    void ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args) const;
+    static MonoClass* GetClass(const std::string_view& a_namespace, const std::string_view& a_name);
+
+    static void BindFunction(const std::string_view& a_location, void* a_function);
+    static void ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args);
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

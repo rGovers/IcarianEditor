@@ -12,19 +12,19 @@ namespace IcarianEditor.Editor
     [EDisplay(typeof(SkeletonAnimator))]
     public class SkeletonAnimatorEditorDisplay : EditorDisplay
     {
-        public override void Render(bool a_selected, Def a_component, Matrix4 a_transform)
+        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             SkeletonAnimatorDef def = a_component as SkeletonAnimatorDef;
             if (def == null)
             {
-                return;
+                return false;
             }
 
             // Engine need full def to work properly cannot do partial generation
             SkeletonAnimatorDef skeletonAnimatorDef = EditorDefLibrary.GenerateDef<SkeletonAnimatorDef>(def.DefName, true);
             if (skeletonAnimatorDef == null)
             {
-                return;
+                return false;
             }
 
             AnimationMaster.UpdateSkeleton(skeletonAnimatorDef);
@@ -33,6 +33,8 @@ namespace IcarianEditor.Editor
             {
                 AnimationMaster.DrawBones(a_transform, AssetLibrary.LoadSkeleton(skeletonAnimatorDef.SkeletonPath));
             }
+
+            return false;
         }
     }
 }

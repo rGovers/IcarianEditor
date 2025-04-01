@@ -32,11 +32,11 @@
 
 static RuntimeStorage* Instance = nullptr;
 
-#define RUNTIMESTORAGE_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
 #define RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(F) \
-    F(void, IcarianEngine.Rendering, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
-    F(void, IcarianEngine.Rendering, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
+    F(uint32_t, IcarianEngine.Rendering.Shaders, VertexShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GenerateVertexShader(str); }, MonoString* a_path) \
+    F(void, IcarianEngine.Rendering.Shaders, VertexShader, DestroyShader, { Instance->DestroyVertexShader(a_addr); }, uint32_t a_addr) \
+    F(uint32_t, IcarianEngine.Rendering.Shaders, PixelShader, GenerateFromFile, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); return Instance->GeneratePixelShader(str); }, MonoString* a_path) \
+    F(void, IcarianEngine.Rendering.Shaders, PixelShader, DestroyShader, { Instance->DestroyPixelShader(a_addr); }, uint32_t a_addr) \
     \
     F(RenderProgram, IcarianEngine.Rendering, Material, GetProgramBuffer, { return Instance->GetRenderProgram(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, Material, SetProgramBuffer, { Instance->SetRenderProgram(a_addr, a_program); }, uint32_t a_addr, RenderProgram a_program) \
@@ -58,70 +58,29 @@ static RuntimeStorage* Instance = nullptr;
 
 RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-RUNTIME_FUNCTION(uint32_t, VertexShader, GenerateFromFile, 
+RUNTIME_FUNCTION(void, VertexShader, AddImport,
 {
-    char* str = mono_string_to_utf8(a_path);
-    IDEFER(mono_free(str));
+    char* key = mono_string_to_utf8(a_key);
+    IDEFER(mono_free(key));
+    char* value = mono_string_to_utf8(a_value);
+    IDEFER(mono_free(value));
 
-    const std::filesystem::path p = std::filesystem::path(str);
-    const std::filesystem::path ext = p.extension();
-
-    AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".fvert")
-    {
-        uint32_t size; 
-        const uint8_t* dat;
-        library->GetAsset(p, &size, &dat);
-
-        std::string error;
-        std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
-        if (s.empty())
-        {
-            Logger::Error("Failed to parse vertex shader: " + error);
-
-            return -1;
-        }
-
-        return Instance->GenerateVertexShader(s, inputs.data(), (uint32_t)inputs.size());
-    }
-
-    return -1;
-}, MonoString* a_path)
-RUNTIME_FUNCTION(uint32_t, PixelShader, GenerateFromFile, 
+    Instance->AddVertexImport(key, value);
+}, MonoString* a_key, MonoString* a_value)
+RUNTIME_FUNCTION(void, PixelShader, AddImport,
 {
-    char* str = mono_string_to_utf8(a_path);
-    IDEFER(mono_free(str));
+    char* key = mono_string_to_utf8(a_key);
+    IDEFER(mono_free(key));
+    char* value = mono_string_to_utf8(a_value);
+    IDEFER(mono_free(value));
 
-    const std::filesystem::path p = std::filesystem::path(str);
-    const std::filesystem::path ext = p.extension();
-
-    AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".fpix" || ext == ".ffrag")
-    {
-        uint32_t size;
-        const uint8_t* dat;
-        library->GetAsset(p, &size, &dat);
-
-        std::string error;
-        std::vector<ShaderBufferInput> inputs;
-        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, &inputs, &error);
-        if (s.empty())
-        {
-            Logger::Error("Failed to parse pixel shader: " + error);
-
-            return -1;
-        }
-
-        return Instance->GeneratePixelShader(s, inputs.data(), (uint32_t)inputs.size());
-    }
-
-    return -1;
-}, MonoString* a_path)
+    Instance->AddPixelImport(key, value);
+}, MonoString* a_key, MonoString* a_value)
 
 RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram, 
 {
     RenderProgram program;
+    memset(&program, 0, sizeof(RenderProgram));
     program.VertexShader = a_vertexShader;
     program.PixelShader = a_pixelShader;
     program.ShadowVertexShader = a_shadowVertexShader;
@@ -130,8 +89,6 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
     program.PrimitiveMode = (e_PrimitiveMode)a_primitiveMode;
     program.ColorBlendMode = (e_MaterialBlendMode)a_colorBlendMode;
     program.RenderLayer = a_renderLayer;
-    program.Data = nullptr;
-    program.Flags = 0;
 
     if (a_attributes != NULL)
     {
@@ -164,6 +121,30 @@ RUNTIME_FUNCTION(uint32_t, Material, GenerateProgram,
 
     return Instance->GenerateRenderProgram(program);
 }, uint32_t a_vertexShader, uint32_t a_pixelShader, uint16_t a_vertexStride, MonoArray* a_attributes, uint32_t a_cullMode, uint32_t a_primitiveMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, uint32_t a_uboSize, void* a_uboBuffer)
+RUNTIME_FUNCTION(uint32_t, Material, GenerateMeshProgram, 
+{
+    // List initialisers are being drunk so guess zero and init it is
+    RenderProgram program;
+    memset(&program, 0, sizeof(RenderProgram));
+    program.VertexShader = a_meshShader;
+    program.PixelShader = a_pixelShader;
+    program.ShadowVertexShader = a_shadowVertexShader;
+    program.VertexStride = a_vertexStride;
+    program.CullingMode = (e_CullMode)a_cullMode;
+    program.ColorBlendMode = (e_MaterialBlendMode)a_colorBlendMode;
+    program.MaterialMode = MaterialMode_BaseMesh;
+    program.RenderLayer = a_renderLayer;
+
+    if (a_uboData != NULL)
+    {
+        program.UBODataSize = a_uboSize;
+        program.UBOData = malloc((size_t)program.UBODataSize);
+
+        memcpy(program.UBOData, a_uboData, program.UBODataSize);
+    }
+
+    return Instance->GenerateRenderProgram(program);
+}, uint32_t a_meshShader, uint32_t a_pixelShader, uint16_t a_vertexStride, uint32_t a_cullMode, uint32_t a_colorBlendMode, uint32_t a_renderLayer, uint32_t a_shadowVertexShader, uint32_t a_uboSize, void* a_uboData)
 RUNTIME_FUNCTION(void, Material, DestroyProgram, 
 {
     RenderProgram program = Instance->GetRenderProgram(a_addr);
@@ -215,6 +196,11 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateModel,
 
 static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std::vector<uint32_t>* a_indices, float* a_rSqr)
 {
+    const bool hasNormals = a_mesh->HasNormals();
+    const bool hasTexCoordsA = a_mesh->HasTextureCoords(0);
+    const bool hasTexCoordsB = a_mesh->HasTextureCoords(1);
+    const bool hasColour = a_mesh->HasVertexColors(0);
+
     for (uint32_t i = 0; i < a_mesh->mNumVertices; ++i) 
     {
         Vertex v;
@@ -224,19 +210,25 @@ static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std:
 
         *a_rSqr = glm::max(pos.SquareLength(), *a_rSqr);
 
-        if (a_mesh->HasNormals()) 
+        if (hasNormals) 
         {
             const aiVector3D& norm = a_mesh->mNormals[i];
             v.Normal = glm::vec3(norm.x, -norm.y, norm.z);
         }
 
-        if (a_mesh->HasTextureCoords(0)) 
+        if (hasTexCoordsA) 
         {
             const aiVector3D& uv = a_mesh->mTextureCoords[0][i];
-            v.TexCoords = glm::vec2(uv.x, uv.y);
+            v.TexCoordsA = glm::vec2(uv.x, uv.y);
         }
 
-        if (a_mesh->HasVertexColors(0)) 
+        if (hasTexCoordsB)
+        {
+            const aiVector3D& uv = a_mesh->mTextureCoords[1][i];
+            v.TexCoordsB = glm::vec2(uv.x, uv.y);
+        }
+
+        if (hasColour) 
         {
             const aiColor4D& colour = a_mesh->mColors[0][i];
             v.Color = glm::vec4(colour.r, colour.g, colour.b, colour.a);
@@ -693,27 +685,27 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
     return -1;
 }, MonoString* a_path)
 
-RuntimeStorage::RuntimeStorage(RuntimeManager* a_runtime, AssetLibrary* a_assets)
+RuntimeStorage::RuntimeStorage(AssetLibrary* a_assets)
 {
     m_assets = a_assets;
-    m_runtime = a_runtime;
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, VertexShader, GenerateFromFile);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, PixelShader, GenerateFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering.Shaders, VertexShader, AddImport);
+    BIND_FUNCTION(IcarianEngine.Rendering.Shaders, PixelShader, AddImport);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, GenerateProgram);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Material, DestroyProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, GenerateProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, GenerateMeshProgram);
+    BIND_FUNCTION(IcarianEngine.Rendering, Material, DestroyProgram);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateModel);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateFromFile);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateModel);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Model, GenerateSkinnedFromFile);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, AnimationClip, LoadExternalAnimationData);
+    BIND_FUNCTION(IcarianEngine.Rendering.Animation, Skeleton, LoadBoneData);
+    BIND_FUNCTION(IcarianEngine.Rendering.Animation, AnimationClip, LoadExternalAnimationData);
 
-    BIND_FUNCTION(a_runtime, IcarianEngine.Rendering, Texture, GenerateFromFile);
+    BIND_FUNCTION(IcarianEngine.Rendering, Texture, GenerateFromFile);
 
-    RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIMESTORAGE_RUNTIME_ATTACH);
+    RUNTIMESTORAGE_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
 
     Instance = this;
 }
@@ -754,6 +746,8 @@ void RuntimeStorage::Clear()
     }
     m_samplers.clear();
 
+    m_vertexImports.clear();
+
     for (const VertexShader* v : m_vertexShaders)
     {
         if (v != nullptr)
@@ -762,6 +756,8 @@ void RuntimeStorage::Clear()
         }
     }
     m_vertexShaders.clear();
+
+    m_pixelImports.clear();
 
     for (const PixelShader* p : m_pixelShaders)
     {
@@ -776,28 +772,70 @@ void RuntimeStorage::Clear()
     m_samplers.clear();
 }
 
-uint32_t RuntimeStorage::GenerateVertexShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
+uint32_t RuntimeStorage::GenerateVertexShader(const std::filesystem::path& a_path)
 {
-    VertexShader* vShader = VertexShader::GenerateShader(a_str, a_inputs, a_inputCount);
-    if (vShader == nullptr)
-    {
-        return -1;
-    }
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.string();
 
-    const uint32_t shaderCount = (uint32_t)m_vertexShaders.size();
-    for (uint32_t i = 0; i < shaderCount; ++i)
+    switch (StringHash<uint32_t>(extStr.c_str())) 
     {
-        if (m_vertexShaders[i] == nullptr)
+    case StringHash<uint32_t>(".fvert"):
+    {
+        uint32_t size; 
+        const uint8_t* dat;
+        m_assets->GetAsset(a_path, &size, &dat);
+
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, m_vertexImports, &inputs, &error);
+        if (s.empty())
         {
-            m_vertexShaders[i] = vShader;
+            Logger::Error("Failed to parse VertexShader: " + error + ":" + a_path.string());
 
-            return i;
+            break;
         }
+
+        VertexShader* vShader = VertexShader::GenerateShader(s, inputs.data(), (uint32_t)inputs.size());
+        if (vShader == nullptr)
+        {
+            Logger::Error("Failed to generate VertexShader: " + a_path.string());
+
+            break;
+        }
+
+        const uint32_t shaderCount = (uint32_t)m_vertexShaders.size();
+        for (uint32_t i = 0; i < shaderCount; ++i)
+        {
+            if (m_vertexShaders[i] == nullptr)
+            {
+                m_vertexShaders[i] = vShader;
+
+                return i;
+            }
+        }
+
+        m_vertexShaders.emplace_back(vShader);
+
+        return shaderCount;
+    }
     }
 
-    m_vertexShaders.emplace_back(vShader);
+    return -1;
+}
+void RuntimeStorage::AddVertexImport(const std::string_view& a_key, const std::string_view& a_value)
+{
+    const std::string key = std::string(a_key);
+    const std::string value = std::string(a_value);
 
-    return shaderCount;
+    auto iter = m_vertexImports.find(key);
+    if (iter != m_vertexImports.end())
+    {
+        iter->second = value;
+
+        return;
+    }
+
+    m_vertexImports.emplace(key, value);
 }
 void RuntimeStorage::DestroyVertexShader(uint32_t a_addr)
 {
@@ -805,28 +843,71 @@ void RuntimeStorage::DestroyVertexShader(uint32_t a_addr)
     m_vertexShaders[a_addr] = nullptr;
 }
 
-uint32_t RuntimeStorage::GeneratePixelShader(const std::string_view& a_str, const ShaderBufferInput* a_inputs, uint32_t a_inputCount)
+uint32_t RuntimeStorage::GeneratePixelShader(const std::filesystem::path& a_path)
 {
-    PixelShader* pShader = PixelShader::GenerateShader(a_str, a_inputs, a_inputCount);
-    if (pShader == nullptr)
-    {
-        return -1;
-    }
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.string();
 
-    const uint32_t shaderCount = (uint32_t)m_pixelShaders.size();
-    for (uint32_t i = 0; i < shaderCount; ++i)
+    switch (StringHash<uint32_t>(extStr.c_str()))
     {
-        if (m_pixelShaders[i] == nullptr)
+    case StringHash<uint32_t>(".fpix"):
+    case StringHash<uint32_t>(".ffrag"):
+    {
+        uint32_t size; 
+        const uint8_t* dat;
+        m_assets->GetAsset(a_path, &size, &dat);
+
+        std::string error;
+        std::vector<ShaderBufferInput> inputs;
+        const std::string s = IcarianCore::GLSLFromFlareShader(std::string_view((char*)dat, size), IcarianCore::ShaderPlatform_OpenGL, m_pixelImports, &inputs, &error);
+        if (s.empty())
         {
-            m_pixelShaders[i] = pShader;
+            Logger::Error("Failed to parse PixelShader: " + error + ":" + a_path.string());
 
-            return i;
+            break;
         }
+
+        PixelShader* pShader = PixelShader::GenerateShader(s, inputs.data(), (uint32_t)inputs.size());
+        if (pShader == nullptr)
+        {
+            Logger::Error("Failed to generate PixelShader: " + a_path.string());
+
+            break;
+        }
+
+        const uint32_t shaderCount = (uint32_t)m_pixelShaders.size();
+        for (uint32_t i = 0; i < shaderCount; ++i)
+        {
+            if (m_pixelShaders[i] == nullptr)
+            {
+                m_pixelShaders[i] = pShader;
+
+                return i;
+            }
+        }
+
+        m_pixelShaders.emplace_back(pShader);
+
+        return shaderCount;
+    }
     }
 
-    m_pixelShaders.emplace_back(pShader);
+    return -1;
+}
+void RuntimeStorage::AddPixelImport(const std::string_view& a_key, const std::string_view& a_value)
+{
+    const std::string key = std::string(a_key);
+    const std::string value = std::string(a_value);
 
-    return shaderCount;
+    auto iter = m_pixelImports.find(key);
+    if (iter != m_pixelImports.end())
+    {
+        iter->second = value;
+
+        return;
+    }
+
+    m_pixelImports.emplace(key, value);
 }
 void RuntimeStorage::DestroyPixelShader(uint32_t a_addr)
 {
@@ -865,12 +946,37 @@ uint32_t RuntimeStorage::GenerateRenderProgram(const RenderProgram& a_program)
     ShaderStorage* storage = new ShaderStorage(this);
     program.Data = storage;
 
-    const VertexShader* vShader = GetVertexShader(program.VertexShader);
-    if (vShader != nullptr)
+    switch (program.MaterialMode) 
     {
-        SetRenderBuffers(vShader, program);
+    case MaterialMode_BaseVertex:
+    {
+        const VertexShader* vShader = GetVertexShader(program.VertexShader);
+        if (vShader != nullptr)
+        {
+            SetRenderBuffers(vShader, program);
+        }
+
+        break;
     }
-    
+    case MaterialMode_BaseMesh:
+    {
+        // TODO: Look into this as it seems only Nvidia supports mesh shaders on OpenGL
+        // Not sure if I should move the editor to Vulkan or just have the editor window run in engine as a seperate process
+        // Leaning to the latter
+        // There is also the possibility that AMD does keep their word and add OpenGL support for Mesh shaders
+        // Improving the editor is probably the better choice but over waiting for AMD
+        ICARIAN_ASSERT_MSG(0, "Not implemented yet!");
+
+        break;
+    }
+    default:
+    {
+        Logger::Warning("Generating with invalid material mode");
+
+        break;
+    }
+    }
+
     const PixelShader* pShader = GetPixelShader(program.PixelShader);
     if (pShader != nullptr)
     {
@@ -1054,8 +1160,8 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
 
         std::vector<AnimationDataExternal> dataArray;
 
-        MonoDomain* domain = m_runtime->GetEditorDomain();
-        MonoClass* frameClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationFrameExternal");
+        MonoDomain* domain = RuntimeManager::GetEditorDomain();
+        MonoClass* frameClass = RuntimeManager::GetClass("IcarianEngine.Rendering.Animation", "AnimationFrameExternal");
         ICARIAN_ASSERT(frameClass != NULL);
 
         const uint32_t channelCount = (uint32_t)animation->mNumChannels;
@@ -1145,7 +1251,7 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
         const uint32_t dataCount = (uint32_t)dataArray.size();
         if (dataCount > 0)
         {
-            MonoClass* dataClass = m_runtime->GetClass("IcarianEngine.Rendering.Animation", "AnimationDataExternal");
+            MonoClass* dataClass = RuntimeManager::GetClass("IcarianEngine.Rendering.Animation", "AnimationDataExternal");
             ICARIAN_ASSERT(dataClass != NULL);
 
             MonoArray* array = mono_array_new(domain, dataClass, (uintptr_t)dataCount);
@@ -1173,7 +1279,7 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

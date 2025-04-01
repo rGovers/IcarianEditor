@@ -462,7 +462,7 @@ namespace IcarianEditor.Properties
                     // Cant pass types to generics so time for the song and dance
                     Type guiType = typeof(GUI);
 
-                    // I would get the method by name but throws an exception is multiple methods are found
+                    // I would get the method by name but throws an exception if multiple methods are found
                     MethodInfo[] methods = guiType.GetMethods(BindingFlags.Static | BindingFlags.Public);
 
                     foreach (MethodInfo method in methods)
@@ -638,17 +638,23 @@ namespace IcarianEditor.Properties
 
                             object val = field.GetValue(a_obj);
                             object normObj = null;
+
                             // Fucking strings cant use Activator
+                            // UPDATE: Turns out I need both cause C# is annoying like that
                             ConstructorInfo constructor = fieldType.GetConstructor(Type.EmptyTypes);
                             if (constructor != null)
                             {
                                 normObj = constructor.Invoke(null);
                             }
+                            else
+                            {
+                                normObj = Activator.CreateInstance(fieldType);
+                            }
 
                             List<Attribute> atts = new List<Attribute>(a_attributes);
                             atts.AddRange(field.GetCustomAttributes());
 
-                            ShowFields($"{a_name}.{field.Name}", a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, atts);
+                            ShowFields($"{a_name}.{field.Name}", a_sceneObject, ref val, normObj, fieldType, atts);
 
                             field.SetValue(a_obj, val);
                         }

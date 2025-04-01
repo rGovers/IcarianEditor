@@ -22,8 +22,6 @@
 
 static RenderCommand* Instance = nullptr;
 
-#define RENDERCOMMAND_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
 #define RENDERCOMMAND_BINDING_FUNCTION_TABLE(F) \
     F(void, IcarianEngine.Rendering, RenderCommand, BindMaterial, { RenderCommand::BindMaterial(a_addr); }, uint32_t a_addr) \
     F(void, IcarianEngine.Rendering, RenderCommand, DrawModel, { RenderCommand::DrawModel(a_transform, a_addr); }, glm::mat4 a_transform, uint32_t a_addr) \
@@ -33,6 +31,8 @@ static RenderCommand* Instance = nullptr;
     \
     \
     F(void, IcarianEngine.Rendering.Animation, Animator, DestroyBuffer, { }, uint32_t a_addr) \
+    F(void, IcarianEngine.Rendering.Shaders, ComputeShader, AddImport, { }, MonoString* a_key, MonoString* a_value) \
+    F(void, IcarianEngine.Rendering.Shaders, MeshShader, AddImport, { }, MonoString* a_key, MonoString* a_value) \
 
 RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
@@ -112,18 +112,18 @@ RenderCommand::~RenderCommand()
     delete m_skeletonBuffer;
 }
 
-void RenderCommand::Init(RuntimeManager* a_runtime, RuntimeStorage* a_storage)
+void RenderCommand::Init(RuntimeStorage* a_storage)
 {
     if (Instance == nullptr)
     {
         Instance = new RenderCommand(a_storage);
 
-        RENDERCOMMAND_BINDING_FUNCTION_TABLE(RENDERCOMMAND_RUNTIME_ATTACH);
+        RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
         
-        BIND_FUNCTION(a_runtime, IcarianEngine.Rendering.Animation, SkeletonAnimator, PushTransform);
+        BIND_FUNCTION(IcarianEngine.Rendering.Animation, SkeletonAnimator, PushTransform);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, PushBoneData);
-        BIND_FUNCTION(a_runtime, IcarianEditor, AnimationMaster, DrawBones);
+        BIND_FUNCTION(IcarianEditor, AnimationMaster, PushBoneData);
+        BIND_FUNCTION(IcarianEditor, AnimationMaster, DrawBones);
     }
 }
 void RenderCommand::Clear()
@@ -185,31 +185,68 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 {
     const RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
 
-    if (program.VertexShader == -1 || program.PixelShader == -1)
+    if (program.PixelShader == -1)
     {
         Instance->m_boundShader = -1;
 
         return;
     }
 
-    VertexShader* vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
-    PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
-
     ShaderProgram* shader = nullptr;
-    const auto iter = Instance->m_shaders.find(a_materialAddr);
-    if (iter == Instance->m_shaders.end())
+
+    const PixelShader* pShader = Instance->m_storage->GetPixelShader(program.PixelShader);
+    Shader* vShader = nullptr;
+
+    switch (program.MaterialMode) 
     {
-        shader = ShaderProgram::GenerateProgram(vShader, pShader);
-        if (shader == nullptr)
+    case MaterialMode_BaseVertex:
+    {
+        if (program.VertexShader == -1)
         {
+            Instance->m_boundShader = -1;
+
             return;
         }
 
-        Instance->m_shaders.emplace(a_materialAddr, shader);
+        vShader = Instance->m_storage->GetVertexShader(program.VertexShader);
+
+        const auto iter = Instance->m_shaders.find(a_materialAddr);
+        if (iter == Instance->m_shaders.end())
+        {
+            shader = ShaderProgram::GenerateProgram((VertexShader*)vShader, pShader);
+            if (shader == nullptr)
+            {
+                return;
+            }
+
+            Instance->m_shaders.emplace(a_materialAddr, shader);
+        }
+        else
+        {
+            shader = iter->second;
+        }
+
+        break;
     }
-    else
+    case MaterialMode_BaseMesh:
     {
-        shader = iter->second;
+        ICARIAN_ASSERT_MSG(0, "Not implemented yet!");
+
+        break;
+    }
+    default:
+    {
+        Logger::Error("Bound with invalid material mode");
+
+        break;
+    }
+    }
+
+    if (shader == nullptr)
+    {
+        Instance->m_boundShader = -1;
+
+        return;
     }
 
     const GLuint handle = shader->GetHandle();
@@ -520,7 +557,7 @@ void RenderCommand::DrawBones(uint32_t a_addr, const glm::mat4& a_transform)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

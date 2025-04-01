@@ -18,6 +18,7 @@
 #include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "EditorConfig.h"
+#include "EditorInputManager.h"
 #include "FileHandler.h"
 #include "FlareImGui.h"
 #include "Gizmos.h"
@@ -195,7 +196,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 #endif
 
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    // Disabling keyboary input due to it taking control from the Game window with some binds
+    // Lowers accessibility so may find a more elegant solution down the line
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
@@ -208,30 +210,32 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     ProfilerData::Init();
 
     m_process = new ProcessManager();
-    m_runtime = new RuntimeManager();
+    RuntimeManager::Init();
 
-    EditorConfig::Init(m_runtime);
+    EditorInputManager::Init();
 
-    m_assets = new AssetLibrary(m_runtime);
-    m_rStorage = new RuntimeStorage(m_runtime, m_assets);
+    EditorConfig::Init();
 
-    m_workspace = new Workspace(m_runtime);
+    m_assets = new AssetLibrary();
+    m_rStorage = new RuntimeStorage(m_assets);
+
+    m_workspace = new Workspace();
 
     m_project = new Project(this, m_assets, m_workspace);
 
-    RenderCommand::Init(m_runtime, m_rStorage);
-    Gizmos::Init(m_runtime);
-    GUI::Init(this, m_runtime, m_assets);
+    RenderCommand::Init(m_rStorage);
+    Gizmos::Init();
+    GUI::Init(this, m_assets);
 
-    FileHandler::Init(m_assets, m_runtime, m_rStorage, m_workspace);
+    FileHandler::Init(m_assets, m_rStorage, m_workspace);
     
     m_windows.emplace_back(new ConsoleWindow());
-    m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
-    m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
-    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets, m_runtime));
-    m_windows.emplace_back(new HierarchyWindow(m_runtime));
-    m_windows.emplace_back(new PropertiesWindow(m_runtime));
-    m_windows.emplace_back(new SceneDefsWindow(m_runtime));
+    m_windows.emplace_back(new EditorWindow(m_workspace));
+    m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_project));
+    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+    m_windows.emplace_back(new HierarchyWindow());
+    m_windows.emplace_back(new PropertiesWindow());
+    m_windows.emplace_back(new SceneDefsWindow());
 
     glGenVertexArrays(1, &m_vao);
 
@@ -239,8 +243,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     m_titleSet = 0.0;
 
-    BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModal);
-    BIND_FUNCTION(m_runtime, IcarianEditor.Modals, Modal, PushModalState);
+    BIND_FUNCTION(IcarianEditor.Modals, Modal, PushModal);
+    BIND_FUNCTION(IcarianEditor.Modals, Modal, PushModalState);
 }
 AppMain::~AppMain()
 {
@@ -266,8 +270,10 @@ AppMain::~AppMain()
     }
 
     delete m_process;
-    delete m_runtime;
+    RuntimeManager::Destroy();
     delete m_rStorage;
+
+    EditorInputManager::Destroy();
 
     ProfilerData::Destroy();
 
@@ -420,17 +426,17 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Editor"))
                     {
-                        m_windows.emplace_back(new EditorWindow(m_runtime, m_workspace));
+                        m_windows.emplace_back(new EditorWindow(m_workspace));
                     }
 
                     if (ImGui::MenuItem("Game"))
                     {
-                        m_windows.emplace_back(new GameWindow(this, m_process, m_runtime, m_project));
+                        m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_project));
                     }
 
                     if (ImGui::MenuItem("Asset Browser"))
                     {
-                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets, m_runtime));
+                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
                     }                
 
                     if (ImGui::MenuItem("Console"))
@@ -440,17 +446,17 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Properties"))
                     {
-                        m_windows.emplace_back(new PropertiesWindow(m_runtime));
+                        m_windows.emplace_back(new PropertiesWindow());
                     }
 
                     if (ImGui::MenuItem("Hierarchy"))
                     {
-                        m_windows.emplace_back(new HierarchyWindow(m_runtime));
+                        m_windows.emplace_back(new HierarchyWindow());
                     }
 
                     if (ImGui::MenuItem("Scene Definitions"))
                     {
-                        m_windows.emplace_back(new SceneDefsWindow(m_runtime));
+                        m_windows.emplace_back(new SceneDefsWindow());
                     }
 
                     // ImGui::Separator();
@@ -722,7 +728,7 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    m_runtime->Update(a_delta);
+    RuntimeManager::Update(a_delta);
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -746,6 +752,11 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
+    if (m_assets->ShouldSerialize())
+    {
+        m_assets->Serialize(m_project);
+    }
+
     if (refresh)
     {
         Logger::Message("Refreshing Project");
@@ -758,9 +769,9 @@ void AppMain::Update(double a_delta, double a_time)
         const std::string pathStr = path.string();
         const std::string projectName = m_project->GetName();
 
-        if (m_runtime->Build(pathStr, projectName))
+        if (RuntimeManager::Build(pathStr, projectName))
         {
-            m_runtime->Start(pathStr, projectName);
+            RuntimeManager::Start(pathStr, projectName);
         }
 
         m_rStorage->Clear();
@@ -852,12 +863,12 @@ void AppMain::DispatchRuntimeModal(const std::string_view& a_title, const glm::v
 {
     SetRuntimeModalState(a_index, true);
 
-    m_modals.emplace_back(new RuntimeModal(this, m_runtime, a_index, a_title, a_size));
+    m_modals.emplace_back(new RuntimeModal(this, a_index, a_title, a_size));
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

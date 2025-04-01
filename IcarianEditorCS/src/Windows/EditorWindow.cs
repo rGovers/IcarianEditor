@@ -70,7 +70,7 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void RenderComponents(GameObjectDef a_def, bool a_selected, Matrix4 a_transform)
+        static void RenderComponents(GameObjectDef a_def, bool a_selected, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             foreach (ComponentDef c in a_def.Components)
             {
@@ -82,7 +82,10 @@ namespace IcarianEditor.Windows
                     EditorDisplay disp = s_componentLookup[t];
                     if (disp != null)
                     {
-                        disp.Render(a_selected, component, a_transform);
+                        if (disp.Render(a_selected, component, a_transform, a_view, a_proj, a_screenWidth, a_screenHeight))
+                        {
+                            EditorDefLibrary.RebuildDefData(component);
+                        }
                     }
                     else
                     {
@@ -92,11 +95,11 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void RenderGameObjects(bool a_selected, GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform)
+        static void RenderGameObjects(bool a_selected, GameObjectDef a_gameObjectDef, Matrix4 a_parentTransform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             Matrix4 mat = Matrix4.FromTransform(a_gameObjectDef.Translation, a_gameObjectDef.Rotation, a_gameObjectDef.Scale) * a_parentTransform;
 
-            RenderComponents(a_gameObjectDef, a_selected, mat);
+            RenderComponents(a_gameObjectDef, a_selected, mat, a_view, a_proj, a_screenWidth, a_screenHeight);
 
             foreach (GameObjectDef c in a_gameObjectDef.Children)
             {
@@ -106,10 +109,10 @@ namespace IcarianEditor.Windows
                     continue;
                 }
 
-                RenderGameObjects(a_selected, gameObject, mat);
+                RenderGameObjects(a_selected, gameObject, mat, a_view, a_proj, a_screenWidth, a_screenHeight);
             }
         }
-        static void RenderArray(SceneObjectArray a_array)
+        static void RenderArray(SceneObjectArray a_array, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             GameObjectDef def = EditorDefLibrary.GenerateDef<GameObjectDef>(a_array.DefName);
             if (def == null)
@@ -137,12 +140,12 @@ namespace IcarianEditor.Windows
 
                         Matrix4 mat = rotMat * transMat;
 
-                        RenderGameObjects(selected, def, mat);
+                        RenderGameObjects(selected, def, mat, a_view, a_proj, a_screenWidth, a_screenHeight);
                     }
                 }
             }
         }
-        static void RenderScene(EditorScene a_scene)
+        static void RenderScene(EditorScene a_scene, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             IEnumerable<SceneObjectData> sceneObjects = a_scene.SceneObjects;
             foreach (SceneObjectData objData in sceneObjects)
@@ -159,7 +162,7 @@ namespace IcarianEditor.Windows
                     bool selected = Workspace.SelectionContains(obj);
                     Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
 
-                    RenderGameObjects(selected, def, mat);
+                    RenderGameObjects(selected, def, mat, a_view, a_proj, a_screenWidth, a_screenHeight);
                 }
             }
 
@@ -171,17 +174,18 @@ namespace IcarianEditor.Windows
                     continue;
                 }
 
-                RenderArray(arrData.Array);
+                RenderArray(arrData.Array, a_view, a_proj, a_screenWidth, a_screenHeight);
             }
         }
 
-        static void PeekDefPath(string a_path, Vector3 a_editorPos)
+        static void PeekDefPath(string a_path, Vector3 a_editorPos, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             GameObjectDef def = EditorDefLibrary.GeneratePathDef<GameObjectDef>(a_path);
             if (def != null)
             {
                 Matrix4 transform = new Matrix4(Vector4.UnitX, Vector4.UnitY, Vector4.UnitZ, new Vector4(a_editorPos, 1.0f));
-                RenderComponents(def, true, transform);
+                
+                RenderComponents(def, true, transform, a_view, a_proj, a_screenWidth, a_screenHeight);
             }
 
             Gizmos.DrawIcoSphere(a_editorPos, 0.025f, 1, 0.001f, Color.White);
@@ -201,7 +205,7 @@ namespace IcarianEditor.Windows
             }
         }
 
-        static void OnGUI()
+        static void OnGUI(Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             EditorScene scene = Workspace.GetScene();
             if (scene == null)
@@ -248,7 +252,7 @@ namespace IcarianEditor.Windows
 
                         Matrix4 mat = Matrix4.FromTransform(obj.Translation, obj.Rotation, obj.Scale);
 
-                        RenderGameObjects(selected, def, mat);
+                        RenderGameObjects(selected, def, mat, a_view, a_proj, a_screenWidth, a_screenHeight);
                     }
 
                     IEnumerable<SceneObjectArrayData> sceneArrays = scene.SceneObjectArrays;
@@ -277,7 +281,7 @@ namespace IcarianEditor.Windows
                             }
                         }
 
-                        RenderArray(arr);
+                        RenderArray(arr, a_view, a_proj, a_screenWidth, a_screenHeight);
                     }
 
                     if (count <= 0)
@@ -310,7 +314,7 @@ namespace IcarianEditor.Windows
                 }
                 else
                 {
-                    RenderScene(scene);
+                    RenderScene(scene, a_view, a_proj, a_screenWidth, a_screenHeight);
                 }
 
                 if (Gizmos.Manipulation(Workspace.ManipulationMode, ref s_mid, ref s_rotation, ref s_scale))
@@ -335,7 +339,7 @@ namespace IcarianEditor.Windows
             }
             else
             {
-                RenderScene(scene);    
+                RenderScene(scene, a_view, a_proj, a_screenWidth, a_screenHeight);    
             }
         }
     }

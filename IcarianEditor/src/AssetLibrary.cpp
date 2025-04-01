@@ -16,6 +16,7 @@
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianError.h"
 #include "Core/StringUtils.h"
 #include "EditorConfig.h"
 #include "IO.h"
@@ -30,19 +31,68 @@
 
 static AssetLibrary* Instance = nullptr;
 
-#define ASSETLIBRARY_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) BIND_FUNCTION(a_runtime, namespace, klass, name);
-
 EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
-EDITORDEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
-EDITORSCENE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
+EDITOR_DEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
+EDITOR_SCENE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-AssetLibrary::AssetLibrary(RuntimeManager* a_runtime)
+RUNTIME_FUNCTION(uint32_t, FileCache, CachedFile,
 {
-    m_runtime = a_runtime;
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    uint32_t size;
+    const uint8_t* dat;
+    Instance->GetAsset(str, &size, &dat);
+
+    return (uint32_t)(size > 0 && dat != nullptr);
+}, MonoString* a_path)
+RUNTIME_FUNCTION(MonoArray*, FileCache, ReadFileData, 
+{
+    IERRBLOCK;
     
-    EDITOR_CREATEDEFMODAL_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
-    EDITORDEFLIBRARY_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
-    EDITORSCENE_EXPORT_TABLE(ASSETLIBRARY_RUNTIME_ATTACH);
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    uint32_t size;
+    const uint8_t* dat;
+    Instance->GetAsset(str, &size, &dat, nullptr);
+    IERRCHECKRET(size > 0, NULL);
+    IERRCHECKRET(dat != nullptr, NULL);
+
+    MonoArray* arr = mono_array_new(mono_domain_get(), mono_get_byte_class(), (uintptr_t)size);
+    for (uint64_t i = 0; i < size; ++i)
+    {
+        mono_array_set(arr, mono_byte, i, dat[i]);
+    }
+
+    return arr;
+}, MonoString* a_path)
+RUNTIME_FUNCTION(void, FileCache, WriteFileData, 
+{
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    const uintptr_t len = mono_array_length(a_data);
+    uint8_t* dat = new uint8_t[len];
+    for (uint32_t i = 0; i < len; ++i)
+    {
+        dat[i] = mono_array_get(a_data, uint8_t, i);
+    }
+
+    Instance->WriteAsset(str, (uint32_t)len, dat);
+}, MonoString* a_path, MonoArray* a_data, uint32_t a_writeFile, uint32_t a_pinFile)
+
+AssetLibrary::AssetLibrary()
+{    
+    m_flags = 0;
+
+    EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
+    EDITOR_DEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
+    EDITOR_SCENE_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
+
+    BIND_FUNCTION(IcarianEngine, FileCache, CachedFile);
+    BIND_FUNCTION(IcarianEngine, FileCache, ReadFileData);
+    BIND_FUNCTION(IcarianEngine, FileCache, WriteFileData);
 
     Instance = this;
 }
@@ -256,6 +306,8 @@ void AssetLibrary::CreateDef(const std::filesystem::path& a_path, uint32_t a_siz
     };
 
     m_assets.emplace_back(asset);
+
+    ISETBIT(m_flags, ForceSerializeBit);
 }
 
 void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
@@ -276,6 +328,7 @@ void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size
 
             a.Data = a_data;
             a.Size = a_size;
+            a.ModifiedTime = std::filesystem::file_time_type::clock::now();
 
             return;
         }
@@ -301,6 +354,7 @@ void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_si
 
             a.Data = a_data;
             a.Size = a_size;
+            a.ModifiedTime = std::filesystem::file_time_type::clock::now();
 
             return;
         }
@@ -338,6 +392,10 @@ Next:;
 
     return false;
 }
+bool AssetLibrary::ShouldSerialize()
+{
+    return IISBITSET(m_flags, ForceSerializeBit);
+}
 
 void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 {
@@ -357,7 +415,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
     TraverseTree(&m_assets, p, p);
     ReadAssets(&m_assets, p);
 
-    if (!m_runtime->IsBuilt() || !m_runtime->IsRunning())
+    if (!RuntimeManager::IsBuilt() || !RuntimeManager::IsRunning())
     {
         return;
     }
@@ -397,7 +455,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         }
     }
 
-    MonoDomain* editorDomain = m_runtime->GetEditorDomain();
+    MonoDomain* editorDomain = RuntimeManager::GetEditorDomain();
 
     MonoClass* stringClass = mono_get_string_class();
     MonoClass* byteClass = mono_get_byte_class();
@@ -425,7 +483,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         defPathArray
     };
 
-    m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":Load(byte[][],string[])", defArgs);
+    RuntimeManager::ExecFunction("IcarianEditor", "EditorDefLibrary", ":Load(byte[][],string[])", defArgs);
 
     const uint32_t sceneSize = (uint32_t)sceneAssets.size();
 
@@ -450,7 +508,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         scenePathArray
     };
 
-    m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":LoadScenes(byte[][],string[])", sceneArgs);
+    RuntimeManager::ExecFunction("IcarianEditor", "EditorScene", ":LoadScenes(byte[][],string[])", sceneArgs);
 }
 
 static bool ShouldWriteFile(const std::filesystem::path& a_path, const std::filesystem::file_time_type& a_modifiedTime)
@@ -763,6 +821,49 @@ e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_workingPat
     return GetAssetType(rPath);
 }
 
+void AssetLibrary::WriteAsset(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
+{
+    for (Asset& a : m_assets)
+    {
+        if (a.AssetType != AssetType_Other)
+        {
+            continue;
+        }
+
+        if (a.Path == a_path)
+        {
+            if (a.Data != nullptr)
+            {
+                delete[] a.Data;
+            }
+
+            a.Data = a_data;
+            a.Size = a_size;
+            a.ModifiedTime = std::filesystem::file_time_type::clock::now();
+            a.Flags = 0;
+            ISETBIT(a.Flags, Asset::ForceWriteBit);
+
+            ISETBIT(m_flags, ForceSerializeBit);
+
+            return;
+        }
+    }
+
+    Asset asset = 
+    {
+        .ModifiedTime = std::filesystem::file_time_type::clock::now(),
+        .Path = a_path,
+        .AssetType = AssetType_Other,
+        .Size = a_size,
+        .Data = a_data,
+    };
+
+    ISETBIT(asset.Flags, Asset::ForceWriteBit);
+
+    m_assets.emplace_back(asset);
+
+    ISETBIT(m_flags, ForceSerializeBit);
+}
 void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type)
 {
     *a_size = 0;
@@ -796,10 +897,12 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std
 
 void AssetLibrary::Serialize(const Project* a_project)
 {
+    ICLEARBIT(m_flags, ForceSerializeBit);
+
     const std::filesystem::path pPath = a_project->GetProjectPath();
 
-    m_runtime->ExecFunction("IcarianEditor", "EditorDefLibrary", ":SerializeDefs()", nullptr);
-    m_runtime->ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
+    RuntimeManager::ExecFunction("IcarianEditor", "EditorDefLibrary", ":SerializeDefs()", nullptr);
+    RuntimeManager::ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
 
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
@@ -843,6 +946,16 @@ void AssetLibrary::Serialize(const Project* a_project)
             }
         }
         
+        if (p.has_parent_path())
+        {
+            const std::filesystem::path dir = p.parent_path();
+
+            if (!std::filesystem::exists(dir))
+            {
+                std::filesystem::create_directories(dir);
+            }
+        }
+
         std::ofstream file = std::ofstream(p, std::ios::binary);
         if (file.good() && file.is_open())
         {
@@ -856,7 +969,7 @@ void AssetLibrary::Serialize(const Project* a_project)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

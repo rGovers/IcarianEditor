@@ -31,7 +31,7 @@ LoadingModal::~LoadingModal()
 
 bool LoadingModal::Update()
 {
-    ImGui::Text("%s", "Running Tasks...");
+    ImGui::Text("[%d/%d] Running Tasks....", m_currentTask, m_taskCount);
 
     m_tasks[m_currentTask++]->Run();
 
@@ -40,7 +40,7 @@ bool LoadingModal::Update()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

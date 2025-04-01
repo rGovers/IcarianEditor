@@ -120,7 +120,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
     CUBE_CProject_AppendDefines(&project,
         "ICARIANEDITOR_VERSION_MAJOR=2024",
-        "ICARIANEDITOR_VERSION_MINOR=1",
+        "ICARIANEDITOR_VERSION_MINOR=2",
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
@@ -136,26 +136,28 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     CUBE_String_Destroy(&commitDefine);
 
     CUBE_CProject_AppendIncludePaths(&project, 
-        "./include",
+        "./include/",
 
-        "../EditorInterop",
-        "../IcarianEngine/EngineInterop",
+        "../EditorInterop/",
+        "../IcarianEngine/EngineInterop/",
 
-        "../IcarianEngine/IcarianCore/include",
+        "../IcarianEngine/IcarianCore/include/",
 
-        "../IcarianEngine/deps/assimp/include",
-        "../IcarianEngine/deps/gen/assimp",
-        "../IcarianEngine/deps/CUBE/include",
-        "../IcarianEngine/deps/glfw/include",
-        "../IcarianEngine/deps/flare-glm",
-        "../IcarianEngine/deps/flare-stb",
-        "../IcarianEngine/deps/KTX-Software/include",
-        "../IcarianEngine/deps/flare-tinyxml2",
-        "../IcarianEngine/deps/imgui",
-        "../IcarianEngine/deps/glad/include",
+        "../IcarianEngine/deps/assimp/include/",
+        "../IcarianEngine/deps/gen/assimp/",
+        "../IcarianEngine/deps/CUBE/include/",
+        "../IcarianEngine/deps/glfw/include/",
+        "../IcarianEngine/deps/flare-glm/",
+        "../IcarianEngine/deps/stb/",
+        "../IcarianEngine/deps/KTX-Software/include/",
+        "../IcarianEngine/deps/flare-tinyxml2/",
+        "../IcarianEngine/deps/imgui/",
+        "../IcarianEngine/deps/glad/include/",
+        "../IcarianEngine/deps/enet/include",
 
-        "./lib/flare-ImGuizmo",
-        "./lib/implot"
+        "./lib/flare-ImGuizmo/",
+        "./lib/IcarianRemoteProtocol/include/",
+        "./lib/implot/"
     );
 
     CUBE_CProject_AppendSources(&project, 
@@ -190,6 +192,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "./src/Datastore.cpp",
         "./src/EditorConfig.cpp",
         "./src/EditorConfigModal.cpp",
+        "./src/EditorInputManager.cpp",
         "./src/EditorWindow.cpp",
         "./src/ErrorModal.cpp",
         "./src/FileDialog.cpp",
@@ -217,17 +220,24 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "./src/ProfilerWindow.cpp",
         "./src/Project.cpp",
         "./src/PropertiesWindow.cpp",
+        "./src/RemoteBuildLoadingTask.cpp",
         "./src/RenamePathModal.cpp",
         "./src/RenderCommand.cpp",
+        "./src/RunRemoteLoadingTask.cpp",
         "./src/RuntimeManager.cpp",
         "./src/RuntimeModal.cpp",
         "./src/RuntimeStorage.cpp",
         "./src/SceneDefsWindow.cpp",
+        "./src/SCPPipe.cpp",
         "./src/SerializeAssetsLoadingTask.cpp",
         "./src/Shader.cpp",
         "./src/ShaderProgram.cpp",
         "./src/ShaderStorage.cpp",
         "./src/ShaderStorageObject.cpp",
+        "./src/SSHConnectedModal.cpp",
+        "./src/SSHConnectModal.cpp",
+        "./src/SSHPipe.cpp",
+        "./src/SyncRemoteBuildLoadingTask.cpp",
         "./src/TemplateBuilder.cpp",
         "./src/Texture.cpp",
         "./src/TextureSampler.cpp",
@@ -269,7 +279,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         CUBE_CProject_AppendCFlag(&project, "-g");
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
-        CUBE_CProject_AppendCFlag(&project, "-flto");
+        CUBE_CProject_AppendCFlag(&project, "-flto=auto");
         CUBE_CProject_AppendCFlag(&project, "-fwhole-program");
 
         break;
@@ -291,7 +301,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
         CUBE_CProject_AppendCFlag(&project, "-O3");
 
-        CUBE_CProject_AppendCFlag(&project, "-flto");
+        CUBE_CProject_AppendCFlag(&project, "-flto=auto");
         CUBE_CProject_AppendCFlag(&project, "-fwhole-program");
 
         break;
@@ -314,18 +324,20 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/GLFW.lib",
             "../IcarianEngine/deps/miniz/build/miniz.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxwritec.lib",
-            "../IcarianEngine/deps/KTX-Software/build/ktxwritecpp.lib",
+            "../IcarianEngine/deps/KTX-Software/build/writec/ktxwritec.lib",
+            "../IcarianEngine/deps/KTX-Software/build/writecpp/ktxwritecpp.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/mono-2.0-sgen.lib",
             "../IcarianEngine/deps/Mono/Windows/lib/MonoPosixHelper.lib",
             "../IcarianEngine/deps/zlib/build/zlib.lib",
             "../IcarianEngine/deps/assimp/build/assimp.lib",
-            "../IcarianEngine/deps/assimp/contrib/unzip/build/unzip.lib"
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/unzip.lib",
+            "../IcarianEngine/deps/enet/build/enet.lib"
         );
 
         CUBE_CProject_AppendReference(&project, "gdi32");
         CUBE_CProject_AppendReference(&project, "wsock32");
         CUBE_CProject_AppendReference(&project, "ws2_32");
+        CUBE_CProject_AppendReference(&project, "winmm");
 
         // Magic string to get std library to link with MinGW
         CUBE_CProject_AppendCFlag(&project, "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic");
@@ -335,6 +347,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     case TargetPlatform_Linux:
     case TargetPlatform_LinuxClang:
     case TargetPlatform_LinuxZig:
+    case TargetPlatform_LinuxSteam:
     {
         CUBE_CProject_AppendSystemIncludePath(&project, "../IcarianEngine/deps/Mono/Linux/include/mono-2.0");
 
@@ -343,21 +356,13 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
 
             "../IcarianEngine/deps/glfw/build/libGLFW.a",
             "../IcarianEngine/deps/miniz/build/libminiz.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxwritec.a",
-            "../IcarianEngine/deps/KTX-Software/build/libktxwritecpp.a",
+            "../IcarianEngine/deps/KTX-Software/build/writec/libktxwritec.a",
+            "../IcarianEngine/deps/KTX-Software/build/writecpp/libktxwritecpp.a",
             "../IcarianEngine/deps/Mono/Linux/lib/libmonosgen-2.0.a",
-            // I want to cry linking order matters for zlib for some reason
-            // Linker was prematurely discarding unused functions hence linking error
-            // Thank you random person on GitHub having issues with assimp and StackOverflow for giving enough information to piece together what is happening
-            // Need to ensure that it is linked just before it is used otherwise linker does not resolve symbols
-            // Explains why linking the system zlib fixed it should properly work now with hacky link order
-            // Ironically not a problem in release builds as the linker was extra aggressive 
-            // By my understanding linker goes left to right and has a window that it stores symbols and stuff on the left side can fall off when it needs more space for stuff on the right side hence moving it later fixed it
-            // May need to update CUBE down the line to use linking groups as apparently that can give you a little more control
-            // TLDR: Despite linking earlier in the chain was getting discarded needs to be linked just in time
             "../IcarianEngine/deps/zlib/build/libzlib.a",
             "../IcarianEngine/deps/assimp/build/libassimp.a",
-            "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a"
+            "../IcarianEngine/deps/assimp/contrib/unzip/build/libunzip.a",
+            "../IcarianEngine/deps/enet/build/libenet.a"
         );
 
         CUBE_CProject_AppendReference(&project, "m");

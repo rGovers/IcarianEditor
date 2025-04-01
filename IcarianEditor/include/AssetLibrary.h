@@ -59,14 +59,15 @@ struct Asset
 class AssetLibrary
 {
 private:
-    RuntimeManager*    m_runtime;
+    static constexpr uint32_t ForceSerializeBit = 0;
 
     std::vector<Asset> m_assets;
+    uint8_t            m_flags;
 
 protected:
 
 public:
-    AssetLibrary(RuntimeManager* a_runtime);
+    AssetLibrary();
     ~AssetLibrary();
 
     void CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
@@ -75,6 +76,7 @@ public:
     void WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
 
     bool ShouldRefresh(const std::filesystem::path& a_workingDir) const;
+    bool ShouldSerialize();
 
     void Refresh(const std::filesystem::path& a_workingDir);
     void BuildDirectory(const std::filesystem::path& a_path, const Project* a_project) const;
@@ -84,6 +86,7 @@ public:
     e_AssetType GetAssetType(const std::filesystem::path& a_path);
     e_AssetType GetAssetType(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path);
 
+    void WriteAsset(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
     void GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type = nullptr);
     void GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type = nullptr);
 
@@ -92,7 +95,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

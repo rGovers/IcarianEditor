@@ -11,7 +11,6 @@
 
 class AppMain;
 class AssetLibrary;
-class RuntimeManager;
 
 struct PathString
 {
@@ -24,14 +23,13 @@ class GUI
 private:
     AppMain*                m_app;
     AssetLibrary*           m_assets;
-    RuntimeManager*         m_runtime;
     
     std::list<std::string>  m_id;
     std::vector<PathString> m_pathStrings;
 
     float                   m_width;
 
-    GUI(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets);
+    GUI(AppMain* a_app, AssetLibrary* a_assets);
 
 protected:
 
@@ -39,10 +37,6 @@ public:
     GUI() = delete;
     ~GUI();
 
-    inline RuntimeManager* GetRuntime() const
-    {
-        return m_runtime;
-    }
     std::string GetID() const;
 
     inline float GetWidth() const
@@ -76,13 +70,13 @@ public:
     }
     std::string GetPathString();
 
-    static void Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets);
+    static void Init(AppMain* a_app, AssetLibrary* a_assets);
     static void Destroy();
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

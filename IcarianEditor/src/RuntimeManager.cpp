@@ -22,51 +22,59 @@
 #include "Logger.h"
 #include "MonoProjectGenerator.h"
 
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(Logger, PushMessage), MonoString* a_string)
+static RuntimeManager* Instance = nullptr;
+
+RUNTIME_FUNCTION(void, Logger, PushMessage, 
 {
     char* str = mono_string_to_utf8(a_string);
+    IDEFER(mono_free(str));
 
     Logger::Message(str);
-
-    mono_free(str);
-}
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(Logger, PushWarning), MonoString* a_string)
+}, MonoString* a_string)
+RUNTIME_FUNCTION(void, Logger, PushWarning,
 {
     char* str = mono_string_to_utf8(a_string);
+    IDEFER(mono_free(str));
 
     Logger::Warning(str);
-
-    mono_free(str);
-}
-FLARE_MONO_EXPORT(void, RUNTIME_FUNCTION_NAME(Logger, PushError), MonoString* a_string)
+}, MonoString* a_string)
+RUNTIME_FUNCTION(void, Logger, PushError,
 {
     char* str = mono_string_to_utf8(a_string);
+    IDEFER(mono_free(str));
 
     Logger::Error(str);
+}, MonoString* a_string)
 
-    mono_free(str);
-}
-FLARE_MONO_EXPORT(uint32_t, RUNTIME_FUNCTION_NAME(Application, GetEditorState))
+RUNTIME_FUNCTION(uint32_t, Application, GetEditorState,
 {
-    return 1;
-}
-
-#define ATTACH_FUNCTION(namespace, klass, function) mono_add_internal_call(RUNTIME_FUNCTION_STRING(namespace, klass, function), (void*)RUNTIME_FUNCTION_NAME(klass, function));
+    return 1;    
+})
 
 #ifndef WIN32
 #include "Core/MonoNativeImpl.h"
 
 static constexpr char MonoNativeLibName[] = "libmono-native.so";
 static constexpr uint32_t MonoNativeLibNameLength = sizeof(MonoNativeLibName) - 1;
+static constexpr char MonoNativeBaseName[] = "System.Native";
+static constexpr uint32_t MonoNativeBaseNameLength = sizeof(MonoNativeBaseName) - 1;
 
 #define MonoThisLibHandle ((void*)-1)
 
 static void* RuntimeDLOpen(const char* a_name, int a_flags, char** a_error, void* a_userData)
 {
     const uint32_t len = (uint32_t)strlen(a_name);
-    const char* ptr = a_name + len - MonoNativeLibNameLength;
+    const char* ptrLib = a_name + len - MonoNativeLibNameLength;
+    const char* ptrBase = a_name + len - MonoNativeBaseNameLength;
 
-    if (len > MonoNativeLibNameLength && strcmp(ptr, MonoNativeLibName) == 0)
+    if (len > MonoNativeLibNameLength && strcmp(ptrLib, MonoNativeLibName) == 0)
+    {
+        return MonoThisLibHandle;
+    }
+
+    // I dont know how or why but now the editor is doing it aswell so just look for System.Native
+    // Why is C# terrible at resolving dependancies and I need to intercept? Fuck you Mico$oft
+    if (len > MonoNativeBaseNameLength && strcmp(ptrBase, MonoNativeBaseName) == 0)
     {
         return MonoThisLibHandle;
     }
@@ -122,6 +130,36 @@ RuntimeManager::~RuntimeManager()
     mono_jit_cleanup(m_mainDomain);
 }
 
+void RuntimeManager::Init()
+{
+    if (Instance == nullptr)
+    {
+        Instance = new RuntimeManager();
+    }
+}
+void RuntimeManager::Destroy()
+{
+    if (Instance != nullptr)
+    {
+        delete Instance;
+        Instance = nullptr;
+    }
+}
+
+bool RuntimeManager::IsBuilt()
+{
+    return Instance->m_built;
+}
+bool RuntimeManager::IsRunning()
+{
+    return Instance->m_editorDomain != NULL;
+}
+
+MonoDomain* RuntimeManager::GetEditorDomain()
+{
+    return Instance->m_editorDomain;
+}
+
 static bool FlushOutput(CUBE_String** a_line, CBUINT32* a_lineCount)
 {
     IDEFER(
@@ -174,16 +212,16 @@ static bool FlushOutput(CUBE_String** a_line, CBUINT32* a_lineCount)
 
 void RuntimeManager::UnloadEditorDomain()
 {
-    if (m_editorDomain != NULL && m_editorDomain != mono_get_root_domain())
+    if (Instance->m_editorDomain != NULL && Instance->m_editorDomain != mono_get_root_domain())
     {
-        mono_domain_set(m_editorDomain, 1);
+        mono_domain_set(Instance->m_editorDomain, 1);
 
-        mono_runtime_invoke(m_editorUnloadMethod, NULL, NULL, NULL);
+        mono_runtime_invoke(Instance->m_editorUnloadMethod, NULL, NULL, NULL);
         
-        mono_domain_set(m_mainDomain, 1);
+        mono_domain_set(Instance->m_mainDomain, 1);
 
-        mono_domain_unload(m_editorDomain);
-        m_editorDomain = NULL;
+        mono_domain_unload(Instance->m_editorDomain);
+        Instance->m_editorDomain = NULL;
 
         mono_gc_collect(mono_gc_max_generation());
     }
@@ -197,7 +235,7 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     // I guess it is not just loaded into memory on Windows?
     UnloadEditorDomain();
 
-    m_built = false;
+    Instance->m_built = false;
 
     const std::filesystem::path cwd = std::filesystem::current_path();
     const std::filesystem::path icarianCSPath = cwd / "IcarianCS.dll";
@@ -270,14 +308,14 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
 
     CUBE_CSProject_AppendReference(&project, icarianCSPathStr.c_str());
 
-    m_built = CUBE_CSProject_Compile(&project, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
+    Instance->m_built = CUBE_CSProject_Compile(&project, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
 
     if (!FlushOutput(&lines, &lineCount))
     {
-        m_built = false;
+        Instance->m_built = false;
     }
 
-    if (m_built)
+    if (Instance->m_built)
     {
         const std::filesystem::path editorPath = projectPath / "Editor";
         const std::filesystem::path editorProjectFile = cachePath / (std::string(a_name) + "Editor.csproj");
@@ -333,15 +371,15 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
 
         CUBE_CSProject_AppendReference(&editorProject, projectOutputFileStr.c_str());
 
-        m_built = CUBE_CSProject_Compile(&editorProject, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
+        Instance->m_built = CUBE_CSProject_Compile(&editorProject, cachePathStr.c_str(), cscPathStr.c_str(), &lines, &lineCount) != 0;
 
         if (!FlushOutput(&lines, &lineCount))
         {
-            m_built = false;
+            Instance->m_built = false;
         }
     }
 
-    return m_built;
+    return Instance->m_built;
 }
 
 static constexpr char EditorDomainName[] = "IcarianEditor";
@@ -358,24 +396,24 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
         editorDomainName[i] = EditorDomainName[i];
     }
 
-    m_editorDomain = mono_domain_create_appdomain(editorDomainName, NULL);
-    ICARIAN_ASSERT(m_editorDomain != NULL);
-    mono_domain_set(m_editorDomain, 1);    
+    Instance->m_editorDomain = mono_domain_create_appdomain(editorDomainName, NULL);
+    ICARIAN_ASSERT(Instance->m_editorDomain != NULL);
+    mono_domain_set(Instance->m_editorDomain, 1);    
 
-    m_editorAssembly = mono_domain_assembly_open(m_editorDomain, "./IcarianEditorCS.dll");
-    ICARIAN_ASSERT(m_editorAssembly != NULL);
+    Instance->m_editorAssembly = mono_domain_assembly_open(Instance->m_editorDomain, "./IcarianEditorCS.dll");
+    ICARIAN_ASSERT(Instance->m_editorAssembly != NULL);
 
-    if (m_built)
+    if (Instance->m_built)
     {
         const std::filesystem::path assemblyPath = a_path / ".cache" / "Core" / "Assemblies" / (std::string(a_name) + ".dll");
         const std::filesystem::path editorAssemblyPath = a_path / ".cache" / "Editor" / (std::string(a_name) + "Editor.dll");
 
-        m_projectAssembly = mono_domain_assembly_open(m_editorDomain, assemblyPath.string().c_str());
-        m_projectEditorAssembly = mono_domain_assembly_open(m_editorDomain, editorAssemblyPath.string().c_str());
+        Instance->m_projectAssembly = mono_domain_assembly_open(Instance->m_editorDomain, assemblyPath.string().c_str());
+        Instance->m_projectEditorAssembly = mono_domain_assembly_open(Instance->m_editorDomain, editorAssemblyPath.string().c_str());
     }
 
-    m_editorImage = mono_assembly_get_image(m_editorAssembly);
-    MonoClass* editorProgramClass = mono_class_from_name(m_editorImage, "IcarianEditor", "Program");
+    Instance->m_editorImage = mono_assembly_get_image(Instance->m_editorAssembly);
+    MonoClass* editorProgramClass = mono_class_from_name(Instance->m_editorImage, "IcarianEditor", "Program");
 
     MonoMethodDesc* loadDesc = mono_method_desc_new(":Load()", 0);
     IDEFER(mono_method_desc_free(loadDesc));
@@ -385,17 +423,17 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
     IDEFER(mono_method_desc_free(unloadDesc));
 
     MonoMethod* loadMethod = mono_method_desc_search_in_class(loadDesc, editorProgramClass);
-    m_editorUpdateMethod = mono_method_desc_search_in_class(updateDesc, editorProgramClass);
-    m_editorUnloadMethod = mono_method_desc_search_in_class(unloadDesc, editorProgramClass);
+    Instance->m_editorUpdateMethod = mono_method_desc_search_in_class(updateDesc, editorProgramClass);
+    Instance->m_editorUnloadMethod = mono_method_desc_search_in_class(unloadDesc, editorProgramClass);
 
-    ATTACH_FUNCTION(IcarianEngine, Logger, PushMessage);
-    ATTACH_FUNCTION(IcarianEngine, Logger, PushWarning);
-    ATTACH_FUNCTION(IcarianEngine, Logger, PushError);
-    ATTACH_FUNCTION(IcarianEngine, Application, GetEditorState);
+    BIND_FUNCTION(IcarianEngine, Logger, PushMessage);
+    BIND_FUNCTION(IcarianEngine, Logger, PushWarning);
+    BIND_FUNCTION(IcarianEngine, Logger, PushError);
+    BIND_FUNCTION(IcarianEngine, Application, GetEditorState);
 
-    m_engineAssembly = mono_domain_assembly_open(m_editorDomain, "IcarianCS.dll");
-    ICARIAN_ASSERT(m_engineAssembly != NULL);
-    m_engineImage = mono_assembly_get_image(m_engineAssembly);
+    Instance->m_engineAssembly = mono_domain_assembly_open(Instance->m_editorDomain, "IcarianCS.dll");
+    ICARIAN_ASSERT(Instance->m_engineAssembly != NULL);
+    Instance->m_engineImage = mono_assembly_get_image(Instance->m_engineAssembly);
 
     MonoObject* exception = NULL;
     mono_runtime_invoke(loadMethod, NULL, NULL, &exception);
@@ -421,7 +459,7 @@ void RuntimeManager::Start(const std::filesystem::path& a_path, const std::strin
 
 void RuntimeManager::Update(double a_delta)
 {
-    if (m_built && m_editorDomain != NULL)
+    if (Instance->m_built && Instance->m_editorDomain != NULL)
     {
         void* args[] =
         {
@@ -429,7 +467,7 @@ void RuntimeManager::Update(double a_delta)
         };
 
         MonoObject* exception = NULL;
-        mono_runtime_invoke(m_editorUpdateMethod, NULL, args, &exception);
+        mono_runtime_invoke(Instance->m_editorUpdateMethod, NULL, args, &exception);
 
         if (exception != NULL)
         {
@@ -450,17 +488,17 @@ void RuntimeManager::Update(double a_delta)
     }
 }
 
-MonoClass* RuntimeManager::GetClass(const std::string_view& a_namespace, const std::string_view& a_class) const
+MonoClass* RuntimeManager::GetClass(const std::string_view& a_namespace, const std::string_view& a_class)
 {
-    if (m_editorDomain != NULL)
+    if (Instance->m_editorDomain != NULL)
     {
         if (a_namespace.find("IcarianEngine") != std::string::npos)
         {
-            return mono_class_from_name(m_engineImage, a_namespace.data(), a_class.data());
+            return mono_class_from_name(Instance->m_engineImage, a_namespace.data(), a_class.data());
         }
         else 
         {
-            return mono_class_from_name(m_editorImage, a_namespace.data(), a_class.data());
+            return mono_class_from_name(Instance->m_editorImage, a_namespace.data(), a_class.data());
         }
     }
 
@@ -471,9 +509,9 @@ void RuntimeManager::BindFunction(const std::string_view& a_location, void* a_fu
 {
     mono_add_internal_call(a_location.data(), a_function);
 }
-void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args) const
+void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std::string_view& a_class, const std::string_view& a_method, void** a_args)
 {
-    if (m_editorDomain != NULL)
+    if (Instance->m_editorDomain != NULL)
     {
         MonoClass* cls = GetClass(a_namespace, a_class);
         ICARIAN_ASSERT(cls != nullptr);
@@ -508,7 +546,7 @@ void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

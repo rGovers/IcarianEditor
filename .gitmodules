@@ -1,9 +1,9 @@
-[submodule "IcarianEngine"]
-	path = IcarianEngine
-	url = https://github.com/rGovers/IcarianEngine.git
 [submodule "IcarianEditor/lib/implot"]
 	path = IcarianEditor/lib/implot
 	url = https://github.com/epezent/implot.git
 [submodule "IcarianEditor/lib/flare-ImGuizmo"]
 	path = IcarianEditor/lib/flare-ImGuizmo
 	url = https://github.com/rGovers/flare-ImGuizmo.git
+[submodule "IcarianEngine"]
+	path = IcarianEngine
+	url = https://github.com/rGovers/IcarianEngine.git

@@ -11,20 +11,28 @@ namespace IcarianEditor.Editor
     [EDisplay(typeof(PhysicsBody))]
     public class PhysicsBodyEditorDisplay : EditorDisplay
     {
-        public override void Render(bool a_selected, Def a_component, Matrix4 a_transform)
+        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
             if (!a_selected)
             {
-                return;
+                return false;
             }
 
             PhysicsBodyDef def = a_component as PhysicsBodyDef;
-            if (def == null)
+            if (def == null || def.CollisionShape == null)
             {
-                return;
+                return false;
             }
 
-            ColliderRenderer.DrawCollider(a_transform, def.CollisionShape, Color.Green);
+            CollisionShapeDef shapeDef = EditorDefLibrary.GenerateDef(def.CollisionShape.DefName) as CollisionShapeDef;
+            if (shapeDef == null)
+            {
+                return false;
+            }
+
+            ColliderRenderer.DrawCollider(a_transform, shapeDef, Color.Green);
+
+            return false;
         }
     }
 }

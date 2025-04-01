@@ -28,12 +28,11 @@
 #include "Templates.h"
 #include "Texture.h"
 
-AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary, RuntimeManager* a_runtime) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
 {
     m_app = a_app;
     m_assetLibrary = a_assetLibrary;
     m_project = a_project;
-    m_runtime = a_runtime;
 
     m_fileTree.clear();
     m_curIndex = -1;
@@ -295,14 +294,14 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
         {
             const std::string pathStr = a_path.string();
 
-            MonoString* str = mono_string_new(m_runtime->GetEditorDomain(), pathStr.c_str());
+            MonoString* str = mono_string_new(RuntimeManager::GetEditorDomain(), pathStr.c_str());
 
             void* args[] =
             {
                 str
             };
 
-            m_runtime->ExecFunction("IcarianEditor.Modals", "CreateDefModal", ":Create(string)", args);
+            RuntimeManager::ExecFunction("IcarianEditor.Modals", "CreateDefModal", ":Create(string)", args);
         }
 
         if (ImGui::MenuItem("Scene"))
@@ -790,7 +789,7 @@ void AssetBrowserWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

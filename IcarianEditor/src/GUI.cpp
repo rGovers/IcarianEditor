@@ -674,89 +674,88 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetCtrlModifier,
     return (uint32_t)(ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
 })
 
-GUI::GUI(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets)
+GUI::GUI(AppMain* a_app, AssetLibrary* a_assets)
 {
     m_app = a_app;
     m_assets = a_assets;
-    m_runtime = a_runtime;
 }
 GUI::~GUI()
 {
     
 }
 
-void GUI::Init(AppMain* a_app, RuntimeManager* a_runtime, AssetLibrary* a_assets)
+void GUI::Init(AppMain* a_app, AssetLibrary* a_assets)
 {
     if (Instance == nullptr)
     {
-        Instance = new GUI(a_app, a_runtime, a_assets);
+        Instance = new GUI(a_app, a_assets);
         
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetButton);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetToggleButton);
+        BIND_FUNCTION(IcarianEditor, GUI, GetButton);
+        BIND_FUNCTION(IcarianEditor, GUI, GetToggleButton);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCheckbox);
+        BIND_FUNCTION(IcarianEditor, GUI, GetCheckbox);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetDef);
+        BIND_FUNCTION(IcarianEditor, GUI, GetDef);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetInt);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetIntSlider);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUInt);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetUIntSlider);
+        BIND_FUNCTION(IcarianEditor, GUI, GetInt);
+        BIND_FUNCTION(IcarianEditor, GUI, GetIntSlider);
+        BIND_FUNCTION(IcarianEditor, GUI, GetUInt);
+        BIND_FUNCTION(IcarianEditor, GUI, GetUIntSlider);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetBitField);
+        BIND_FUNCTION(IcarianEditor, GUI, GetBitField);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloat);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetFloatSlider);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec2);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec3);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetVec4);
+        BIND_FUNCTION(IcarianEditor, GUI, GetFloat);
+        BIND_FUNCTION(IcarianEditor, GUI, GetFloatSlider);
+        BIND_FUNCTION(IcarianEditor, GUI, GetVec2);
+        BIND_FUNCTION(IcarianEditor, GUI, GetVec3);
+        BIND_FUNCTION(IcarianEditor, GUI, GetVec4);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetColor);
+        BIND_FUNCTION(IcarianEditor, GUI, GetColor);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetString);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetPathString);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetStringList);
+        BIND_FUNCTION(IcarianEditor, GUI, GetString);
+        BIND_FUNCTION(IcarianEditor, GUI, GetPathString);
+        BIND_FUNCTION(IcarianEditor, GUI, GetStringList);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ResetButton);
+        BIND_FUNCTION(IcarianEditor, GUI, ResetButton);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, NIndent);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Indent);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Unindent);
+        BIND_FUNCTION(IcarianEditor, GUI, NIndent);
+        BIND_FUNCTION(IcarianEditor, GUI, Indent);
+        BIND_FUNCTION(IcarianEditor, GUI, Unindent);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowStructView);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowArrayView);
+        BIND_FUNCTION(IcarianEditor, GUI, ShowStructView);
+        BIND_FUNCTION(IcarianEditor, GUI, ShowArrayView);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, ShowTexture);
+        BIND_FUNCTION(IcarianEditor, GUI, ShowTexture);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Tooltip);
+        BIND_FUNCTION(IcarianEditor, GUI, Tooltip);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PushID);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PopID);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCurrentID);
+        BIND_FUNCTION(IcarianEditor, GUI, PushID);
+        BIND_FUNCTION(IcarianEditor, GUI, PopID);
+        BIND_FUNCTION(IcarianEditor, GUI, GetCurrentID);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Label);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetSelectable);
+        BIND_FUNCTION(IcarianEditor, GUI, Label);
+        BIND_FUNCTION(IcarianEditor, GUI, GetSelectable);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetContextPopup);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetContextPopupWindow);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndPopup);
+        BIND_FUNCTION(IcarianEditor, GUI, GetContextPopup);
+        BIND_FUNCTION(IcarianEditor, GUI, GetContextPopupWindow);
+        BIND_FUNCTION(IcarianEditor, GUI, EndPopup);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetMenu);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndMenu);
+        BIND_FUNCTION(IcarianEditor, GUI, GetMenu);
+        BIND_FUNCTION(IcarianEditor, GUI, EndMenu);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetMenuItem);
+        BIND_FUNCTION(IcarianEditor, GUI, GetMenuItem);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, NodeI);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, PopNode);
+        BIND_FUNCTION(IcarianEditor, GUI, NodeI);
+        BIND_FUNCTION(IcarianEditor, GUI, PopNode);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, SameLine);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, Separator);
+        BIND_FUNCTION(IcarianEditor, GUI, SameLine);
+        BIND_FUNCTION(IcarianEditor, GUI, Separator);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetShiftModifier);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetCtrlModifier);
+        BIND_FUNCTION(IcarianEditor, GUI, GetShiftModifier);
+        BIND_FUNCTION(IcarianEditor, GUI, GetCtrlModifier);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, GetBeginChild);
-        BIND_FUNCTION(a_runtime, IcarianEditor, GUI, EndChild);
+        BIND_FUNCTION(IcarianEditor, GUI, GetBeginChild);
+        BIND_FUNCTION(IcarianEditor, GUI, EndChild);
     }
 }
 void GUI::Destroy()
@@ -840,7 +839,7 @@ std::string GUI::GetID() const
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

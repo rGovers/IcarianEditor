@@ -10,6 +10,7 @@
 #include <ImGuizmo.h>
 #include <unordered_map>
 
+#include "Core/IcarianDefer.h"
 #include "PixelShader.h"
 #include "Runtime/RuntimeManager.h"
 #include "ShaderProgram.h"
@@ -18,27 +19,19 @@
 
 static Gizmos* Instance = nullptr;
 
-struct TransformValue
-{
-    glm::vec3 Translation;
-    glm::quat Rotation;
-    glm::vec3 Scale;
-};
-
-#define GIZMOS_RUNTIME_ATTACH(ret, namespace, klass, name, code, ...) a_runtime->BindFunction(RUNTIME_FUNCTION_STRING(namespace, klass, name), (void*)RUNTIME_FUNCTION_NAME(klass, name));
-
 #define GIZMOS_BINDING_FUNCTION_TABLE(F) \
-    F(void, IcarianEditor, Gizmos, DrawLine, { Gizmos::DrawLine(a_start, a_end, a_width, a_color); }, glm::vec3 a_start, glm::vec3 a_end, float a_width, glm::vec4 a_color) \
-    F(void, IcarianEditor, Gizmos, DrawUVSphere, { Gizmos::DrawUVSphere(a_pos, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
-    F(void, IcarianEditor, Gizmos, DrawIcoSphere, { Gizmos::DrawIcoSphere(a_pos, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
-    F(void, IcarianEditor, Gizmos, DrawCylinder, { Gizmos::DrawCylinder(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
-    F(void, IcarianEditor, Gizmos, DrawCapsule, { Gizmos::DrawCapsule(a_pos, a_height, a_radius, a_subDivisions, a_width, a_color); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_color) \
+    F(void, IcarianEditor, Gizmos, DrawLine, { Gizmos::DrawLine(a_start, a_end, a_width, a_colour); }, glm::vec3 a_start, glm::vec3 a_end, float a_width, glm::vec4 a_colour) \
+    F(void, IcarianEditor, Gizmos, MultiDrawLine, { Gizmos::MultiDrawLine(a_start, a_end, a_width, a_colour, a_dir, a_delta, a_count); }, const glm::vec3 a_start, const glm::vec3 a_end, float a_width, const glm::vec4 a_colour, const glm::vec3 a_dir, float a_delta, uint32_t a_count) \
+    F(void, IcarianEditor, Gizmos, DrawUVSphere, { Gizmos::DrawUVSphere(a_pos, a_radius, a_subDivisions, a_width, a_colour); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_colour) \
+    F(void, IcarianEditor, Gizmos, DrawIcoSphere, { Gizmos::DrawIcoSphere(a_pos, a_radius, a_subDivisions, a_width, a_colour); }, glm::vec3 a_pos, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_colour) \
+    F(void, IcarianEditor, Gizmos, DrawCylinder, { Gizmos::DrawCylinder(a_pos, a_height, a_radius, a_subDivisions, a_width, a_colour); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_colour) \
+    F(void, IcarianEditor, Gizmos, DrawCapsule, { Gizmos::DrawCapsule(a_pos, a_height, a_radius, a_subDivisions, a_width, a_colour); }, glm::vec3 a_pos, float a_height, float a_radius, uint32_t a_subDivisions, float a_width, glm::vec4 a_colour) \
     \
     F(uint32_t, IcarianEditor, Gizmos, GetManipulating, { return (uint32_t)ImGuizmo::IsUsing(); })
 
 GIZMOS_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-FLARE_MONO_EXPORT(TransformValue, RUNTIME_FUNCTION_NAME(Gizmos, GetManipulation), uint32_t a_mode, glm::vec3 a_translation, glm::quat a_rotation, glm::vec3 a_scale)
+RUNTIME_FUNCTION(TransformValue, Gizmos, GetManipulation,
 {
     TransformValue t;
     t.Translation = a_translation;
@@ -48,7 +41,7 @@ FLARE_MONO_EXPORT(TransformValue, RUNTIME_FUNCTION_NAME(Gizmos, GetManipulation)
     Gizmos::Manipulation((e_ManipulationMode)a_mode, &t.Translation, &t.Rotation, &t.Scale);
 
     return t;
-}
+}, uint32_t a_mode, glm::vec3 a_translation, glm::quat a_rotation, glm::vec3 a_scale)
 
 static constexpr ImGuizmo::OPERATION GetOperation(e_ManipulationMode a_mode)
 {
@@ -74,12 +67,11 @@ static constexpr ImGuizmo::OPERATION GetOperation(e_ManipulationMode a_mode)
 Gizmos::Gizmos()
 {
     VertexShader* vShader = VertexShader::GenerateShader(GizmoVertexShader);
+    IDEFER(delete vShader);
     PixelShader* pShader = PixelShader::GenerateShader(GizmoPixelShader);
+    IDEFER(delete pShader);
 
     m_shader = ShaderProgram::GenerateProgram(vShader, pShader);
-
-    delete vShader;
-    delete pShader;
 
     glGenBuffers(1, &m_vbo);
     glGenBuffers(1, &m_ibo);
@@ -95,15 +87,15 @@ Gizmos::~Gizmos()
     glDeleteBuffers(1, &m_ibo);
 }
 
-void Gizmos::Init(RuntimeManager* a_runtime)
+void Gizmos::Init()
 {
     if (Instance == nullptr)
     {
         Instance = new Gizmos();
 
-        GIZMOS_BINDING_FUNCTION_TABLE(GIZMOS_RUNTIME_ATTACH);
+        GIZMOS_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
 
-        BIND_FUNCTION(a_runtime, IcarianEditor, Gizmos, GetManipulation);
+        BIND_FUNCTION(IcarianEditor, Gizmos, GetManipulation);
     }
 }
 void Gizmos::Destroy()
@@ -184,7 +176,7 @@ void Gizmos::DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_
     const glm::vec3 dir = glm::normalize(a_end - a_start);
 
     const glm::vec3 c = glm::normalize(glm::cross(Instance->m_forward, dir));
-    const glm::vec3 hC = (c * halfWidth);
+    const glm::vec3 hC = c * halfWidth;
 
     const GLuint startIndex = (GLuint)Instance->m_vertices.size();
 
@@ -200,6 +192,42 @@ void Gizmos::DrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_
     Instance->m_indices.emplace_back(startIndex + 1);
     Instance->m_indices.emplace_back(startIndex + 3);
     Instance->m_indices.emplace_back(startIndex + 2);
+}
+void Gizmos::MultiDrawLine(const glm::vec3& a_start, const glm::vec3& a_end, float a_width, const glm::vec4& a_color, const glm::vec3& a_dir, float a_delta, uint32_t a_count)
+{
+    const float halfWidth = a_width * 0.5f;
+
+    const glm::vec3 dir = glm::normalize(a_end - a_start);
+
+    const glm::vec3 c = glm::normalize(glm::cross(Instance->m_forward, dir));
+    const glm::vec3 hC = c * halfWidth;
+
+    const uint32_t startIndex = (uint32_t)Instance->m_vertices.size();
+
+    const glm::vec3 vA = a_start + hC;
+    const glm::vec3 vB = a_start - hC;
+    const glm::vec3 vC = a_end + hC;
+    const glm::vec3 vD = a_end - hC;
+
+    for (uint32_t i = 0; i < a_count; ++i)
+    {
+        const glm::vec3 s = a_dir * (float)i * a_delta;
+
+        Instance->m_vertices.emplace_back(GizmoVertex(glm::vec4(vA + s, 1.0f), a_color));
+        Instance->m_vertices.emplace_back(GizmoVertex(glm::vec4(vB + s, 1.0f), a_color));
+        Instance->m_vertices.emplace_back(GizmoVertex(glm::vec4(vC + s, 1.0f), a_color));
+        Instance->m_vertices.emplace_back(GizmoVertex(glm::vec4(vD + s, 1.0f), a_color));
+
+        const GLuint offset = (GLuint)(startIndex + i * 4);
+
+        Instance->m_indices.emplace_back(offset + 0);
+        Instance->m_indices.emplace_back(offset + 1);
+        Instance->m_indices.emplace_back(offset + 2);
+
+        Instance->m_indices.emplace_back(offset + 1);
+        Instance->m_indices.emplace_back(offset + 3);
+        Instance->m_indices.emplace_back(offset + 2);
+    }
 }
 
 static uint32_t PlaceVertex(std::unordered_map<uint64_t, uint32_t>* a_map, uint32_t a_indexA, uint32_t a_indexB, std::vector<glm::vec3>* a_vertexData)
@@ -393,7 +421,7 @@ void Gizmos::Render()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

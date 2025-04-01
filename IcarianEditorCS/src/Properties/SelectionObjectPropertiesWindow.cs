@@ -91,7 +91,7 @@ namespace IcarianEditor.Properties
                 if (EditorConfig.UseDegrees)
                 {
                     Vector4 axisAngle = new Vector4(m_axisAngle.XYZ, m_axisAngle.W * Mathf.RadToDeg);
-                    if (GUI.RVec4Field("Axis Angle", ref axisAngle))
+                    if (GUI.RVec4Field("Axis Angle", ref axisAngle, Vector4.UnitY))
                     {
                         m_axisAngle = new Vector4(axisAngle.XYZ, axisAngle.W * Mathf.DegToRad);
 
