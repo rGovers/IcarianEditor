@@ -1,8 +1,8 @@
-# IcarianEditor
+# <img src="resources/Icarian_Logo_White.svg" width="32"/> Icarian Editor
 
-![image](resources/Icarian_Logo_White.svg)
+![image](resources/Screenshot.png)
 
-The editor for Icarian Engine.
+The editor for the Icarian Engine.
 
 ## Prerequisites
 * Vulkan SDK (Validation Layers in Debug not required in Release)
@@ -22,7 +22,7 @@ The editor for Icarian Engine.
 
 ## Windows Support
 
-Currently mileage may very for editor support on Windows and core functionality may be broken focus has been on working 1st Windows later
+Currently mileage may very for editor support on Windows and core functionality may be broken. Focus has been on working 1st and Windows later.
 
 ## Building
 
