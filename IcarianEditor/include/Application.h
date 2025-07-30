@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <string>
 #include <string_view>
 
 #include "EngineInputInteropStructures.h"
@@ -28,20 +27,25 @@ enum e_Cursors
 class Application
 {
 private:
-    bool        m_maximized;
-
-    int         m_xPosState;
-    int         m_yPosState;
+    static constexpr uint32_t InitBit = 0;
+    static constexpr uint32_t MaximizedBit = 1;
 
     GLFWwindow* m_window;
 
     GLFWcursor* m_cursors[Cursor_Last];
+
+    int         m_xPosState;
+    int         m_yPosState;
+
+    uint8_t     m_flags;
 
 protected:
 
 public:
     Application(uint32_t a_width, uint32_t a_height, const std::string_view& a_title);
     virtual ~Application();
+
+    bool IsInit() const;
 
     void Run();
 
@@ -80,7 +84,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

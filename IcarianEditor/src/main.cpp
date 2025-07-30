@@ -15,6 +15,10 @@
 #define STBI_NO_PNM
 #include <stb_image.h>
 
+#ifndef WIN32
+#include <sys/file.h>
+#endif
+
 #define CUBE_IMPLEMENTATION
 #ifndef NDEBUG
 #define CUBE_PRINT_COMMANDS
@@ -23,6 +27,7 @@
 
 #include "AppMain.h"
 #include "Core/IcarianDefer.h"
+#include "IO.h"
 #include "Logger.h"
 
 #define ICARIANEDITOR_VERSION_STRX(x) #x
@@ -30,14 +35,47 @@
 #define ICARIANEDITOR_VERSION_TAGSTR ICARIANEDITOR_VERSION_STRI(ICARIANEDITOR_VERSION_TAG)
 #define ICARIANEDITOR_COMMIT_HASHSTR ICARIANEDITOR_VERSION_STRI(ICARIANEDITOR_COMMIT_HASH)
 
-void PrintVersion()
+static void PrintVersion()
 {
-    Logger::Message("IcarianEditor " + std::to_string(ICARIANEDITOR_VERSION_MAJOR) + "." + std::to_string(ICARIANEDITOR_VERSION_MINOR) + "." + std::to_string(ICARIANEDITOR_VERSION_PATCH) + "." + ICARIANEDITOR_COMMIT_HASHSTR + " " + ICARIANEDITOR_VERSION_TAGSTR);
+    Logger::Message("IcarianEditor " + std::to_string(ICARIANEDITOR_VERSION_MAJOR) + "." + std::to_string(ICARIANEDITOR_VERSION_MINOR) + "." + std::to_string(ICARIANEDITOR_VERSION_PATCH) + ":" + ICARIANEDITOR_COMMIT_HASHSTR + " " + ICARIANEDITOR_VERSION_TAGSTR);
 }
 
 int main(int a_argc, char* a_argv[])
 {
     PrintVersion();
+
+    // TODO: Need to implement single process lock for Windows
+#ifndef WIN32
+    const std::filesystem::path tempPath = IO::GetTempPath();
+    if (tempPath.empty())
+    {
+        Logger::Error("Editor failed to find temp path");
+
+        return 1;
+    }
+    const std::filesystem::path lockfilePath = tempPath / "IcarianEditor.lock";
+    const std::string lockfilePathStr = lockfilePath.string();
+
+    // This is not foolproof should probably write the pid to the file and query if it still even exists on startup
+    // Wait so I can create a file and read and write that I do not have permission for but I cannot open a file? What????
+    // Anyway was just me being an idiot
+    const int lockFd = open(lockfilePathStr.c_str(), O_CREAT, 0655);
+    if (lockFd < 0)
+    {
+        Logger::Error("Editor failed to open lockfile");
+
+        return 1;
+    }
+    IDEFER(close(lockFd));
+
+    if (flock(lockFd, LOCK_EX | LOCK_NB) < 0)
+    {
+        Logger::Error("Multiple editor processes exist closing");
+
+        return 1;
+    }
+    IDEFER(flock(lockFd, LOCK_UN));
+#endif
 
 #ifdef WIN32
     // Whatever enet needs we will do ourselves
@@ -59,6 +97,10 @@ int main(int a_argc, char* a_argv[])
     srand(time(NULL));
 
     AppMain app;
+    if (!app.IsInit())
+    {
+        return 1;
+    }
     app.Run();
 
     return 0;

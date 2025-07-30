@@ -213,7 +213,7 @@ static void LoadMesh(const aiMesh* a_mesh, std::vector<Vertex>* a_vertices, std:
         if (hasNormals) 
         {
             const aiVector3D& norm = a_mesh->mNormals[i];
-            v.Normal = glm::vec3(norm.x, -norm.y, norm.z);
+            v.Normal = glm::vec4(norm.x, -norm.y, norm.z, 0.0f);
         }
 
         if (hasTexCoordsA) 
@@ -289,7 +289,6 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
     const std::filesystem::path ext = p.extension();
     const std::string extStr = ext.string();
 
-    AssetLibrary* library = Instance->GetLibrary();
     switch (StringHash<uint32_t>(extStr.c_str())) 
     {
     case StringHash<uint32_t>(".obj"):
@@ -300,7 +299,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateFromFile,
     {
         const uint8_t* dat;
         uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        AssetLibrary::GetAsset(p, &size, &dat);
         if (size <= 0 || dat == nullptr)
         {
             Logger::Error(std::string("Cannot find mesh file: ") + str);
@@ -442,8 +441,6 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
 
     const std::string extStr = ext.string();
 
-    AssetLibrary* library = Instance->GetLibrary();
-    
     switch (StringHash<uint32_t>(extStr.c_str()))
     {
     case StringHash<uint32_t>(".dae"):
@@ -453,7 +450,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
     {
         const uint8_t* dat;
         uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        AssetLibrary::GetAsset(p, &size, &dat);
         if (size <= 0 || dat == nullptr)
         {
             Logger::Error(std::string("Cannot find skinned mesh file: ") + str);
@@ -482,7 +479,7 @@ RUNTIME_FUNCTION(uint32_t, Model, GenerateSkinnedFromFile,
         std::unordered_map<MCR_GenerateSkinnedFromFile_MAPKEYS> boneMap;
 
         const aiSkeleton* skeleton = scene->mSkeletons[0];
-        for (int i = 0; i < skeleton->mNumBones; ++i)
+        for (int i = 0; i < (int)skeleton->mNumBones; ++i)
         {
             const aiSkeletonBone* bone = skeleton->mBones[i];
             const std::string name = bone->mNode->mName.C_Str();
@@ -529,8 +526,6 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
 
     RuntimeImportBoneData data = { 0 };
 
-    AssetLibrary* library = Instance->GetLibrary();
-
     switch (StringHash<uint32_t>(extStr.c_str())) 
     {
     case StringHash<uint32_t>(".dae"):
@@ -540,7 +535,7 @@ RUNTIME_FUNCTION(RuntimeImportBoneData, Skeleton, LoadBoneData,
     {
         const uint8_t* dat;
         uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        AssetLibrary::GetAsset(p, &size, &dat);
         if (size <= 0 || dat == nullptr)
         {
             Logger::Error(std::string("Cannot find skeleton file: ") + str);
@@ -619,13 +614,15 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
     
     const std::filesystem::path p = std::filesystem::path(str);
     const std::filesystem::path ext = p.extension();
+    const std::string extString = ext.string();
 
-    AssetLibrary* library = Instance->GetLibrary();
-    if (ext == ".png")
+    switch (StringHash<uint32_t>(extString.c_str()))
+    {
+    case StringHash<uint32_t>(".png"):
     {
         const uint8_t* dat;
         uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        AssetLibrary::GetAsset(p, &size, &dat);
 
         if (dat != nullptr && size > 0)
         {
@@ -638,12 +635,14 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
 
             return Instance->GenerateTexture((uint32_t)width, (uint32_t)height, (unsigned char*)pixels);
         }
+
+        break;
     }
-    else if (ext == ".ktx2")
+    case StringHash<uint32_t>(".ktx2"):
     {
         const uint8_t* dat;
         uint32_t size;
-        library->GetAsset(p, &size, &dat);
+        AssetLibrary::GetAsset(p, &size, &dat);
 
         if (dat != nullptr && size > 0)
         {
@@ -660,35 +659,40 @@ RUNTIME_FUNCTION(uint32_t, Texture, GenerateFromFile,
                 GLuint handle;
                 glGenTextures(1, &handle);
                 glBindTexture(GL_TEXTURE_2D, handle);
-                
+
                 const GLenum glInternalFormat = GLInternalFormatFromKtxVkFormat(ktxTex->vkFormat);
-                
+
                 if (ktxTex->isCompressed)
                 {
                     const GLsizei size = (GLsizei)ktxTexture_GetImageSize((ktxTexture*)ktxTex, 0);
 
                     glCompressedTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, ktxTex->baseWidth, ktxTex->baseHeight, 0, size, ktxTex->pData);
                 }
-                else 
+                else
                 {
                     const GLenum glFormat = GLFormatFromKtxVkFormat(ktxTex->vkFormat);
                     const GLenum glType = GLTypeFromKtxVkFormat(ktxTex->vkFormat);
 
                     glTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, ktxTex->baseWidth, ktxTex->baseHeight, 0, glFormat, glType, ktxTex->pData);
                 }
-                
+
                 return Instance->GenerateTextureFromHandle((uint32_t)handle);
             }
         }
+
+        break;
+    }
+    default:
+    {
+        break;
+    }
     }
 
     return -1;
 }, MonoString* a_path)
 
-RuntimeStorage::RuntimeStorage(AssetLibrary* a_assets)
+RuntimeStorage::RuntimeStorage()
 {
-    m_assets = a_assets;
-
     BIND_FUNCTION(IcarianEngine.Rendering.Shaders, VertexShader, AddImport);
     BIND_FUNCTION(IcarianEngine.Rendering.Shaders, PixelShader, AddImport);
 
@@ -783,7 +787,7 @@ uint32_t RuntimeStorage::GenerateVertexShader(const std::filesystem::path& a_pat
     {
         uint32_t size; 
         const uint8_t* dat;
-        m_assets->GetAsset(a_path, &size, &dat);
+        AssetLibrary::GetAsset(a_path, &size, &dat);
 
         std::string error;
         std::vector<ShaderBufferInput> inputs;
@@ -855,7 +859,7 @@ uint32_t RuntimeStorage::GeneratePixelShader(const std::filesystem::path& a_path
     {
         uint32_t size; 
         const uint8_t* dat;
-        m_assets->GetAsset(a_path, &size, &dat);
+        AssetLibrary::GetAsset(a_path, &size, &dat);
 
         std::string error;
         std::vector<ShaderBufferInput> inputs;
@@ -1128,7 +1132,6 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
     const std::filesystem::path ext = a_path.extension();
     const std::string extStr = ext.string();
 
-    AssetLibrary* library = Instance->GetLibrary();
     switch (StringHash<uint32_t>(extStr.c_str())) 
     {
     case StringHash<uint32_t>(".dae"):
@@ -1138,7 +1141,7 @@ MonoArray* RuntimeStorage::LoadExternalAnimationClip(const std::filesystem::path
     {
         uint32_t size;
         const uint8_t* dat;
-        library->GetAsset(a_path, &size, &dat);
+        AssetLibrary::GetAsset(a_path, &size, &dat);
         if (size <= 0 || dat == nullptr)
         {
             Logger::Error("Cannot find animation clip file: " + a_path.string());

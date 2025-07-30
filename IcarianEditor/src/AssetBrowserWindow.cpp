@@ -21,17 +21,16 @@
 #include "Modals/CreateDefTableModal.h"
 #include "Modals/CreateEmptyScriptModal.h"
 #include "Modals/CreateFileModal.h"
-#include "Modals/CreateSciptableModal.h"
+#include "Modals/CreateScriptableModal.h"
 #include "Modals/RenamePathModal.h"
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 #include "Templates.h"
 #include "Texture.h"
 
-AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
+AssetBrowserWindow::AssetBrowserWindow(AppMain* a_app, Project* a_project) : Window("Asset Browser", "Textures/WindowIcons/WindowIcon_AssetBrowser.png")
 {
     m_app = a_app;
-    m_assetLibrary = a_assetLibrary;
     m_project = a_project;
 
     m_fileTree.clear();
@@ -52,7 +51,7 @@ void AssetBrowserWindow::MakeDirectoryNode(uint32_t a_parent, const std::filesys
 
     std::list<std::filesystem::path> childPaths;
 
-    for (const auto iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
+    for (const auto& iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
     {
         if (iter.is_regular_file())
         {
@@ -137,7 +136,7 @@ void AssetBrowserWindow::TraverseFolderTree(uint32_t a_index)
 void AssetBrowserWindow::Refresh()
 {
     std::filesystem::path curPath;
-    if (m_curIndex != -1)
+    if (m_curIndex != uint32_t(-1))
     {
         ICARIAN_ASSERT(m_curIndex < m_fileTree.size());
         
@@ -290,12 +289,11 @@ void AssetBrowserWindow::BaseMenu(const std::filesystem::path& a_path, const std
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Def"))
+        if (ImGui::MenuItem("Def", NULL, false, RuntimeManager::IsBuilt()))
         {
             const std::string pathStr = a_path.string();
 
             MonoString* str = mono_string_new(RuntimeManager::GetEditorDomain(), pathStr.c_str());
-
             void* args[] =
             {
                 str
@@ -455,7 +453,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
     uint32_t size;
     const uint8_t* data;
     e_AssetType type;
-    m_assetLibrary->GetAsset(rPath, &size, &data, &type);
+    AssetLibrary::GetAsset(rPath, &size, &data, &type);
 
     if (size > 0 && data != nullptr)
     {
@@ -608,9 +606,6 @@ bool AssetBrowserWindow::ShowSearchAssetList(const DirectoryNode& a_node, const 
 {
     bool contextCaptured = false;
 
-    Texture* folderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_Folder.png");
-    Texture* emptyFolderTex = Datastore::GetTexture("Textures/FileIcons/FileIcon_FolderEmpty.png");
-
     for (uint32_t index : a_node.Children)
     {
         const DirectoryNode& cNode = m_fileTree[index];
@@ -665,7 +660,7 @@ bool AssetBrowserWindow::ShowSearchAssetList(const DirectoryNode& a_node, const 
 
 void AssetBrowserWindow::Update(double a_delta)
 {
-    if (m_curIndex == -1)
+    if (m_curIndex == uint32_t(-1))
     {
         return;
     }
@@ -674,7 +669,7 @@ void AssetBrowserWindow::Update(double a_delta)
     std::list<uint32_t> breadcrumbs; 
     uint32_t pIndex = node.Parent;
     breadcrumbs.emplace_front(m_curIndex);
-    while (pIndex != -1)
+    while (pIndex != uint32_t(-1))
     {
         breadcrumbs.emplace_front(pIndex);
 

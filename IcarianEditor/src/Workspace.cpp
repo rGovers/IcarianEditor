@@ -58,8 +58,6 @@ void Workspace::SetScene(const std::filesystem::path& a_path)
 
 void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
-    MonoDomain* editorDomain = RuntimeManager::GetEditorDomain();
-
     const std::u32string str = a_path.u32string();
     MonoString* pathString = mono_string_from_utf32((mono_unichar4*)str.c_str());
 

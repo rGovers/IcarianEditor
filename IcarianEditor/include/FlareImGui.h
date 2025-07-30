@@ -148,7 +148,11 @@ namespace FlareImGui
         ImGuiKey_Menu
     };
 
+    void Init();
+
     void Label(const std::string_view& a_label);
+
+    void Header(const std::string_view& a_str);
 
     bool DragVec2(const std::string_view& a_label, float a_val[2], float a_speed = 1.0f, float a_min = 0.0f, float a_max = 0.0f, const char* a_format = "%.4f", ImGuiSliderFlags a_flags = 0);
     bool DragVec3(const std::string_view& a_label, float a_val[3], float a_speed = 1.0f, float a_min = 0.0f, float a_max = 0.0f, const char* a_format = "%.4f", ImGuiSliderFlags a_flags = 0);

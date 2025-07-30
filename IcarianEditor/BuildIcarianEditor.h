@@ -119,8 +119,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
     CUBE_String_AppendSS(&commitDefine, &commitHash);
 
     CUBE_CProject_AppendDefines(&project,
-        "ICARIANEDITOR_VERSION_MAJOR=2024",
-        "ICARIANEDITOR_VERSION_MINOR=2",
+        "ICARIANEDITOR_VERSION_MAJOR=2025",
+        "ICARIANEDITOR_VERSION_MINOR=0",
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,
         "ICARIANEDITOR_VERSION_TAG=DEV",
@@ -190,6 +190,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "./src/CreateProjectModal.cpp",
         "./src/CreateScriptableModal.cpp",
         "./src/Datastore.cpp",
+        "./src/EditorData.cpp",
         "./src/EditorConfig.cpp",
         "./src/EditorConfigModal.cpp",
         "./src/EditorInputManager.cpp",
@@ -244,14 +245,144 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "./src/TimelineWindow.cpp",
         "./src/UniformBuffer.cpp",
         "./src/VertexShader.cpp",
+        "./src/WelcomeWindow.cpp",
         "./src/Window.cpp",
         "./src/Workspace.cpp"
+    );
+
+    CUBE_CProject_AppendRebuildSources(&project,
+        "../IcarianEngine/IcarianCore/include/Core/Bitfield.h",
+        "../IcarianEngine/IcarianCore/include/Core/CommunicationPipe.h",
+        "../IcarianEngine/IcarianCore/include/Core/CRC.h",
+        "../IcarianEngine/IcarianCore/include/Core/DMASwapBuffer.h",
+        "../IcarianEngine/IcarianCore/include/Core/Endian.h",
+        "../IcarianEngine/IcarianCore/include/Core/FlareShader.h",
+        "../IcarianEngine/IcarianCore/include/Core/IcarianAssert.h",
+        "../IcarianEngine/IcarianCore/include/Core/IcarianDefer.h",
+        "../IcarianEngine/IcarianCore/include/Core/IcarianError.h",
+        "../IcarianEngine/IcarianCore/include/Core/IcarianLambda.h",
+        "../IcarianEngine/IcarianCore/include/Core/IcarianPragma.h",
+        "../IcarianEngine/IcarianCore/include/Core/InputBindings.h",
+        "../IcarianEngine/IcarianCore/include/Core/IPCPipe.h",
+        "../IcarianEngine/IcarianCore/include/Core/MonoNativeImpl.h",
+        "../IcarianEngine/IcarianCore/include/Core/Pipefile.h",
+        "../IcarianEngine/IcarianCore/include/Core/PipeMessage.h",
+        "../IcarianEngine/IcarianCore/include/Core/ShaderBuffers.h",
+        "../IcarianEngine/IcarianCore/include/Core/SharedMemoryBuffer.h",
+        "../IcarianEngine/IcarianCore/include/Core/SocketPipe.h",
+        "../IcarianEngine/IcarianCore/include/Core/StringUtils.h",
+        "../IcarianEngine/IcarianCore/include/Core/WindowsHeaders.h",
+
+        "./include/LoadingTasks/BuildLoadingTask.h",
+        "./include/LoadingTasks/CopyBuildLibraryLoadingTask.h",
+        "./include/LoadingTasks/GenerateConfigLoadingTask.h",
+        "./include/LoadingTasks/LoadingTask.h",
+        "./include/LoadingTasks/RemoteBuildLoadingTask.h",
+        "./include/LoadingTasks/RunRemoteLoadingTask.h",
+        "./include/LoadingTasks/SerializeAssetsLoadingTask.h",
+        "./include/LoadingTasks/SyncRemoteBuildLoadingTask.h",
+
+        "./include/Modals/BuildProjectModal.h",
+        "./include/Modals/ConfirmModal.h",
+        "./include/Modals/CreateAssemblyControlModal.h",
+        "./include/Modals/CreateComponentModal.h",
+        "./include/Modals/CreateDefTableModal.h",
+        "./include/Modals/CreateEmptyScriptModal.h",
+        "./include/Modals/CreateFileModal.h",
+        "./include/Modals/CreateProjectModal.h",
+        "./include/Modals/CreateScriptableModal.h",
+        "./include/Modals/EditorConfigModal.h",
+        "./include/Modals/ErrorModal.h",
+        "./include/Modals/GetAssetModal.h",
+        "./include/Modals/LoadingModal.h",
+        "./include/Modals/Modal.h",
+        "./include/Modals/OpenProjectModal.h",
+        "./include/Modals/ProjectConfigModal.h",
+        "./include/Modals/RenamePathModal.h",
+        "./include/Modals/RuntimeModal.h",
+        "./include/Modals/SSHConnectedModal.h",
+        "./include/Modals/SSHConnectModal.h",
+
+        "./include/Runtime/RuntimeManager.h",
+        "./include/Runtime/RuntimeStorage.h",
+
+        "./include/Windows/AssetBrowserWindow.h",
+        "./include/Windows/ConsoleWindow.h",
+        "./include/Windows/EditorWindow.h",
+        "./include/Windows/GameWindow.h",
+        "./include/Windows/HierarchyWindow.h",
+        "./include/Windows/ProfilerWindow.h",
+        "./include/Windows/PropertiesWindow.h",
+        "./include/Windows/SceneDefsWindow.h",
+        "./include/Windows/TimelineWindow.h",
+        "./include/Windows/Window.h",
+
+        "./include/Application.h",
+        "./include/AppMain.h",
+        "./include/AssetLibrary.h",
+        "./include/Datastore.h",
+        "./include/EditorConfig.h",
+        "./include/EditorData.h",
+        "./include/EditorInputManager.h",
+        "./include/FileDialog.h",
+        "./include/FileDialogBlock.h",
+        "./include/FileHandler.h",
+        "./include/FlareImGui.h",
+        "./include/Gizmos.h",
+        "./include/GUI.h",
+        "./include/IO.h",
+        "./include/KtxHelpers.h",
+        "./include/Logger.h",
+        "./include/Model.h",
+        "./include/MonoProjectGenerator.h",
+        "./include/PixelShader.h",
+        "./include/ProcessManager.h",
+        "./include/ProfilerData.h",
+        "./include/Project.h",
+        "./include/RenderCommand.h",
+        "./include/SCPPipe.h",
+        "./include/Shader.h",
+        "./include/ShaderProgram.h",
+        "./include/ShaderStorage.h",
+        "./include/ShaderStorageObject.h",
+        "./include/SSHPipe.h",
+        "./include/TemplateBuilder.h",
+        "./include/Texture.h",
+        "./include/TextureSampler.h",
+        "./include/UniformBuffer.h",
+        "./include/VertexShader.h",
+        "./include/Workspace.h",
+
+        "./shaders/Gizmo.frag",
+        "./shaders/Gizmo.vert",
+        "./shaders/Grid.frag",
+        "./shaders/Grid.vert",
+
+        "./templates/About.xml",
+        "./templates/AssemblyControl.cs",
+        "./templates/Canvas.ui",
+        "./templates/Component.cs",
+        "./templates/DefTable.cs",
+        "./templates/EmptyScript.cs",
+        "./templates/PixelShader.fpix",
+        "./templates/Scene.iscene",
+        "./templates/Scriptable.cs",
+        "./templates/ShadowVertexShader.fvert",
+        "./templates/SkinnedVertexShader.fvert",
+        "./templates/VertexShader.fvert"
     );
 
     // Used for style editor window
     // CUBE_CProject_AppendSource(&project, "../IcarianEngine/deps/imgui/imgui_demo.cpp");
 
     CUBE_CProject_AppendCFlag(&project, "-std=c++17");
+    CUBE_CProject_AppendCFlag(&project, "-Wall");
+    if (a_targetPlatform == TargetPlatform_Linux)
+    {
+        // Should probably only turn this on with the Linux GCC version
+        // This is the source of truth for us as it is the main compiler
+        CUBE_CProject_AppendCFlag(&project, "-Werror");
+    }
 
     switch (a_configuration)
     {

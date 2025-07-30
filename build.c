@@ -197,7 +197,14 @@ int main(int a_argc, char** a_argv)
 
             free(engineDependencies);
 
-            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE, CBFALSE);
+            const IcarianNativeProjectFlags nativeFlags =
+            {
+                .EnableTrace = CBTRUE,
+                .EnableProfiler = CBTRUE,
+                .EnableMarkers = CBTRUE,
+                .EnablePipeFile = CBTRUE
+            };
+            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, nativeFlags);
             CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
             projects[offset++] = icarianNativeProject;
 
@@ -385,7 +392,7 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBTRUE);
+    icarianCSProject = BuildIcarianCSProject(CBTRUE, CBTRUE, CBTRUE, CBTRUE);
 
     ret = CUBE_CSProject_PreProcessCompile(&icarianCSProject, "IcarianEngine/IcarianCS", "../deps/Mono/Linux/bin/csc", compiler, CBNULL, &lines, &lineCount);
 
@@ -434,7 +441,14 @@ int main(int a_argc, char** a_argv)
 
     free(dependencyProjects);
 
-    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, CBTRUE, CBTRUE, CBTRUE, CBFALSE);
+    const IcarianNativeProjectFlags nativeFlags =
+    {
+        .EnableTrace = CBTRUE,
+        .EnableProfiler = CBTRUE,
+        .EnableMarkers = CBTRUE,
+        .EnablePipeFile = CBTRUE
+    };
+    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, nativeFlags);
 
     ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount, rebuild);
 

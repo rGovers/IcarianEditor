@@ -41,7 +41,7 @@ void ShaderStorage::Bind()
         glUniform1i((GLint)binding.Slot, (GLint)i);
     }
 
-    if (m_userUBOSlot != -1 && m_userUniformBuffer != nullptr)
+    if (m_userUBOSlot != uint32_t(-1) && m_userUniformBuffer != nullptr)
     {
         glBindBufferBase(GL_UNIFORM_BUFFER, m_userUBOSlot, m_userUniformBuffer->GetHandle());
     }
@@ -84,7 +84,7 @@ void ShaderStorage::SetUserUBO(uint32_t a_slot, const void* a_object, uint32_t a
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

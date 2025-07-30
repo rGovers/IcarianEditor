@@ -6,9 +6,8 @@
 
 #include "AssetLibrary.h"
 
-SerializeAssetsLoadingTask::SerializeAssetsLoadingTask(const std::filesystem::path& a_path, Project* a_project, AssetLibrary* a_library)
+SerializeAssetsLoadingTask::SerializeAssetsLoadingTask(const std::filesystem::path& a_path, Project* a_project)
 {
-    m_library = a_library;
     m_project = a_project;
 
     m_path = a_path;
@@ -20,12 +19,12 @@ SerializeAssetsLoadingTask::~SerializeAssetsLoadingTask()
 
 void SerializeAssetsLoadingTask::Run()
 {
-    m_library->BuildDirectory(m_path, m_project);
+    AssetLibrary::BuildDirectory(m_path, m_project);
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

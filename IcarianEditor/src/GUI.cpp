@@ -409,7 +409,7 @@ static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_
     const std::string str = mStr;
 
     const uintptr_t size = mono_array_length(a_list);
-    if (*a_selected >= size)
+    if ((uintptr_t)*a_selected >= size)
     {
         *a_selected = 0;
     }
@@ -437,7 +437,7 @@ static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_
                 continue;
             }
 
-            const bool selected = i == *a_selected;
+            const bool selected = (int32_t)i == *a_selected;
 
             STACK_G_ID(std::string(str) + "[" + std::to_string(i) + "]");
             if (ImGui::Selectable(selectableStr, selected))
@@ -674,88 +674,87 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetCtrlModifier,
     return (uint32_t)(ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
 })
 
-GUI::GUI(AppMain* a_app, AssetLibrary* a_assets)
+GUI::GUI(AppMain* a_app)
 {
     m_app = a_app;
-    m_assets = a_assets;
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetButton);
+    BIND_FUNCTION(IcarianEditor, GUI, GetToggleButton);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetCheckbox);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetDef);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetInt);
+    BIND_FUNCTION(IcarianEditor, GUI, GetIntSlider);
+    BIND_FUNCTION(IcarianEditor, GUI, GetUInt);
+    BIND_FUNCTION(IcarianEditor, GUI, GetUIntSlider);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetBitField);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetFloat);
+    BIND_FUNCTION(IcarianEditor, GUI, GetFloatSlider);
+    BIND_FUNCTION(IcarianEditor, GUI, GetVec2);
+    BIND_FUNCTION(IcarianEditor, GUI, GetVec3);
+    BIND_FUNCTION(IcarianEditor, GUI, GetVec4);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetColor);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetString);
+    BIND_FUNCTION(IcarianEditor, GUI, GetPathString);
+    BIND_FUNCTION(IcarianEditor, GUI, GetStringList);
+
+    BIND_FUNCTION(IcarianEditor, GUI, ResetButton);
+
+    BIND_FUNCTION(IcarianEditor, GUI, NIndent);
+    BIND_FUNCTION(IcarianEditor, GUI, Indent);
+    BIND_FUNCTION(IcarianEditor, GUI, Unindent);
+
+    BIND_FUNCTION(IcarianEditor, GUI, ShowStructView);
+    BIND_FUNCTION(IcarianEditor, GUI, ShowArrayView);
+
+    BIND_FUNCTION(IcarianEditor, GUI, ShowTexture);
+
+    BIND_FUNCTION(IcarianEditor, GUI, Tooltip);
+
+    BIND_FUNCTION(IcarianEditor, GUI, PushID);
+    BIND_FUNCTION(IcarianEditor, GUI, PopID);
+    BIND_FUNCTION(IcarianEditor, GUI, GetCurrentID);
+
+    BIND_FUNCTION(IcarianEditor, GUI, Label);
+    BIND_FUNCTION(IcarianEditor, GUI, GetSelectable);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetContextPopup);
+    BIND_FUNCTION(IcarianEditor, GUI, GetContextPopupWindow);
+    BIND_FUNCTION(IcarianEditor, GUI, EndPopup);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetMenu);
+    BIND_FUNCTION(IcarianEditor, GUI, EndMenu);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetMenuItem);
+
+    BIND_FUNCTION(IcarianEditor, GUI, NodeI);
+    BIND_FUNCTION(IcarianEditor, GUI, PopNode);
+
+    BIND_FUNCTION(IcarianEditor, GUI, SameLine);
+    BIND_FUNCTION(IcarianEditor, GUI, Separator);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetShiftModifier);
+    BIND_FUNCTION(IcarianEditor, GUI, GetCtrlModifier);
+
+    BIND_FUNCTION(IcarianEditor, GUI, GetBeginChild);
+    BIND_FUNCTION(IcarianEditor, GUI, EndChild);
 }
 GUI::~GUI()
 {
     
 }
 
-void GUI::Init(AppMain* a_app, AssetLibrary* a_assets)
+void GUI::Init(AppMain* a_app)
 {
     if (Instance == nullptr)
     {
-        Instance = new GUI(a_app, a_assets);
-        
-        BIND_FUNCTION(IcarianEditor, GUI, GetButton);
-        BIND_FUNCTION(IcarianEditor, GUI, GetToggleButton);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetCheckbox);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetDef);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetInt);
-        BIND_FUNCTION(IcarianEditor, GUI, GetIntSlider);
-        BIND_FUNCTION(IcarianEditor, GUI, GetUInt);
-        BIND_FUNCTION(IcarianEditor, GUI, GetUIntSlider);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetBitField);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetFloat);
-        BIND_FUNCTION(IcarianEditor, GUI, GetFloatSlider);
-        BIND_FUNCTION(IcarianEditor, GUI, GetVec2);
-        BIND_FUNCTION(IcarianEditor, GUI, GetVec3);
-        BIND_FUNCTION(IcarianEditor, GUI, GetVec4);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetColor);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetString);
-        BIND_FUNCTION(IcarianEditor, GUI, GetPathString);
-        BIND_FUNCTION(IcarianEditor, GUI, GetStringList);
-
-        BIND_FUNCTION(IcarianEditor, GUI, ResetButton);
-
-        BIND_FUNCTION(IcarianEditor, GUI, NIndent);
-        BIND_FUNCTION(IcarianEditor, GUI, Indent);
-        BIND_FUNCTION(IcarianEditor, GUI, Unindent);
-
-        BIND_FUNCTION(IcarianEditor, GUI, ShowStructView);
-        BIND_FUNCTION(IcarianEditor, GUI, ShowArrayView);
-
-        BIND_FUNCTION(IcarianEditor, GUI, ShowTexture);
-
-        BIND_FUNCTION(IcarianEditor, GUI, Tooltip);
-
-        BIND_FUNCTION(IcarianEditor, GUI, PushID);
-        BIND_FUNCTION(IcarianEditor, GUI, PopID);
-        BIND_FUNCTION(IcarianEditor, GUI, GetCurrentID);
-
-        BIND_FUNCTION(IcarianEditor, GUI, Label);
-        BIND_FUNCTION(IcarianEditor, GUI, GetSelectable);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetContextPopup);
-        BIND_FUNCTION(IcarianEditor, GUI, GetContextPopupWindow);
-        BIND_FUNCTION(IcarianEditor, GUI, EndPopup);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetMenu);
-        BIND_FUNCTION(IcarianEditor, GUI, EndMenu);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetMenuItem);
-
-        BIND_FUNCTION(IcarianEditor, GUI, NodeI);
-        BIND_FUNCTION(IcarianEditor, GUI, PopNode);
-
-        BIND_FUNCTION(IcarianEditor, GUI, SameLine);
-        BIND_FUNCTION(IcarianEditor, GUI, Separator);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetShiftModifier);
-        BIND_FUNCTION(IcarianEditor, GUI, GetCtrlModifier);
-
-        BIND_FUNCTION(IcarianEditor, GUI, GetBeginChild);
-        BIND_FUNCTION(IcarianEditor, GUI, EndChild);
+        Instance = new GUI(a_app);
     }
 }
 void GUI::Destroy()
@@ -798,7 +797,7 @@ void GUI::OpenAssetPathModal(char* const* a_extensions, uint32_t a_extensionCoun
 {
     PathAssetModalData* data = new PathAssetModalData(this, GetID());
 
-    m_app->PushModal(new GetAssetModal(a_extensions, a_extensionCount, m_assets, data));
+    m_app->PushModal(new GetAssetModal(a_extensions, a_extensionCount, data));
 }
 
 std::string GUI::GetPathString()

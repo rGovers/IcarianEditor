@@ -118,10 +118,8 @@ static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path,
     ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
-FileHandler::FileHandler(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace)
+FileHandler::FileHandler(RuntimeStorage* a_storage, Workspace* a_workspace)
 {
-    m_assets = a_assets;
-
     m_storage = a_storage;
 
     m_extTex.emplace(".cs", Datastore::GetTexture("Textures/FileIcons/FileIcon_CSharpScript.png"));
@@ -151,11 +149,11 @@ FileHandler::~FileHandler()
     
 }
 
-void FileHandler::Init(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace)
+void FileHandler::Init(RuntimeStorage* a_storage, Workspace* a_workspace)
 {
     if (Instance == nullptr)
     {
-        Instance = new FileHandler(a_assets, a_storage, a_workspace);
+        Instance = new FileHandler(a_storage, a_workspace);
     }
 }
 void FileHandler::Destroy()
@@ -187,7 +185,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
 
     const std::string ext = a_path.extension().string();
 
-    const e_AssetType type = Instance->m_assets->GetAssetType(a_path);
+    const e_AssetType type = AssetLibrary::GetAssetType(a_path);
     switch (type) 
     {
     case AssetType_Texture:
@@ -211,7 +209,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
 
         const FileTextureHandle& handle = Instance->m_runtimeTexHandle;
 
-        if (handle.Addr != -1)
+        if (handle.Addr != uint32_t(-1))
         {
             switch (handle.Mode)
             {

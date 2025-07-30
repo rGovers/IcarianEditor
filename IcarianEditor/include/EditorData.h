@@ -1,79 +1,51 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #pragma once
 
-#define GLM_FORCE_SWIZZLE 
-#include <glm/glm.hpp>
+#include <filesystem>
 
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-
-#include "Window.h"
-
-#include <cstdint>
-#include <glad/glad.h>
-
-class ShaderProgram;
-class Workspace;
-
-class EditorWindow : public Window
+class EditorData
 {
 private:
-    static uint32_t RefCount;
-    static ShaderProgram* GridShader;
-    
-    Workspace*      m_workspace;
-    
-    glm::vec3       m_translation;
-    glm::quat       m_rotation;
-    
-    uint32_t        m_width;
-    uint32_t        m_height;
-    
-    glm::vec2       m_prevMousePos;
-    
-    double          m_lastUpdate;
-    float           m_moveSpeed;
-    float           m_zoom;
-    
-    GLuint          m_textureHandle;
-    GLuint          m_depthTextureHandle;
-    GLuint          m_framebufferHandle;
-    
-    bool            m_refresh;
-    
+    static constexpr uint32_t MaxProjectCount = 32;
+
+    // Add one so we do not have to deal with overflow logic when shifting values up to add another value
+    std::string m_lastProjectPath[MaxProjectCount + 1];
+    uint32_t    m_lastProjectCount;
+
+    EditorData();
 protected:
 
 public:
-    EditorWindow(Workspace* a_workspace);
-    virtual ~EditorWindow();
+    ~EditorData();
 
-    void Draw();
+    static void Init();
+    static void Destroy();
 
-    inline void Refresh()
-    {
-        m_refresh = true;
-    }
+    static void Serialize();
 
-    virtual void Update(double a_delta);
+    static void AddLastProjectPath(const std::filesystem::path& a_path);
+
+    static uint32_t GetLastProjectCount();
+    static const std::string* GetLastProjectPaths();
 };
 
 // MIT License
-// 
+//
 // Copyright (c) 2025 River Govers
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

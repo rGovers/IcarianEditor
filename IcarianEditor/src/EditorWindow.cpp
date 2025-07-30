@@ -104,6 +104,7 @@ EditorWindow::~EditorWindow()
 void EditorWindow::Draw()
 {
     m_refresh = false;
+    m_lastUpdate = 0.0;
 
     ImGuizmo::SetDrawlist();
 
@@ -125,8 +126,6 @@ void EditorWindow::Draw()
 
     glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
     const glm::mat4 invProj = glm::inverse(proj);
-
-    const glm::vec3 zoomAxis = m_rotation * glm::vec3(0.0f, 0.0f, m_zoom);
 
     const glm::mat4 rotMat = glm::toMat4(m_rotation);
     const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
@@ -288,7 +287,9 @@ void EditorWindow::Update(double a_delta)
         ImGui::Text("Scale");
     }
 
-    if (ImGui::IsWindowFocused() || ImGui::IsWindowHovered())
+    const bool focused = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
+    // No point wasting resources on something that is not focused
+    if (focused)
     {
         const ImVec2 imPos = ImGui::GetMousePos();
 
@@ -426,24 +427,12 @@ void EditorWindow::Update(double a_delta)
     }   
     else 
     {
-        for (uint32_t i = 0; i < MouseButton_Last; ++i)
-        {
-            EditorInputManager::SetMouseButton((e_MouseButton)i, false);
-        }
-
-        for (uint32_t i = 0; i < KeyCode_Last; ++i)
-        {
-            const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
-            if (key != ImGuiKey_None)
-            {
-                EditorInputManager::SetKeyboardKey((e_KeyCode)i, false);
-            }
-        }
-
-        if (m_refresh)
+        if (m_refresh || m_lastUpdate > 0.5)
         {
             Draw();
         }
+
+        m_lastUpdate += a_delta;
     }
 
     if (payloadData != nullptr)

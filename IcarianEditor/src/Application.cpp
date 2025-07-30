@@ -6,8 +6,10 @@
 
 #include <stb_image.h>
 
+#include "Core/Bitfield.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianError.h"
 #include "Logger.h"
 
 static void ErrorCallback(int a_error, const char* a_description)
@@ -18,8 +20,14 @@ static void ErrorCallback(int a_error, const char* a_description)
 // I dont not know if I need to throw GLFW or Windows under the bus for this one and have had enough of the WIN32 api to go digging
 Application::Application(uint32_t a_width, uint32_t a_height, const std::string_view& a_title)
 {
+    IERRBLOCK;
+
+    m_window = NULL;
+
     // TODO: Do some glfw hacks relating to the titlebar
-    m_maximized = false;
+    m_flags = 0;
+    ISETBIT(m_flags, InitBit);
+    IERRDEFER(ICLEARBIT(m_flags, InitBit));
 
 #ifndef WIN32
     // Wayland is weird so prefer run under XWayland for the editor for the time being
@@ -31,7 +39,8 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 #endif
 
-    ICARIAN_ASSERT_R(glfwInit());
+    IERRCHECK(glfwInit());
+    IERRDEFER(glfwTerminate());
 
     glfwSetErrorCallback(ErrorCallback);
     
@@ -42,12 +51,12 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     m_window = glfwCreateWindow((int)a_width, (int)a_height, a_title.data(), NULL, NULL);
-    if (m_window == NULL)
+    IERRCHECK(m_window != NULL);
+    IERRDEFER(
     {
-        glfwTerminate();
-        
-        ICARIAN_ASSERT(0);
-    }
+        glfwDestroyWindow(m_window);
+        m_window = NULL;
+    });
     
     glfwSetWindowUserPointer(m_window, this);
 
@@ -89,7 +98,7 @@ Application::Application(uint32_t a_width, uint32_t a_height, const std::string_
     m_cursors[Cursor_VResize] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
     m_cursors[Cursor_Move] = glfwCreateStandardCursor(GLFW_RESIZE_ALL_CURSOR);
 
-    ICARIAN_ASSERT_R(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
+    IERRCHECK(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress));
 
     glfwSwapInterval(1);
 }
@@ -100,9 +109,15 @@ Application::~Application()
         glfwDestroyCursor(m_cursors[i]);
     }
 
-    glfwDestroyWindow(m_window);
+    if (m_window != NULL)
+    {
+        glfwDestroyWindow(m_window);
+    }
 
-    glfwTerminate();
+    if (IISBITSET(m_flags, InitBit))
+    {
+        glfwTerminate();
+    }
 }
 
 void Application::SetCursorState(e_CursorState a_state)
@@ -139,6 +154,11 @@ void Application::SetCursor(e_Cursors a_cursor)
     glfwSetCursor(m_window, m_cursors[a_cursor]);
 }
 
+bool Application::IsInit() const
+{
+    return IISBITSET(m_flags, InitBit);
+}
+
 bool Application::IsFocused() const
 {
     return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != GLFW_FALSE;
@@ -148,18 +168,18 @@ bool Application::IsMaximized() const
 {
     // Maximized state does not seem to be set correctly on Windows
     // Therefore we need to keep track of it ourselves
-    return m_maximized;
+    return IISBITSET(m_flags, MaximizedBit);
 }
 void Application::Maximize(bool a_state)
 {
-    if (m_maximized == a_state)
+    if (IISBITSET(m_flags, MaximizedBit) == a_state)
     {
         return;
     }
 
-    m_maximized = a_state;
+    ITOGGLEBIT(a_state, m_flags, MaximizedBit);
 
-    if (m_maximized)
+    if (IISBITSET(m_flags, MaximizedBit))
     {
         glfwGetWindowPos(m_window, &m_xPosState, &m_yPosState);
 
@@ -265,7 +285,7 @@ void Application::SetWindowPos(const glm::vec2& a_pos)
 {
     // Safeguard against window getting stuck on Windows
     // Want to keep behavior consistent across platforms
-    if (m_maximized)
+    if (IISBITSET(m_flags, MaximizedBit))
     {
         return;
     }
@@ -311,7 +331,7 @@ void Application::Close() const
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

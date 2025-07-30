@@ -54,6 +54,8 @@ class ProcessManager
     int                             m_processFD;
 #endif   
 
+    uint32_t                        m_pipefileID;
+
     uint32_t                        m_curFrame;
     uint32_t                        m_dmaSwaps;
     std::vector<DMASwapchainImage>  m_dmaImages;
@@ -83,8 +85,11 @@ class ProcessManager
 
     void PollMessage(bool a_blockError = false);
 
+    void DMAUpdate();
+
     void FlushDMAImages();
     void Terminate();
+    void Cleanup();
 
 protected:
 

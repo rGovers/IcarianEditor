@@ -9,7 +9,6 @@
 #include <string>
 
 class AppMain;
-class AssetLibrary;
 class RuntimeManager;
 class Workspace;
 
@@ -22,7 +21,6 @@ private:
 
     AppMain*              m_app;
     Workspace*            m_workspace;
-    AssetLibrary*         m_assetLibrary;
 
     std::filesystem::path m_path;
     std::string           m_name;
@@ -33,13 +31,13 @@ private:
 
     void SaveProjectFile() const;
 
-    void NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name);
-    void OpenCallback(const std::filesystem::path& a_path, const std::string_view& a_name);
+    void NewProject(const std::filesystem::path& a_path, const std::string_view& a_name);
+    void OpenProject(const std::filesystem::path& a_path, const std::string_view& a_name);
 
 protected:
 
 public:
-    Project(AppMain* a_app, AssetLibrary* a_assetLibrary, Workspace* a_workspace);
+    Project(AppMain* a_app, Workspace* a_workspace);
     ~Project();
 
     void ReloadProjectFile();
@@ -93,12 +91,14 @@ public:
     void Open();
     void Save() const;
 
+    void OpenProjectFolder(const std::filesystem::path& a_path);
+
     void Build();
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

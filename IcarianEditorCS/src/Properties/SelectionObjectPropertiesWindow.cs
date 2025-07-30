@@ -17,7 +17,7 @@ namespace IcarianEditor.Properties
             Quaternion
         };
 
-        object       m_lastObject = null;
+        ulong        m_lastObject = ulong.MaxValue;
 
         Vector3      m_euler;
         Vector4      m_axisAngle;
@@ -29,11 +29,10 @@ namespace IcarianEditor.Properties
         public override void OnGUI(object a_object, bool a_sceneObject)
         {
             SelectionObject selectionObject = (SelectionObject)a_object;
-            object obj = selectionObject.Object;
 
             GUI.EnumField("Rotation Mode", ref m_mode);
 
-            if (m_lastObject != obj)
+            if (m_lastObject != selectionObject.ID)
             {
                 Quaternion rotation = selectionObject.Rotation;
                 if (rotation == Quaternion.Identity)
@@ -47,7 +46,7 @@ namespace IcarianEditor.Properties
                     m_axisAngle = rotation.ToAxisAngle();
                 }
                     
-                m_lastObject = obj;
+                m_lastObject = selectionObject.ID;
             }
 
             Vector3 translation = selectionObject.Translation;
@@ -178,7 +177,7 @@ namespace IcarianEditor.Properties
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

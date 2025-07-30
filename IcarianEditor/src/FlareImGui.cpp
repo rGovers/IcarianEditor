@@ -4,6 +4,7 @@
 
 #include "FlareImGui.h"
 
+#include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "Texture.h"
@@ -20,7 +21,29 @@ namespace FlareImGui
     static constexpr const char* Vec3Names[] = { "X", "Y", "Z" };
     static constexpr const char* Vec4Names[] = { "X", "Y", "Z", "W" };
 
-    static bool DragVecScalar(const std::string_view& a_label, ImGuiDataType a_dataType, void* a_data, const char* const* a_strs, const glm::vec4* a_colors, uint32_t a_comps, float a_speed, float a_min, float a_max, const char* a_format, ImGuiSliderFlags a_flags)
+    static ImFont* BoldFont = nullptr;
+
+    void Init()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+
+        BoldFont = io.Fonts->AddFontFromFileTTF("./Fonts/FiraMono-Bold.ttf", 40.0f);
+    }
+
+    static bool DragVecScalar
+    (
+        const std::string_view& a_label,
+        ImGuiDataType a_dataType,
+        void* a_data,
+        const char* const* a_strs,
+        const glm::vec4* a_colors,
+        uint32_t a_comps,
+        float a_speed,
+        float a_min,
+        float a_max,
+        const char* a_format,
+        ImGuiSliderFlags a_flags
+    )
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         if (window->SkipItems)
@@ -120,6 +143,15 @@ namespace FlareImGui
         ImGui::SameLine();
         ImGui::SetNextItemWidth(-1);
     }
+    void Header(const std::string_view& a_str)
+    {
+        ICARIAN_ASSERT(BoldFont != nullptr);
+
+        ImGui::PushFont(BoldFont);
+        IDEFER(ImGui::PopFont());
+
+        ImGui::Text("%s", a_str.data());
+    }
 
     bool Image(const char* a_path, const ImVec2& a_size)
     {
@@ -151,14 +183,12 @@ namespace FlareImGui
             ImGui::PopStyleColor(2);
         });
 
-        bool ret = false;
-
-        if (a_texture != -1)
+        if (a_texture != uint32_t(-1))
         {
-            ret = ImGui::ImageButton(a_label, (ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
+            return ImGui::ImageButton(a_label, (ImTextureID)(uintptr_t)a_texture, { a_size.x, a_size.y });
         }
 
-        return ret;
+        return false;
     }
     bool ImageButton(const char* a_label, Texture* a_texture, const glm::vec2& a_size, bool a_background)
     {
@@ -254,7 +284,7 @@ namespace FlareImGui
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

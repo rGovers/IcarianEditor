@@ -9,7 +9,7 @@
 #include "AssetLibrary.h"
 #include "Core/IcarianDefer.h"
 
-GetAssetModal::GetAssetModal(char* const* a_extensions, uint32_t a_extensionCount, AssetLibrary* a_assetLibrary, GetAssetModalData* a_data) : Modal("Get Asset")
+GetAssetModal::GetAssetModal(char* const* a_extensions, uint32_t a_extensionCount, GetAssetModalData* a_data) : Modal("Get Asset")
 {
     m_data = a_data;
 
@@ -17,7 +17,7 @@ GetAssetModal::GetAssetModal(char* const* a_extensions, uint32_t a_extensionCoun
 
     for (uint32_t i = 0; i < a_extensionCount; ++i)
     {
-        std::vector<std::filesystem::path> paths = a_assetLibrary->GetAssetPathWithExtension(a_extensions[i]);
+        std::vector<std::filesystem::path> paths = AssetLibrary::GetAssetPathWithExtension(a_extensions[i]);
 
         m_paths.insert(m_paths.end(), paths.begin(), paths.end());
     }
@@ -85,7 +85,7 @@ bool GetAssetModal::Update()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -10,13 +10,23 @@
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/object.h>
 #include <mono/metadata/object-forward.h>
+#include <mutex>
 #include <stb_image.h>
 #include <thread>
 #include <tinyxml2.h>
 
+#ifndef WIN32
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Core/IcarianError.h"
+#include "Core/IcarianLambda.h"
+#include "Core/Pipefile.h"
 #include "Core/StringUtils.h"
 #include "EditorConfig.h"
 #include "IO.h"
@@ -86,6 +96,15 @@ AssetLibrary::AssetLibrary()
 {    
     m_flags = 0;
 
+    m_commandBuffers = nullptr;
+    m_commandBufferCount = 0;
+
+    m_commandID = 0;
+
+    m_shutdown = false;
+    // Want to offload IPC data transfer to a background thread to reduce latency of requests as waiting upto ~16ms could tank performance
+    m_thread = std::thread(RunBuffer);
+
     EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
     EDITOR_DEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
     EDITOR_SCENE_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
@@ -93,11 +112,19 @@ AssetLibrary::AssetLibrary()
     BIND_FUNCTION(IcarianEngine, FileCache, CachedFile);
     BIND_FUNCTION(IcarianEngine, FileCache, ReadFileData);
     BIND_FUNCTION(IcarianEngine, FileCache, WriteFileData);
-
-    Instance = this;
 }
 AssetLibrary::~AssetLibrary()
 {
+    // Shutdown the background thread processing IPC data transfer before doing anything
+    m_shutdown = true;
+
+    while (!m_join)
+    {
+        std::this_thread::yield();
+    }
+
+    m_thread.join();
+
     for (const Asset& asset : m_assets)
     {
         if (asset.Data != nullptr)
@@ -105,6 +132,458 @@ AssetLibrary::~AssetLibrary()
             delete[] asset.Data;
         }
     }
+
+    if (m_commandBuffers != nullptr)
+    {
+        for (uint32_t i = 0; i < m_commandBufferCount; ++i)
+        {
+            DestroyAssetCommandBuffer(m_commandBuffers[i]->ID);
+        }
+
+        delete[] m_commandBuffers;
+    }
+}
+
+static IcarianCore::PipefileHeader* GetPipefileHeader(const IcarianCore::SharedMemoryBuffer* a_buffer)
+{
+    return (IcarianCore::PipefileHeader*)((uint8_t*)a_buffer + sizeof(IcarianCore::SharedMemoryBuffer));
+}
+static uint8_t* GetDataSection(const IcarianCore::PipefileHeader* a_header)
+{
+    return (uint8_t*)a_header + sizeof(IcarianCore::PipefileHeader);
+}
+
+void AssetLibrary::Init()
+{
+    if (Instance == nullptr)
+    {
+        Instance = new AssetLibrary();
+    }
+}
+void AssetLibrary::Destroy()
+{
+    if (Instance != nullptr)
+    {
+        delete Instance;
+        Instance = nullptr;
+    }
+}
+
+uint32_t AssetLibrary::CreateAssetCommandBuffer()
+{
+    const std::unique_lock g = std::unique_lock(Instance->m_commandBufferLock);
+
+    AssetCommand* const* oldBuffers = Instance->m_commandBuffers;
+
+    AssetCommand** newBuffers = new AssetCommand*[Instance->m_commandBufferCount + 1];
+    IDEFER(delete[] oldBuffers);
+
+    for (uint32_t i = 0; i < Instance->m_commandBufferCount; ++i)
+    {
+        newBuffers[i] = oldBuffers[i];
+    }
+
+    const uint32_t currentID = Instance->m_commandID++;
+
+    AssetCommand* cmdAsset =  new AssetCommand();
+    cmdAsset->ID = currentID;
+
+    const std::string idStr = std::to_string(currentID);
+
+    const std::string commandStr = CommandBufferName + idStr;
+    const std::string dataStr = DataBufferName + idStr;
+
+#ifndef WIN32
+    // TODO: Stare at WIN32 docs again and implement WIN32 version
+    // To my knowledge fork inherits the group from the parent so 0660 should be fine need to validate but
+    const int commandFd = shm_open(commandStr.c_str(), O_CREAT | O_RDWR, 0660);
+    // So if I am understanding this correctly it is a file handle and once you have mmaped it you can close the handle
+    IDEFER(close(commandFd));
+
+    ftruncate(commandFd, (off_t)SharedBufferSize);
+
+    void* commandData = mmap(NULL, (size_t)SharedBufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, commandFd, 0);
+
+    cmdAsset->CommandBuffer = (IcarianCore::SharedMemoryBuffer*)commandData;
+    cmdAsset->CommandBuffer->State = IcarianCore::SharedMemoryBufferState_Write;
+    cmdAsset->CommandBuffer->Size = SharedBufferSize - sizeof(IcarianCore::SharedMemoryBuffer);
+
+    const int dataFd = shm_open(dataStr.c_str(), O_CREAT | O_RDWR, 0660);
+    IDEFER(close(dataFd));
+
+    ftruncate(dataFd, (off_t)SharedBufferSize);
+
+    void* dataData = mmap(NULL, (size_t)SharedBufferSize, PROT_READ | PROT_WRITE, MAP_SHARED, dataFd, 0);
+
+    cmdAsset->DataBuffer = (IcarianCore::SharedMemoryBuffer*)dataData;
+    cmdAsset->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Write;
+    cmdAsset->DataBuffer->Size = SharedBufferSize - sizeof(IcarianCore::SharedMemoryBuffer);
+#endif
+
+    newBuffers[Instance->m_commandBufferCount++] = cmdAsset;
+    Instance->m_commandBuffers = newBuffers;
+
+    return currentID;
+}
+void AssetLibrary::DestroyAssetCommandBuffer(uint32_t a_id)
+{
+    const std::unique_lock g = std::unique_lock(Instance->m_commandBufferLock);
+
+    for (uint32_t i = 0; i < Instance->m_commandBufferCount; ++i)
+    {
+        AssetCommand* cmd = Instance->m_commandBuffers[i];
+
+        if (cmd->ID == a_id)
+        {
+            cmd->Lock.lock();
+
+            IDEFER(--Instance->m_commandBufferCount);
+
+            for (uint32_t j = i; j < Instance->m_commandBufferCount - 1; ++j)
+            {
+                Instance->m_commandBuffers[j] = Instance->m_commandBuffers[j + 1];
+            }
+
+            const std::string idStr = std::to_string(cmd->ID);
+
+            const std::string commandStr = CommandBufferName + idStr;
+            const std::string dataStr = DataBufferName + idStr;
+
+            cmd->Lock.unlock();
+
+#ifndef WIN32
+            munmap(cmd->CommandBuffer, SharedBufferSize);
+            shm_unlink(commandStr.c_str());
+
+            munmap(cmd->DataBuffer, SharedBufferSize);
+            shm_unlink(dataStr.c_str());
+#endif
+
+            delete cmd;
+        }
+    }
+}
+
+void AssetLibrary::RunBuffer()
+{
+    Instance->m_join = false;
+
+    uint32_t currentBuffer = 0;
+
+    while (!Instance->m_shutdown)
+    {
+        AssetCommand* aCmd = nullptr;
+
+        {
+            const std::unique_lock g = std::unique_lock(Instance->m_commandBufferLock);
+
+            // No work to do so just wait
+            if (Instance->m_commandBufferCount == 0)
+            {
+                std::this_thread::yield();
+
+                continue;
+            }
+
+            IDEFER(currentBuffer = (currentBuffer + 1) % Instance->m_commandBufferCount);
+
+            // Mod it in case it is out of bounds
+            // Can happen if we have deleted a buffer
+            // Mostly so we rotate through the buffers do not care if we process a buffer twice in a row as long as we keep moving through them
+            aCmd = Instance->m_commandBuffers[currentBuffer % Instance->m_commandBufferCount];
+
+            aCmd->Lock.lock();
+        }
+
+        IDEFER(aCmd->Lock.unlock());
+
+        if (aCmd->CommandBuffer->State != IcarianCore::SharedMemoryBufferState_Read)
+        {
+            std::this_thread::yield();
+
+            continue;
+        }
+
+        IcarianCore::PipefileHeader cmd;
+        {
+            IcarianCore::PipefileHeader* commandHeader = GetPipefileHeader(aCmd->CommandBuffer);
+            IDEFER(aCmd->CommandBuffer->State = IcarianCore::SharedMemoryBufferState_Write);
+
+            memcpy(&cmd, commandHeader, sizeof(IcarianCore::PipefileHeader));
+        }
+
+        IcarianCore::PipefileHeader* dataHeader = GetPipefileHeader(aCmd->DataBuffer);
+        // Compiler seems to want to rearrange stuff volatile seems to stop it
+        // Do not want a do an IO operation to block the compiler as that is kinda the point
+        // Volatile does not ensure it to my knowledge but seems far less eager
+        // If it does it again my need to insert some inline asm that should get it
+        // Trying to avoid inline asm as that is the nuclear option in terms of things considering it taints for optimization
+        // I am just doing keep adding volatile until the compiler behaves for now
+        volatile uint8_t* data = GetDataSection(dataHeader);
+
+        switch (cmd.Type)
+        {
+        case IcarianCore::PipefileDataType_Exists:
+        {
+            const std::filesystem::path path = cmd.Path;
+
+            // TODO: Should probably be smarter about this as can still get stuck in an infinite loop
+            while (aCmd->DataBuffer->State != IcarianCore::SharedMemoryBufferState_Write)
+            {
+                if (Instance->m_shutdown)
+                {
+                    break;
+                }
+
+                std::this_thread::yield();
+            }
+
+            // This does not seem the most graceful need to think for a bit
+            if (Instance->m_shutdown)
+            {
+                break;
+            }
+
+            IDEFER(aCmd->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Read);
+
+            *data = 0;
+
+            const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
+            for (const Asset& asset : Instance->m_assets)
+            {
+                if (asset.Path == path)
+                {
+                    *data = 1;
+
+                    break;
+                }
+            }
+
+            dataHeader->Type = IcarianCore::PipefileDataType_Exists;
+
+            for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+            {
+                dataHeader->Path[i] = cmd.Path[i];
+            }
+
+            dataHeader->Size = sizeof(uint8_t);
+            dataHeader->Offset = cmd.Offset;
+            dataHeader->Partial = false;
+
+            break;
+        }
+        case IcarianCore::PipefileDataType_Size:
+        {
+            const std::filesystem::path path = cmd.Path;
+
+            while (aCmd->DataBuffer->State != IcarianCore::SharedMemoryBufferState_Write)
+            {
+                if (Instance->m_shutdown)
+                {
+                    break;
+                }
+
+                std::this_thread::yield();
+            }
+
+            // This does not seem the most graceful need to think for a bit
+            if (Instance->m_shutdown)
+            {
+                break;
+            }
+
+            IDEFER(aCmd->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Read);
+
+            const uint8_t* headerDat = (uint8_t*)&cmd;
+
+            const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
+            for (const Asset& asset : Instance->m_assets)
+            {
+                if (asset.Path == path)
+                {
+                    dataHeader->Type = IcarianCore::PipefileDataType_Size;
+
+                    for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+                    {
+                        dataHeader->Path[i] = cmd.Path[i];
+                    }
+
+                    dataHeader->Size = sizeof(uint32_t);
+                    dataHeader->Offset = cmd.Offset;
+                    dataHeader->Partial = false;
+
+                    (*(uint32_t*)data) = asset.Size;
+
+                    goto SizeEnd;
+                }
+            }
+
+            dataHeader->Type = IcarianCore::PipefileDataType_Invalid;
+
+            for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+            {
+                dataHeader->Path[i] = cmd.Path[i];
+            }
+
+            dataHeader->Size = sizeof(IcarianCore::PipefileHeader);
+            dataHeader->Offset = cmd.Offset;
+            dataHeader->Partial = false;
+
+            // Not sure mostly for error handling but bouncing the original header back in the body
+            for (uint32_t i = 0; i < sizeof(IcarianCore::PipefileHeader); ++i)
+            {
+                data[i] = headerDat[i];
+            }
+
+SizeEnd:;
+
+            break;
+        }
+        case IcarianCore::PipefileDataType_Read:
+        {
+            const std::filesystem::path path = cmd.Path;
+
+            const uint8_t* headerDat = (uint8_t*)&cmd;
+
+            const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
+            for (const Asset& asset : Instance->m_assets)
+            {
+                if (asset.Path == path)
+                {
+                    const uint32_t dataSectionSize = (uint32_t)(SharedBufferSize - ((uintptr_t)data - (uintptr_t)aCmd->DataBuffer));
+
+                    uint32_t offset = glm::min(cmd.Offset, asset.Size);
+                    uint32_t toReadSize = glm::min(cmd.Size, asset.Size - offset);
+
+                    while (true)
+                    {
+                        while (aCmd->DataBuffer->State != IcarianCore::SharedMemoryBufferState_Write)
+                        {
+                            if (Instance->m_shutdown)
+                            {
+                                break;
+                            }
+
+                            std::this_thread::yield();
+                        }
+
+                        IDEFER(aCmd->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Read);
+
+                        const uint32_t readSize = glm::min(dataSectionSize, toReadSize);
+
+                        for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+                        {
+                            dataHeader->Path[i] = cmd.Path[i];
+                        }
+
+                        dataHeader->Type = IcarianCore::PipefileDataType_Read;
+                        dataHeader->Size = readSize;
+                        dataHeader->Offset = cmd.Offset;
+
+                        const uint8_t* assetData = asset.Data + offset;
+                        for (uint32_t i = 0; i < readSize; ++i)
+                        {
+                            data[i] = assetData[i];
+                        }
+
+                        toReadSize -= readSize;
+                        offset += readSize;
+
+                        if (toReadSize <= 0)
+                        {
+                            dataHeader->Partial = false;
+
+                            break;
+                        }
+                        else
+                        {
+                            dataHeader->Partial = true;
+                        }
+                    }
+
+                    goto ReadEnd;
+                }
+            }
+
+            while (aCmd->DataBuffer->State != IcarianCore::SharedMemoryBufferState_Write)
+            {
+                if (Instance->m_shutdown)
+                {
+                    break;
+                }
+
+                std::this_thread::yield();
+            }
+
+            dataHeader->Type = IcarianCore::PipefileDataType_Invalid;
+
+            for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+            {
+                dataHeader->Path[i] = cmd.Path[i];
+            }
+
+            dataHeader->Size = sizeof(IcarianCore::PipefileHeader);
+            dataHeader->Offset = 0;
+            dataHeader->Partial = false;
+
+            // Not sure mostly for error handling but bouncing the original header back in the body
+            for (uint32_t i = 0; i < sizeof(IcarianCore::PipefileHeader); ++i)
+            {
+                data[i] = headerDat[i];
+            }
+
+            aCmd->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Read;
+ReadEnd:;
+
+            break;
+        }
+        default:
+        {
+            while (aCmd->DataBuffer->State != IcarianCore::SharedMemoryBufferState_Write)
+            {
+                if (Instance->m_shutdown)
+                {
+                    break;
+                }
+
+                std::this_thread::yield();
+            }
+
+            if (Instance->m_shutdown)
+            {
+                break;
+            }
+
+            IDEFER(aCmd->DataBuffer->State = IcarianCore::SharedMemoryBufferState_Read);
+
+            dataHeader->Type = IcarianCore::PipefileDataType_Invalid;
+
+            for (uint32_t i = 0; i < IcarianCore::PipefileHeader::MaxPathSize; ++i)
+            {
+                dataHeader->Path[i] = cmd.Path[i];
+            }
+
+            dataHeader->Size = sizeof(IcarianCore::PipefileHeader);
+            dataHeader->Offset = 0;
+            dataHeader->Partial = false;
+
+            const uint8_t* headerDat = (uint8_t*)&cmd;
+
+            // Not sure mostly for error handling but bouncing the original header back in the body
+            for (uint32_t i = 0; i < sizeof(IcarianCore::PipefileHeader); ++i)
+            {
+                data[i] = headerDat[i];
+            }
+
+            break;
+        }
+        }
+    }
+
+    Instance->m_join = true;
 }
 
 template<typename T>
@@ -140,6 +619,11 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     }
 
     const uint32_t winNTHdr = ToWInt<uint32_t>(a_data + 60);
+    if (winNTHdr + 4 > a_length)
+    {
+        return false;
+    }
+
     const bool validAddress = ToWInt<uint32_t>(a_data + winNTHdr) == MagicNTAddress;
     if (!validAddress)
     {
@@ -147,6 +631,11 @@ constexpr static bool IsManagedAssembly(const unsigned char* a_data, uint32_t a_
     }
 
     const uint32_t lightningAddr = winNTHdr + 24 + 208;
+    if (lightningAddr + 8 > a_length)
+    {
+        return false;
+    }
+
     for (uint32_t i = 0; i < 8; ++i)
     {
         if (a_data[i + lightningAddr])
@@ -295,6 +784,8 @@ static void ReadAssets(std::vector<Asset>* a_assets, const std::filesystem::path
 
 void AssetLibrary::CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
     const Asset asset = 
     {
         .ModifiedTime = std::filesystem::file_time_type::clock::now(),
@@ -305,14 +796,16 @@ void AssetLibrary::CreateDef(const std::filesystem::path& a_path, uint32_t a_siz
         .Flags = 0b1 << Asset::ForceWriteBit
     };
 
-    m_assets.emplace_back(asset);
+    Instance->m_assets.emplace_back(asset);
 
-    ISETBIT(m_flags, ForceSerializeBit);
+    ISETBIT(Instance->m_flags, ForceSerializeBit);
 }
 
 void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
-    for (Asset& a : m_assets)
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
+    for (Asset& a : Instance->m_assets)
     {
         if (a.AssetType != AssetType_Def)
         {
@@ -338,7 +831,9 @@ void AssetLibrary::WriteDef(const std::filesystem::path& a_path, uint32_t a_size
 }
 void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
-    for (Asset& a : m_assets)
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
+    for (Asset& a : Instance->m_assets)
     {
         if (a.AssetType != AssetType_Scene)
         {
@@ -363,8 +858,10 @@ void AssetLibrary::WriteScene(const std::filesystem::path& a_path, uint32_t a_si
     ICARIAN_ASSERT_MSG(0, "Scene not found");
 }
 
-bool AssetLibrary::ShouldRefresh(const std::filesystem::path& a_workingDir) const
+bool AssetLibrary::ShouldRefresh(const std::filesystem::path& a_workingDir)
 {
+    const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
     std::vector<Asset> assets;
 
     const std::filesystem::path p = a_workingDir / "Project";
@@ -372,10 +869,11 @@ bool AssetLibrary::ShouldRefresh(const std::filesystem::path& a_workingDir) cons
 
     for (const Asset& externalAsset : assets)
     {
-        for (const Asset& internalAsset : m_assets)
+        for (const Asset& internalAsset : Instance->m_assets)
         {
             if (internalAsset.Path == externalAsset.Path)
             {
+                // TODO: Should change this to be a little more resiliant to system time rewinds or funkyness with version control time stamps
                 if (externalAsset.ModifiedTime > internalAsset.ModifiedTime)
                 {
                     return true;
@@ -394,13 +892,15 @@ Next:;
 }
 bool AssetLibrary::ShouldSerialize()
 {
-    return IISBITSET(m_flags, ForceSerializeBit);
+    return IISBITSET(Instance->m_flags, ForceSerializeBit);
 }
 
 void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 {
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
     // TODO: Naive wiping the assets should be smarter about it
-    for (const Asset& asset : m_assets)
+    for (const Asset& asset : Instance->m_assets)
     {
         if (asset.Data != nullptr)
         {
@@ -408,12 +908,12 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
         }
     }
 
-    m_assets.clear();
+    Instance->m_assets.clear();
 
     const std::filesystem::path p = a_workingDir / "Project";
 
-    TraverseTree(&m_assets, p, p);
-    ReadAssets(&m_assets, p);
+    TraverseTree(&Instance->m_assets, p, p);
+    ReadAssets(&Instance->m_assets, p);
 
     if (!RuntimeManager::IsBuilt() || !RuntimeManager::IsRunning())
     {
@@ -428,7 +928,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
     std::vector<uint32_t> sceneSizes;
     std::vector<std::filesystem::path> scenePaths;
 
-    for (const Asset& asset : m_assets)
+    for (const Asset& asset : Instance->m_assets)
     {
         switch (asset.AssetType)
         {
@@ -473,8 +973,11 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
             mono_array_set(data, mono_byte, j, (mono_byte)defAssets[i][j]);
         }
 
+        const std::u32string defStr32 = defPaths[i].u32string();
+        MonoString* defStr = mono_string_from_utf32((mono_unichar4*)defStr32.c_str());
+
         mono_array_set(defDataArray, MonoArray*, i, data);
-        mono_array_set(defPathArray, MonoString*, i, mono_string_from_utf32((mono_unichar4*)defPaths[i].u32string().c_str()));
+        mono_array_set(defPathArray, MonoString*, i, defStr);
     }
 
     void* defArgs[] = 
@@ -575,11 +1078,13 @@ constexpr static ktx_uint32_t VKFormatFromSTBIChannels(int a_channelCount)
     return KTX_VKFORMAT_R8_SNORM;
 }
 
-void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Project* a_project) const
+void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Project* a_project)
 {
     std::vector<FileAlias> fileAliases;
 
-    for (const Asset& asset : m_assets)
+    const bool convertKTX = a_project->ConvertKTX();
+
+    for (const Asset& asset : Instance->m_assets)
     {
         switch (asset.AssetType)
         {
@@ -649,7 +1154,7 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
             const std::filesystem::path basePath = a_path / "Core" / "Assets" / asset.Path;
             const std::filesystem::path ext = asset.Path.extension();
 
-            if (a_project->ConvertKTX() && ext != ".ktx2")
+            if (convertKTX && ext != ".ktx2")
             {
                 const std::filesystem::path filename = basePath.stem();
                 const std::filesystem::path dir = basePath.parent_path();
@@ -780,7 +1285,7 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
         }
 
         const std::filesystem::path aliasPath = a_path / "Core" / "alias.xml";
-        const std::string aliasPathStr = aliasPath.string();
+        const std::string aliasPathStr = aliasPath.generic_string();
 
         doc.SaveFile(aliasPathStr.c_str());
     }
@@ -788,9 +1293,11 @@ void AssetLibrary::BuildDirectory(const std::filesystem::path& a_path, const Pro
 
 std::vector<std::filesystem::path> AssetLibrary::GetAssetPathWithExtension(const std::string_view& a_ext)
 {
+    const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
     std::vector<std::filesystem::path> paths; 
 
-    for (const Asset& a : m_assets)
+    for (const Asset& a : Instance->m_assets)
     {
         const std::filesystem::path ext = a.Path.extension();
         if (ext == a_ext)
@@ -804,7 +1311,9 @@ std::vector<std::filesystem::path> AssetLibrary::GetAssetPathWithExtension(const
 
 e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_path)
 {
-    for (const Asset& a : m_assets)
+    const std::shared_lock g = std::shared_lock(Instance->m_lock);
+
+    for (const Asset& a : Instance->m_assets)
     {
         if (a_path == a.Path)
         {
@@ -814,16 +1323,12 @@ e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_path)
 
     return AssetType_Null;
 }
-e_AssetType AssetLibrary::GetAssetType(const std::filesystem::path& a_workingPath, const std::filesystem::path& a_path)
-{
-    const std::filesystem::path rPath = IO::GetRelativePath(a_workingPath, a_path);
-
-    return GetAssetType(rPath);
-}
 
 void AssetLibrary::WriteAsset(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data)
 {
-    for (Asset& a : m_assets)
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
+    for (Asset& a : Instance->m_assets)
     {
         if (a.AssetType != AssetType_Other)
         {
@@ -843,7 +1348,7 @@ void AssetLibrary::WriteAsset(const std::filesystem::path& a_path, uint32_t a_si
             a.Flags = 0;
             ISETBIT(a.Flags, Asset::ForceWriteBit);
 
-            ISETBIT(m_flags, ForceSerializeBit);
+            ISETBIT(Instance->m_flags, ForceSerializeBit);
 
             return;
         }
@@ -860,12 +1365,14 @@ void AssetLibrary::WriteAsset(const std::filesystem::path& a_path, uint32_t a_si
 
     ISETBIT(asset.Flags, Asset::ForceWriteBit);
 
-    m_assets.emplace_back(asset);
+    Instance->m_assets.emplace_back(asset);
 
-    ISETBIT(m_flags, ForceSerializeBit);
+    ISETBIT(Instance->m_flags, ForceSerializeBit);
 }
 void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type)
 {
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
     *a_size = 0;
     *a_data = nullptr;
     if (a_type != nullptr)
@@ -873,7 +1380,7 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
         *a_type = AssetType_Null;
     }
 
-    for (const Asset& asset : m_assets)
+    for (const Asset& asset : Instance->m_assets)
     {
         if (a_path == asset.Path)
         {
@@ -888,16 +1395,12 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
         }
     }
 }
-void AssetLibrary::GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type)
-{
-    const std::filesystem::path rPath = IO::GetRelativePath(a_workingDir, a_path);
-
-    GetAsset(rPath, a_size, a_data, a_type);
-}
 
 void AssetLibrary::Serialize(const Project* a_project)
 {
-    ICLEARBIT(m_flags, ForceSerializeBit);
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
+
+    ICLEARBIT(Instance->m_flags, ForceSerializeBit);
 
     const std::filesystem::path pPath = a_project->GetProjectPath();
 
@@ -906,7 +1409,7 @@ void AssetLibrary::Serialize(const Project* a_project)
 
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
-    for (Asset& a : m_assets)
+    for (Asset& a : Instance->m_assets)
     {
         const std::filesystem::path p = pPath / a.Path;
 

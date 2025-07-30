@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-class AssetLibrary;
 class Model;
 class PixelShader;
 class Texture;
@@ -22,8 +21,6 @@ class VertexShader;
 class RuntimeStorage
 {
 private:
-    AssetLibrary*                                m_assets;
-     
     std::vector<Model*>                          m_models;
     std::vector<Texture*>                        m_textures;
     std::vector<TextureSamplerBuffer>            m_samplers;
@@ -39,13 +36,8 @@ private:
 protected:
 
 public:
-    RuntimeStorage(AssetLibrary* a_assets);
+    RuntimeStorage();
     ~RuntimeStorage();
-
-    inline AssetLibrary* GetLibrary() const
-    {
-        return m_assets;
-    }
 
     uint32_t GenerateVertexShader(const std::filesystem::path& a_path);
     void AddVertexImport(const std::string_view& a_key, const std::string_view& a_value);

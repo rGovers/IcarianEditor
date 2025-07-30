@@ -18,6 +18,7 @@
 #include "Core/IcarianDefer.h"
 #include "Datastore.h"
 #include "EditorConfig.h"
+#include "EditorData.h"
 #include "EditorInputManager.h"
 #include "FileHandler.h"
 #include "FlareImGui.h"
@@ -42,10 +43,12 @@
 #include "Windows/PropertiesWindow.h"
 #include "Windows/SceneDefsWindow.h"
 #include "Windows/TimelineWindow.h"
+#include "Windows/WelcomeWindow.h"
 #include "Workspace.h"
 
 static AppMain* Instance = nullptr;
 
+#ifdef DEBUG
 static void GLAPIENTRY MessageCallback
 ( 
     GLenum a_source,
@@ -112,6 +115,7 @@ static void GLAPIENTRY MessageCallback
     }
     }
 }
+#endif
 
 static void SetImguiStyle()
 {
@@ -184,13 +188,20 @@ RUNTIME_FUNCTION(void, Modal, PushModalState,
 
 AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 {
+    if (!IsInit())
+    {
+        return;
+    }
+
     Instance = this;
+
+    EditorData::Init();
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
 
-#ifndef NDEBUG
+#ifdef DEBUG
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(MessageCallback, 0);
 #endif
@@ -205,9 +216,11 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     ICARIAN_ASSERT_R(ImGui_ImplGlfw_InitForOpenGL(GetWindow(), true));
     ICARIAN_ASSERT_R(ImGui_ImplOpenGL3_Init("#version 130"));
-    
+
     Datastore::Init();
     ProfilerData::Init();
+
+    FlareImGui::Init();
 
     m_process = new ProcessManager();
     RuntimeManager::Init();
@@ -216,26 +229,28 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     EditorConfig::Init();
 
-    m_assets = new AssetLibrary();
-    m_rStorage = new RuntimeStorage(m_assets);
+    AssetLibrary::Init();
+    m_rStorage = new RuntimeStorage();
 
     m_workspace = new Workspace();
 
-    m_project = new Project(this, m_assets, m_workspace);
+    m_project = new Project(this, m_workspace);
 
     RenderCommand::Init(m_rStorage);
     Gizmos::Init();
-    GUI::Init(this, m_assets);
+    GUI::Init(this);
 
-    FileHandler::Init(m_assets, m_rStorage, m_workspace);
+    FileHandler::Init(m_rStorage, m_workspace);
     
     m_windows.emplace_back(new ConsoleWindow());
     m_windows.emplace_back(new EditorWindow(m_workspace));
-    m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_project));
-    m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+    m_windows.emplace_back(new GameWindow(this, m_process, m_project));
+    m_windows.emplace_back(new AssetBrowserWindow(this, m_project));
     m_windows.emplace_back(new HierarchyWindow());
     m_windows.emplace_back(new PropertiesWindow());
     m_windows.emplace_back(new SceneDefsWindow());
+
+    m_windows.emplace_back(new WelcomeWindow(m_project));
 
     glGenVertexArrays(1, &m_vao);
 
@@ -252,7 +267,7 @@ AppMain::~AppMain()
 
     delete m_project;
 
-    delete m_assets;
+    AssetLibrary::Destroy();
 
     if (m_process->IsRunning())
     {
@@ -290,6 +305,7 @@ AppMain::~AppMain()
     ImGui::DestroyContext();
 
     EditorConfig::Destroy();
+    EditorData::Destroy();
 }
 
 static bool InBounds(const glm::vec2& a_point, const glm::vec2& a_min, const glm::vec2& a_max)
@@ -333,7 +349,7 @@ void AppMain::Update(double a_delta, double a_time)
         {
             const std::filesystem::path workingDir = m_project->GetPath();
 
-            if (m_assets->ShouldRefresh(workingDir))   
+            if (AssetLibrary::ShouldRefresh(workingDir))
             {
                 refresh = true;
             }
@@ -353,8 +369,6 @@ void AppMain::Update(double a_delta, double a_time)
     }
 
     m_process->Update();
-
-    const int fps = (int)(1.0 / a_delta);
 
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 10.0f));
@@ -431,12 +445,12 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Game"))
                     {
-                        m_windows.emplace_back(new GameWindow(this, m_assets, m_process, m_project));
+                        m_windows.emplace_back(new GameWindow(this, m_process, m_project));
                     }
 
                     if (ImGui::MenuItem("Asset Browser"))
                     {
-                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project, m_assets));
+                        m_windows.emplace_back(new AssetBrowserWindow(this, m_project));
                     }                
 
                     if (ImGui::MenuItem("Console"))
@@ -621,19 +635,22 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    if (validProject)
+    for (auto iter = m_windows.begin(); iter != m_windows.end(); ++iter)
     {
-        for (auto iter = m_windows.begin(); iter != m_windows.end(); ++iter)
+        Window* window = *iter;
+        if (window->RequiresProject() && !validProject)
         {
-            if (!(*iter)->Display(a_delta))
-            {
-                delete *iter;
-                iter = m_windows.erase(iter);
+            continue;
+        }
 
-                if (iter == m_windows.end())
-                {
-                    break;
-                }
+        if (!window->Display(a_delta))
+        {
+            delete window;
+            iter = m_windows.erase(iter);
+
+            if (iter == m_windows.end())
+            {
+                break;
             }
         }
     }
@@ -643,7 +660,6 @@ void AppMain::Update(double a_delta, double a_time)
     case 0b1 << MoveBit:
     {
         const glm::vec2 mousePos = GetMousePos();
-        const glm::vec2 windowPos = GetWindowPos();
 
         const glm::vec2 wDelta = m_startMousePos - m_startWindowPos;
         const glm::vec2 cDelta = mousePos - m_startMousePos;
@@ -752,9 +768,9 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    if (m_assets->ShouldSerialize())
+    if (AssetLibrary::ShouldSerialize())
     {
-        m_assets->Serialize(m_project);
+        AssetLibrary::Serialize(m_project);
     }
 
     if (refresh)
@@ -776,8 +792,8 @@ void AppMain::Update(double a_delta, double a_time)
 
         m_rStorage->Clear();
 
-        m_assets->Refresh(path);
-        m_assets->BuildDirectory(cachePath, m_project);
+        AssetLibrary::Refresh(path);
+        AssetLibrary::BuildDirectory(cachePath, m_project);
 
         for (Window* wind : m_windows)
         {
@@ -813,7 +829,7 @@ void AppMain::Update(double a_delta, double a_time)
     if (!maximized)
     {
         if (InBounds(cursorPos, glm::vec2(-resizeSize, 0.0f), glm::vec2(resizeSize, winSize.y)) || 
-        InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
+            InBounds(cursorPos, glm::vec2(winSize.x - resizeSize, 0.0f), glm::vec2(winSize.x + resizeSize, winSize.y)))
         {
             cursor = Cursor_HResize;
         }

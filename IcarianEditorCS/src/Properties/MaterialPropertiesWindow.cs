@@ -12,9 +12,19 @@ using System.Reflection;
 
 namespace IcarianEditor.Properties
 {
+    public enum EditorMaterialMode
+    {
+        Vertex,
+        Mesh
+    }
+
     [PWindow(typeof(MaterialDef))]
     public class MaterialPropertiesWindow : PropertiesEditorWindow
     {
+        string             m_lastMaterial;
+
+        EditorMaterialMode m_materialMode;
+
         public override void OnGUI(object a_object, bool a_sceneObject)
         {
             MaterialDef def = a_object as MaterialDef;
@@ -23,16 +33,64 @@ namespace IcarianEditor.Properties
                 return;
             }
 
-            GUI.PathStringField("Vertex Shader Path", ref def.VertexShaderPath, Extensions.VertexShaderExtensions);
-            GUI.Tooltip("Vertex Shader Path", "Path relative to the project for the vertex shader file to be used.");
+            if (m_lastMaterial != def.DefName)
+            {
+                if (!string.IsNullOrWhiteSpace(def.MeshShaderPath))
+                {
+                    m_materialMode = EditorMaterialMode.Mesh;
+                }
+                else
+                {
+                    m_materialMode = EditorMaterialMode.Vertex;
+                }
+
+                m_lastMaterial = def.DefName;
+            }
+
+            GUI.EnumField("Material Mode", ref m_materialMode);
+
+            switch (m_materialMode)
+            {
+            case EditorMaterialMode.Vertex:
+            {
+                if (GUI.PathStringField("Vertex Shader Path", ref def.VertexShaderPath, Extensions.VertexShaderExtensions))
+                {
+                    def.MeshShaderPath = null;
+                }
+                GUI.Tooltip("Vertex Shader Path", "Path relative to the project for the Vertex Shader file to be used.");
+
+                break;
+            }
+            case EditorMaterialMode.Mesh:
+            {
+                if (GUI.PathStringField("Mesh Shader Path", ref def.MeshShaderPath, Extensions.MeshShaderExtensions))
+                {
+                    def.VertexShaderPath = null;
+                    def.ShadowVertexShaderPath = null;
+                }
+                GUI.Tooltip("Mesh Shader Path", "Path relative to the project for the Mesh Shader file to be used.");
+
+                break;
+            }
+            default:
+            {
+                Logger.Error($"Invalid Editor Material Mode: {m_materialMode}");
+
+                break;
+            }
+            }
+
             GUI.PathStringField("Pixel Shader Path", ref def.PixelShaderPath, Extensions.PixelShaderExtensions);
             GUI.Tooltip("Pixel Shader Path", "Path relative to the project for the pixel shader file to be used.");
 
             GUI.EnumField("Culling Mode", ref def.CullingMode);
             GUI.Tooltip("Culling Mode", "Which faces to show when rendering.");
 
-            GUI.EnumField("Primitive Mode", ref def.PrimitiveMode);
-            GUI.Tooltip("Primitive Mode", "Which primitive to use when rendering.");
+            if (m_materialMode == EditorMaterialMode.Vertex)
+            {
+                GUI.EnumField("Primitive Mode", ref def.PrimitiveMode);
+                GUI.Tooltip("Primitive Mode", "Which primitive to use when rendering.");
+            }
 
             GUI.EnumField("Color Blend Mode", ref def.ColorBlendMode);
             GUI.Tooltip("Color Blend Mode", "The blending mode of the material");
@@ -167,8 +225,11 @@ namespace IcarianEditor.Properties
                 GUI.Unindent();
             }
 
-            GUI.PathStringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath, Extensions.VertexShaderExtensions);
-            GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the vertex shader file to be used for shadows.");
+            if (m_materialMode == EditorMaterialMode.Vertex)
+            {
+                GUI.PathStringField("Shadow Vertex Shader Path", ref def.ShadowVertexShaderPath, Extensions.VertexShaderExtensions);
+                GUI.Tooltip("Shadow Vertex Shader Path", "Path relative to the project for the Vertex Shader file to be used for shadows.");
+            }
 
             Type uboType = def.UniformBufferType;
             if (uboType != null)
@@ -285,7 +346,7 @@ namespace IcarianEditor.Properties
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

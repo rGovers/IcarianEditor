@@ -21,6 +21,16 @@ public:
     Window(const std::string_view& a_displayName, const std::string_view& a_texturePath = "");
     virtual ~Window();
 
+    virtual bool RequiresProject() const
+    {
+        return true;
+    }
+
+    inline void CloseWindow()
+    {
+        m_open = false;
+    }
+
     bool Display(double a_delta);
 
     virtual void Refresh() { }
@@ -29,7 +39,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

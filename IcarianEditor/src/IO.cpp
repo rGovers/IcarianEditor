@@ -17,16 +17,45 @@
 
 std::filesystem::path IO::GetHomePath()
 {
-#if WIN32
+#ifdef WIN32
     const std::string homePath = std::getenv("HOMEPATH");
     const std::string homeDrive = std::getenv("HOMEDRIVE");
 
-    return homeDrive + homePath;
+    return std::filesystem::path(homeDrive) / homePath;
 #else
     // Yes I am aware of root home but you should not be running this as root in the first place.
     return std::getenv("HOME");
 #endif
 }
+std::filesystem::path IO::GetUserAppdataPath()
+{
+#ifdef WIN32
+    CHAR documents[MAX_PATH];
+    const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, my_documents);
+    ICARIAN_ASSERT(result == S_OK);
+
+    return std::filesystem::path(documents) / "IcarianEditor";
+#else
+    return GetHomePath() / ".IcarianEditor";
+#endif
+}
+std::filesystem::path IO::GetTempPath()
+{
+#ifndef WIN32
+    const char* tempDir = std::getenv("TEMPDIR");
+    if (tempDir != NULL && tempDir[0] != 0)
+    {
+        return tempDir;
+    }
+
+    if (std::filesystem::exists("/tmp"))
+    {
+        return std::filesystem::path("/tmp");
+    }
+#endif
+    return std::filesystem::path();
+}
+
 bool IO::ValidatePathName(const std::string_view& a_name)
 {
     const uint32_t nameLen = (uint32_t)a_name.length();
@@ -324,7 +353,7 @@ void IO::StartOpenFile(const std::string_view& a_application, const std::filesys
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

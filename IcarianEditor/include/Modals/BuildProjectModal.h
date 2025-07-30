@@ -6,12 +6,10 @@
 
 #include "Modals/Modal.h"
 
-#include <filesystem>
 #include <list>
 #include <vector>
 
 class AppMain;
-class AssetLibrary;
 class FileDialogBlock;
 class Project;
 
@@ -19,7 +17,6 @@ class BuildProjectModal : public Modal
 {
 private:
     AppMain*                         m_app;
-    AssetLibrary*                    m_library;
     Project*                         m_project;
 
     FileDialogBlock*                 m_fileDialogBlock;
@@ -32,7 +29,7 @@ private:
 protected:
 
 public:
-    BuildProjectModal(AppMain* a_app, AssetLibrary* a_library, Project* a_project, const std::vector<std::string>& a_exportOptions);
+    BuildProjectModal(AppMain* a_app, Project* a_project, const std::vector<std::string>& a_exportOptions);
     virtual ~BuildProjectModal();
 
     virtual bool Update();
@@ -40,7 +37,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

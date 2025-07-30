@@ -5,7 +5,11 @@
 #pragma once
 
 #include <filesystem>
+#include <shared_mutex>
+#include <thread>
 #include <vector>
+
+#include "Core/SharedMemoryBuffer.h"
 
 class Project;
 class RuntimeManager;
@@ -56,41 +60,76 @@ struct Asset
     uint8_t Flags;
 };
 
+struct AssetCommand
+{
+    std::mutex Lock;
+    uint32_t ID;
+    IcarianCore::SharedMemoryBuffer* CommandBuffer;
+    IcarianCore::SharedMemoryBuffer* DataBuffer;
+};
+
+// TODO: Can probably clean up this class a bit been just hacking stuff on as needed and patching can probably tear out and clean up
 class AssetLibrary
 {
 private:
+#ifndef WIN32
+    static constexpr char CommandBufferName[] = "IcarianEditorAssetCommand";
+    static constexpr char DataBufferName[] = "IcarianEditorAssetData";
+
+    static constexpr uint32_t SharedBufferSize = 10 << 10;
+#endif
+
     static constexpr uint32_t ForceSerializeBit = 0;
 
-    std::vector<Asset> m_assets;
-    uint8_t            m_flags;
+    // TODO: Probably will need multiple down the line but works for now
+    std::shared_mutex                m_lock;
+    std::mutex                       m_commandBufferLock;
+    std::thread                      m_thread;
+
+    AssetCommand**                   m_commandBuffers;
+    uint32_t                         m_commandBufferCount;
+    uint32_t                         m_commandID;
+
+    std::vector<Asset>               m_assets;
+    uint8_t                          m_flags;
+
+    volatile bool                    m_shutdown;
+    volatile bool                    m_join;
+
+    AssetLibrary();
+
+    static void RunBuffer();
 
 protected:
 
 public:
-    AssetLibrary();
     ~AssetLibrary();
 
-    void CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
+    static void Init();
+    static void Destroy();
 
-    void WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
-    void WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
+    static uint32_t CreateAssetCommandBuffer();
+    static void DestroyAssetCommandBuffer(uint32_t a_id);
 
-    bool ShouldRefresh(const std::filesystem::path& a_workingDir) const;
-    bool ShouldSerialize();
+    static void CreateDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
 
-    void Refresh(const std::filesystem::path& a_workingDir);
-    void BuildDirectory(const std::filesystem::path& a_path, const Project* a_project) const;
+    static void WriteDef(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
+    static void WriteScene(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
 
-    std::vector<std::filesystem::path> GetAssetPathWithExtension(const std::string_view& a_ext);
+    static bool ShouldRefresh(const std::filesystem::path& a_workingDir);
+    static bool ShouldSerialize();
 
-    e_AssetType GetAssetType(const std::filesystem::path& a_path);
-    e_AssetType GetAssetType(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path);
+    static void Refresh(const std::filesystem::path& a_workingDir);
+    static void BuildDirectory(const std::filesystem::path& a_path, const Project* a_project);
 
-    void WriteAsset(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
-    void GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type = nullptr);
-    void GetAsset(const std::filesystem::path& a_workingDir, const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type = nullptr);
+    static std::vector<std::filesystem::path> GetAssetPathWithExtension(const std::string_view& a_ext);
 
-    void Serialize(const Project* a_project);
+    static e_AssetType GetAssetType(const std::filesystem::path& a_path);
+
+    static void WriteAsset(const std::filesystem::path& a_path, uint32_t a_size, uint8_t* a_data);
+    static void GetAsset(const std::filesystem::path& a_path, uint32_t* a_size, const uint8_t** a_data, e_AssetType* a_type = nullptr);
+
+    static void Serialize(const Project* a_project);
 };
 
 // MIT License

@@ -10,7 +10,6 @@
 #include <vector>
 
 class AppMain;
-class AssetLibrary;
 
 struct PathString
 {
@@ -22,14 +21,13 @@ class GUI
 {
 private:
     AppMain*                m_app;
-    AssetLibrary*           m_assets;
     
     std::list<std::string>  m_id;
     std::vector<PathString> m_pathStrings;
 
     float                   m_width;
 
-    GUI(AppMain* a_app, AssetLibrary* a_assets);
+    GUI(AppMain* a_app);
 
 protected:
 
@@ -70,7 +68,7 @@ public:
     }
     std::string GetPathString();
 
-    static void Init(AppMain* a_app, AssetLibrary* a_assets);
+    static void Init(AppMain* a_app);
     static void Destroy();
 };
 

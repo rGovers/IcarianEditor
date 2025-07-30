@@ -16,10 +16,9 @@
 #include "Modals/ErrorModal.h"
 #include "Modals/LoadingModal.h"
 
-BuildProjectModal::BuildProjectModal(AppMain* a_app, AssetLibrary* a_library, Project* a_project, const std::vector<std::string>& a_exportOptions) : Modal("Build Project", glm::vec2(640, 480))
+BuildProjectModal::BuildProjectModal(AppMain* a_app, Project* a_project, const std::vector<std::string>& a_exportOptions) : Modal("Build Project", glm::vec2(640, 480))
 {
     m_app = a_app;
-    m_library = a_library;
     m_project = a_project;
 
     m_exportOptions = a_exportOptions;
@@ -101,7 +100,7 @@ bool BuildProjectModal::Update()
         {
             new GenerateConfigLoadingTask(path, name, "Vulkan"),
             new BuildLoadingTask(path, m_exportOptions[m_selectedExport], m_project),
-            new SerializeAssetsLoadingTask(path, m_project, m_library),
+            new SerializeAssetsLoadingTask(path, m_project),
             new CopyBuildLibraryLoadingTask(path, name, m_exportOptions[m_selectedExport])
         };
 
@@ -130,7 +129,7 @@ bool BuildProjectModal::Update()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

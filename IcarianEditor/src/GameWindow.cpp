@@ -22,11 +22,10 @@
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
-GameWindow::GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, ProcessManager* a_processManager, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
 
-    m_library = a_library;
     m_processManager = a_processManager;
     m_project = a_project;
 }
@@ -70,8 +69,6 @@ void GameWindow::Update(double a_delta)
 
     if (captureInput && (focused || locked))
     {
-        const ImGuiStyle& style = ImGui::GetStyle();
-
         if (locked)
         {
             m_app->SetCursorState(CursorState_Locked);
@@ -224,7 +221,7 @@ void GameWindow::Update(double a_delta)
                 {
                     new RemoteBuildLoadingTask(m_processManager, m_project),
                     new GenerateConfigLoadingTask(remotePath, name, "Vulkan"),
-                    new SerializeAssetsLoadingTask(remotePath, m_project, m_library),
+                    new SerializeAssetsLoadingTask(remotePath, m_project),
                     new SyncRemoteBuildLoadingTask(m_processManager, m_project),
                     new RunRemoteLoadingTask(m_processManager)
                 };

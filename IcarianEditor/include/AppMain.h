@@ -11,7 +11,6 @@
 #include "Windows/Window.h"
 #include "Modals/Modal.h"
 
-class AssetLibrary;
 class Project;
 class ProcessManager;
 class RuntimeStorage;
@@ -41,7 +40,6 @@ private:
     std::vector<Window*> m_windows;
     std::vector<Modal*>  m_modals;
 
-    AssetLibrary*        m_assets;
     Project*             m_project;
     ProcessManager*      m_process;
     RuntimeStorage*      m_rStorage;

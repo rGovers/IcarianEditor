@@ -14,7 +14,6 @@ class Project;
 class SerializeAssetsLoadingTask : public LoadingTask
 {
 private:
-    AssetLibrary*         m_library;
     Project*              m_project;
     
     std::filesystem::path m_path;
@@ -22,7 +21,7 @@ private:
 protected:
 
 public:
-    SerializeAssetsLoadingTask(const std::filesystem::path& a_path, Project* a_project, AssetLibrary* a_library);
+    SerializeAssetsLoadingTask(const std::filesystem::path& a_path, Project* a_project);
     ~SerializeAssetsLoadingTask();
 
     virtual void Run();
@@ -30,7 +29,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

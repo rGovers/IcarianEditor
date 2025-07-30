@@ -4,60 +4,32 @@
 
 #pragma once
 
-#define GLM_FORCE_SWIZZLE 
-#include <glm/glm.hpp>
+#include "Modals/Modal.h"
 
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
+#include <filesystem>
 
-#include "Window.h"
+class AppMain;
+class Project;
 
-#include <cstdint>
-#include <glad/glad.h>
-
-class ShaderProgram;
-class Workspace;
-
-class EditorWindow : public Window
+class CreateScriptableModal : public Modal
 {
 private:
-    static uint32_t RefCount;
-    static ShaderProgram* GridShader;
-    
-    Workspace*      m_workspace;
-    
-    glm::vec3       m_translation;
-    glm::quat       m_rotation;
-    
-    uint32_t        m_width;
-    uint32_t        m_height;
-    
-    glm::vec2       m_prevMousePos;
-    
-    double          m_lastUpdate;
-    float           m_moveSpeed;
-    float           m_zoom;
-    
-    GLuint          m_textureHandle;
-    GLuint          m_depthTextureHandle;
-    GLuint          m_framebufferHandle;
-    
-    bool            m_refresh;
-    
-protected:
+    static constexpr uint32_t BufferSize = 2048;
+
+    AppMain*              m_app;
+    Project*              m_project;
+
+    std::filesystem::path m_path;
+
+    char                  m_name[BufferSize];
+
+protected: 
 
 public:
-    EditorWindow(Workspace* a_workspace);
-    virtual ~EditorWindow();
+    CreateScriptableModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path);
+    virtual ~CreateScriptableModal();
 
-    void Draw();
-
-    inline void Refresh()
-    {
-        m_refresh = true;
-    }
-
-    virtual void Update(double a_delta);
+    virtual bool Update();
 };
 
 // MIT License

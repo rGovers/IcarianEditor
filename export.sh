@@ -29,7 +29,7 @@ else
         -e HOME="$HOME" \
         -h "$(hostname)" \
         -v /tmp:/tmp \
-        -v $PWD:/IcarianEngine/:z \
+        -v $PWD:/IcarianEngine/ \
         -it \
         -w /IcarianEngine \
         registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest \

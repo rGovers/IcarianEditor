@@ -6,29 +6,22 @@ using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using IcarianEngine.Rendering;
-using IcarianEngine.Rendering.Animation;
 
 namespace IcarianEditor.Editor
 {
-    [EDisplay(typeof(SkinnedMeshRenderer))]
-    public class SkinnedMeshRendererEditorDisplay : EditorDisplay
+    [EDisplay(typeof(ModelRenderer))]
+    public class ModelRendererEditorDisplay : EditorDisplay
     {
         public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
-            SkinnedMeshRendererDef def = a_component as SkinnedMeshRendererDef;
+            ModelRendererDef def = a_component as ModelRendererDef;
             if (def == null)
             {
                 return false;
             }
 
-            Model model = AssetLibrary.LoadSkinnedModel(def.ModelPath);
-            if (model == null)
-            {
-                return false;
-            }
-
-            Skeleton skeleton = AssetLibrary.LoadSkeleton(def.SkeletonPath);
-            if (skeleton == null)
+            Model mdl = AssetLibrary.LoadModel(def.ModelPath);
+            if (mdl == null)
             {
                 return false;
             }
@@ -47,8 +40,7 @@ namespace IcarianEditor.Editor
             }
 
             RenderCommand.BindMaterial(mat);
-
-            AnimationMaster.DrawSkeleton(skeleton, model, a_transform);
+            RenderCommand.DrawModel(a_transform, mdl);
 
             return false;
         }

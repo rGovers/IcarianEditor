@@ -16,6 +16,9 @@ protected:
 
 public:
     static std::filesystem::path GetHomePath();
+    static std::filesystem::path GetUserAppdataPath();
+    static std::filesystem::path GetTempPath();
+
     static bool ValidatePathName(const std::string_view& a_name);
 
     static std::filesystem::path GetRelativePath(const std::filesystem::path& a_relative, const std::filesystem::path& a_path);
@@ -33,7 +36,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

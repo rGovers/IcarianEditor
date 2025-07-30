@@ -185,7 +185,7 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
 {
     const RenderProgram program = Instance->m_storage->GetRenderProgram(a_materialAddr);
 
-    if (program.PixelShader == -1)
+    if (program.PixelShader == uint32_t(-1))
     {
         Instance->m_boundShader = -1;
 
@@ -201,7 +201,7 @@ void RenderCommand::BindMaterial(uint32_t a_materialAddr)
     {
     case MaterialMode_BaseVertex:
     {
-        if (program.VertexShader == -1)
+        if (program.VertexShader == uint32_t(-1))
         {
             Instance->m_boundShader = -1;
 
@@ -313,14 +313,14 @@ static bool IsBatched(const Shader* a_shader)
 }
 void RenderCommand::DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr)
 {
-    if (Instance->m_boundShader == -1)
+    if (Instance->m_boundShader == uint32_t(-1))
     {
         Logger::Warning("IcarianEditor: DrawModel unbound material");
 
         return;
     }
 
-    if (a_modelAddr == -1)
+    if (a_modelAddr == uint32_t(-1))
     {
         Logger::Warning("IcarianEditor: DrawModel null model");
 
@@ -459,7 +459,7 @@ static glm::mat4 GetBoneTransform(const SkeletonData& a_skeleton, uint32_t a_bon
 
     const glm::mat4 transform = bone.Transform;
     
-    if (bone.Parent != -1)
+    if (bone.Parent != uint32_t(-1))
     {
         const glm::mat4 parent = GetBoneTransform(a_skeleton, bone.Parent);
 
@@ -530,7 +530,7 @@ void RenderCommand::DrawBones(uint32_t a_addr, const glm::mat4& a_transform)
     {
         glm::mat4 transform = bone.Transform;
         uint32_t parent = bone.Parent;
-        while (parent != -1)
+        while (parent != uint32_t(-1))
         {
             const RBoneData& parentBone = data.Bones[parent];
 

@@ -1,51 +1,49 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #pragma once
 
-#include "Modals/Modal.h"
+#include "Windows/Window.h"
 
-#include <filesystem>
-
-class AppMain;
 class Project;
 
-class CreateScriptableModal : public Modal
+class WelcomeWindow : public Window
 {
 private:
-    static constexpr uint32_t BufferSize = 2048;
+    Project* m_project;
 
-    AppMain*              m_app;
-    Project*              m_project;
+    void Actions();
+    void RecentProjects();
 
-    std::filesystem::path m_path;
-
-    char                  m_name[BufferSize];
-
-protected: 
+protected:
 
 public:
-    CreateScriptableModal(AppMain* a_app, Project* a_project, const std::filesystem::path& a_path);
-    virtual ~CreateScriptableModal();
+    WelcomeWindow(Project* a_project);
+    ~WelcomeWindow();
 
-    virtual bool Update();
+    virtual bool RequiresProject() const
+    {
+        return false;
+    }
+
+    virtual void Update(double a_delta);
 };
 
 // MIT License
-// 
-// Copyright (c) 2024 River Govers
-// 
+//
+// Copyright (c) 2025 River Govers
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

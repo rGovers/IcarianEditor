@@ -33,11 +33,11 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Workspace.cs",
 
         "src/Editor/EditorDisplay.cs",
-        "src/Editor/MeshRendererEditorDisplay.cs",
+        "src/Editor/ModelRendererEditorDisplay.cs",
         "src/Editor/PhysicsBodyEditorDisplay.cs",
         "src/Editor/RigidBodyEditorDisplay.cs",
         "src/Editor/SkeletonAnimatorEditorDisplay.cs",
-        "src/Editor/SkinnedMeshRendererEditorDisplay.cs",
+        "src/Editor/SkinnedModelRendererEditorDisplay.cs",
         "src/Editor/TriggerBodyEditorDisplay.cs",
 
         "src/Modals/AddComponentModal.cs",
@@ -49,7 +49,6 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
         "src/Modals/Modal.cs",
         "src/Modals/NewSceneObjectModal.cs",
 
-        "src/Properties/CameraPropertiesWindow.cs",
         "src/Properties/GameObjectPropertiesWindow.cs",
         "src/Properties/MaterialPropertiesWindow.cs",
         "src/Properties/PropertiesEditorWindow.cs",

@@ -9,8 +9,6 @@
 #include <filesystem>
 #include <vector>
 
-class AssetLibrary;
-
 class GetAssetModalData
 {
 private:
@@ -36,7 +34,7 @@ private:
 protected:
 
 public:
-    GetAssetModal(char* const* a_extensions, uint32_t a_extensionCount, AssetLibrary* a_assetLibrary, GetAssetModalData* a_data);
+    GetAssetModal(char* const* a_extensions, uint32_t a_extensionCount, GetAssetModalData* a_data);
     virtual ~GetAssetModal();
 
     virtual bool Update();
@@ -44,7 +42,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

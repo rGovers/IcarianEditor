@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 
+#include "AssetLibrary.h"
 #include "Core/DMASwapBuffer.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
@@ -62,6 +63,8 @@ ProcessManager::ProcessManager()
 
     m_width = 1280;
     m_height = 720;
+
+    m_pipefileID = uint32_t(-1);
 
     // Drivers where being inconsistant so need 2 textures one for normal textures and another for copying from DMA textures
     // OpenGL is doing the fun thing of it is great when only working with OpenGL but falls apart when you need to interact with something from the outside world
@@ -164,6 +167,12 @@ void ProcessManager::Terminate()
         m_ipcPipe = nullptr;
     }
 
+    if (m_pipefileID != uint32_t(-1))
+    {
+        AssetLibrary::DestroyAssetCommandBuffer(m_pipefileID);
+        m_pipefileID = uint32_t(-1);
+    }
+
 #ifdef WIN32
     if (m_processInfo.hProcess != INVALID_HANDLE_VALUE)
     {
@@ -182,6 +191,10 @@ void ProcessManager::Terminate()
         m_process = -1;
     }
 #endif
+
+    m_cursorState = CursorState_Normal;
+
+    FlushDMAImages();
 }
 
 bool ProcessManager::ConnectRemotePassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress)
@@ -219,9 +232,12 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
     ISETBIT(m_flags, CaptureInputBit);
     m_cursorState = CursorState_Normal;
 
-    const std::string workingDirArg = "--wDir=" + a_workingDir.string();
+    m_pipefileID = AssetLibrary::CreateAssetCommandBuffer();
+
+    const std::string workingDirArg = "--wDir=" + a_workingDir.generic_string();
+    const std::string pipefileArg = "--pipefile=" + std::to_string(m_pipefileID);
 #ifdef WIN32
-    const std::string args = "IcarianNative.exe --headless " + workingDirArg;
+    const std::string args = "IcarianNative.exe --headless " + workingDirArg + " " + pipefileArg;
 
     STARTUPINFO si;
     ZeroMemory(&si, sizeof(si));
@@ -285,7 +301,10 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
 #else
     if (m_process == -1)
     {
-        const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(GetAddr(PipeName).string());
+        const std::filesystem::path pipeAddr = GetAddr(PipeName);
+        const std::string pipeAddrStr = pipeAddr.generic_string();
+
+        const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(pipeAddrStr);
         if (serverPipe == nullptr)
         {
             Logger::Error("Failed to create IPC Pipe");
@@ -313,7 +332,7 @@ bool ProcessManager::Start(const std::filesystem::path& a_workingDir)
             // Starting the engine
             // In a weird state cause in a forked process so doing stuff C style
             // Once execution is started state is normal again
-            if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), NULL) < 0)
+            if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), pipefileArg.c_str(), NULL) < 0)
             {
                 printf("Failed to start process \n");
                 perror("execl");
@@ -481,7 +500,7 @@ void ProcessManager::PollMessage(bool a_blockError)
             Logger::Error("Failed to receive message from IcarianEngine");
         }
 
-        Terminate();
+        // Terminate();
 
         return;
     }
@@ -513,7 +532,6 @@ void ProcessManager::PollMessage(bool a_blockError)
         case IcarianCore::PipeMessageType_FrameData:
         {
             const double delta = *(double*)(msg.Data + 0);
-            const double time = *(double*)(msg.Data + 4);
 
             ++m_frames;
 
@@ -650,7 +668,6 @@ void ProcessManager::PollMessage(bool a_blockError)
         case IcarianCore::PipeMessageType_UpdateData:
         {
             const double delta = *(double*)(msg.Data + 0);
-            const double time = *(double*)(msg.Data + 4);
 
             ++m_updates;
 
@@ -707,7 +724,7 @@ void ProcessManager::PollMessage(bool a_blockError)
             m_processInfo.hThread = INVALID_HANDLE_VALUE;
 #else
             m_process = -1;
-#endif  
+#endif
             if (m_ipcPipe != nullptr)
             {
                 delete m_ipcPipe;
@@ -730,6 +747,34 @@ void ProcessManager::PollMessage(bool a_blockError)
     }
 }
 
+void ProcessManager::DMAUpdate()
+{
+    if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return;
+    }
+
+    while (m_dmaSwaps > 0)
+    {
+        IDEFER(--m_dmaSwaps);
+
+        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+
+        constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+        glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+
+        if (img.Width == m_width && img.Height == m_height)
+        {
+            glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_dmaTexture, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
+        }
+
+        m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
+
+        const DMASwapchainImage& nextImage = m_dmaImages[m_curFrame];
+        glSignalSemaphoreEXT(nextImage.StartSemaphore, 0, NULL, 1, &nextImage.Texture, &Layout);
+    }
+}
+
 void ProcessManager::Update()
 {
     if (!IsRunning())
@@ -746,6 +791,10 @@ void ProcessManager::Update()
             delete m_ipcPipe;
             m_ipcPipe = nullptr;
         }
+
+        m_cursorState = CursorState_Normal;
+
+        FlushDMAImages();
 
         return;
     }
@@ -788,28 +837,7 @@ void ProcessManager::Update()
         }
     }
 
-    if (IISBITSET(m_flags, DMAModeBit))
-    {
-        while (m_dmaSwaps > 0)
-        {
-            IDEFER(--m_dmaSwaps);
-
-            const DMASwapchainImage& img = m_dmaImages[m_curFrame];
-
-            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-            glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
-
-            if (img.Width == m_width && img.Height == m_height)
-            {
-                glCopyImageSubData(img.Texture, GL_TEXTURE_2D, 0, 0, 0, 0, m_dmaTexture, GL_TEXTURE_2D, 0, 0, 0, 0, img.Width, img.Height, 1);
-            }
-
-            m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
-
-            const DMASwapchainImage& nextImage = m_dmaImages[m_curFrame];
-            glSignalSemaphoreEXT(nextImage.StartSemaphore, 0, NULL, 1, &nextImage.Texture, &Layout);
-        }
-    }
+    DMAUpdate();
 }
 void ProcessManager::Stop()
 {
@@ -830,6 +858,8 @@ void ProcessManager::Stop()
     {
         const std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<double> delta = end - start;
+        // Have a timeout as a failsafe
+        // Yes sometimes the engine just takes a while to shutdown however want to make sure that the control gets back to the editor quickly
         if (delta.count() > 5.0)
         {
             Logger::Error("Failed to close IcarianEngine Instance");
@@ -839,10 +869,23 @@ void ProcessManager::Stop()
             return;
         }
 
-        PollMessage(true);        
-    }    
+        // Until the engine gets the shutdown signal it will keep sending messages so we need to keep processing them
+        PollMessage(true);
+        // Rendering can still be running so need to process the updates still until it actually shuts down
+        DMAUpdate();
+    }
+
+    // TODO: Need to figure out a way to get the final messages from the pipe as there may be errors and such during shutdown
+    if (m_ipcPipe != nullptr)
+    {
+        PollMessage(true);
+    }
+
+    Terminate();
 
     m_cursorState = CursorState_Normal;
+
+    FlushDMAImages();
 }
 void ProcessManager::SetSize(uint32_t a_width, uint32_t a_height)
 {

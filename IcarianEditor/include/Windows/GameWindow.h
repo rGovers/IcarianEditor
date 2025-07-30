@@ -19,7 +19,6 @@ class GameWindow : public Window
 private:
     AppMain*        m_app;
 
-    AssetLibrary*   m_library;
     ProcessManager* m_processManager;
     Project*        m_project;
     
@@ -27,7 +26,7 @@ private:
 protected:
 
 public:
-    GameWindow(AppMain* a_app, AssetLibrary* a_library, ProcessManager* a_processManager, Project* a_project);
+    GameWindow(AppMain* a_app, ProcessManager* a_processManager, Project* a_project);
     ~GameWindow();
 
     virtual void Update(double a_delta);

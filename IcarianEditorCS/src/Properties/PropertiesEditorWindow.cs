@@ -74,8 +74,180 @@ namespace IcarianEditor.Properties
             return outStr;
         }
 
-        static void ShowFields(string a_name, bool a_sceneObject, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
+        static bool ConditionalField(string a_name, EditorFieldConditionalAttribute a_conditional, object a_parentObject)
+        {   
+            if (a_parentObject == null)
+            {
+                Logger.Error($"ShowFields {a_name} EditorFieldConditional null parentObject");
+
+                return false;
+            }
+
+            Type parentType = a_parentObject.GetType();
+            if (parentType == null)
+            {
+                Logger.Error($"ShowFields {a_name} EditorFieldConditional failed to get Type");
+
+                return false;
+            }
+
+            FieldInfo field = parentType.GetField(a_conditional.Field);
+            if (field == null)
+            {
+                Logger.Error($"ShowFields {a_name} EditorFieldConditional failed to get Field {a_conditional.Field}");
+
+                return false;
+            }
+
+            Type fieldType = field.FieldType;
+            if (fieldType == null)
+            {
+                Logger.Error($"ShowFields {a_name} EditorFieldConditional FieldType {fieldType} is invalid");
+
+                return false;
+            }
+
+            object objectValue = a_conditional.Value;
+            if (objectValue != null)
+            {
+                Type objectType = objectValue.GetType();
+
+                if (objectType != fieldType)
+                {
+                    Logger.Error($"ShowFields {a_name} EditorFieldConditional FieldType {fieldType} does not match ObjectType {objectType}");
+
+                    return false;
+                }
+            }
+
+            object fieldValue = field.GetValue(a_parentObject);
+
+            if (fieldValue == null && objectValue == null)
+            {
+                if (a_conditional.FieldConditionalType == FieldConditionalType.Equals)
+                {
+                    return true;
+                }
+            }
+
+#define CONDITIONALFIELD_MATHSCOMP(type) type fieldInterVal = (type)fieldValue; \
+    switch (a_conditional.FieldConditionalType) \
+    { \
+    case FieldConditionalType.Equals: \
+    { \
+        return val == fieldInterVal; \
+    } \
+    case FieldConditionalType.NotEquals: \
+    { \
+        return val != fieldInterVal; \
+    } \
+    case FieldConditionalType.GreaterThan: \
+    { \
+        return val > fieldInterVal; \
+    } \
+    case FieldConditionalType.LessThan: \
+    { \
+        return val < fieldInterVal; \
+    } \
+    case FieldConditionalType.GreaterEqualThan: \
+    { \
+        return val >= fieldInterVal; \
+    } \
+    case FieldConditionalType.LessEqualThan: \
+    { \
+        return val <= fieldInterVal; \
+    } \
+    } 
+            if (objectValue != null)
+            {
+                switch (objectValue)
+                {
+                case byte val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(byte);
+
+                    break;
+                }
+                case sbyte val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(sbyte);
+
+                    break;
+                }
+                case short val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(short);
+
+                    break;
+                }
+                case ushort val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(ushort);
+
+                    break;
+                }
+                case int val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(int);
+
+                    break;
+                }
+                case uint val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(uint);
+
+                    break;
+                }
+                case long val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(long);
+
+                    break;
+                }
+                case ulong val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(ulong);
+
+                    break;
+                }
+                case float val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(float);
+
+                    break;
+                }
+                case double val:
+                {
+                    CONDITIONALFIELD_MATHSCOMP(double);
+
+                    break;
+                }
+                default:
+                {
+                    // TODO: Handle more complex types
+                    Logger.Error($"ShowFields {a_name} EditorFieldConditional bad ObjectType");
+
+                    break;
+                }
+                }
+            }
+
+            return false;
+        }
+
+        static void ShowFields(string a_name, bool a_sceneObject, object a_parentObject, ref object a_obj, object a_normVal, Type a_type, IEnumerable<Attribute> a_attributes)
         {
+            foreach (Attribute a in a_attributes)
+            {
+                if (a is EditorFieldConditionalAttribute cond)
+                {
+                    if (!ConditionalField(a_name, cond, a_parentObject))
+                    {
+                        return;
+                    }
+                }
+            }
+
             switch (a_obj)
             {
             case Type _:
@@ -547,7 +719,7 @@ namespace IcarianEditor.Properties
                         for (int i = 0; i < len; ++i)
                         {
                             object o = a.GetValue(i);
-                            ShowFields($"[{i}]", a_sceneObject, ref o, eNVal, eType, a_attributes);
+                            ShowFields($"[{i}]", a_sceneObject, a_obj, ref o, eNVal, eType, a_attributes);
                             a.SetValue(o, i);
                         }
 
@@ -601,7 +773,7 @@ namespace IcarianEditor.Properties
 
                             GUI.SameLine();
 
-                            ShowFields($"[{index++}]", a_sceneObject, ref oVal, gNVal, gType, a_attributes);
+                            ShowFields($"[{index++}]", a_sceneObject, a_obj, ref oVal, gNVal, gType, a_attributes);
 
                             method.Invoke(nObj, new object[] { oVal });
 
@@ -654,7 +826,7 @@ namespace IcarianEditor.Properties
                             List<Attribute> atts = new List<Attribute>(a_attributes);
                             atts.AddRange(field.GetCustomAttributes());
 
-                            ShowFields($"{a_name}.{field.Name}", a_sceneObject, ref val, normObj, fieldType, atts);
+                            ShowFields($"{a_name}.{field.Name}", a_sceneObject, a_obj, ref val, normObj, fieldType, atts);
 
                             field.SetValue(a_obj, val);
                         }
@@ -699,7 +871,7 @@ namespace IcarianEditor.Properties
 
                 IEnumerable<Attribute> attributes = field.GetCustomAttributes();
 
-                ShowFields(fName, a_sceneObject, ref val, field.GetValue(normObj), field.FieldType, attributes);
+                ShowFields(fName, a_sceneObject, a_object, ref val, field.GetValue(normObj), field.FieldType, attributes);
  
                 field.SetValue(a_object, val);
 
@@ -722,7 +894,7 @@ namespace IcarianEditor.Properties
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

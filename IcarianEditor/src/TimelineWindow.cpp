@@ -27,7 +27,7 @@ void TimelineWindow::Update(double a_delta)
     const ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-    const ImU32 buttonColorU32 = ImGui::GetColorU32(style.Colors[ImGuiCol_Button]);
+    // const ImU32 buttonColorU32 = ImGui::GetColorU32(style.Colors[ImGuiCol_Button]);
     const ImU32 buttonHovColorU32 = ImGui::GetColorU32(style.Colors[ImGuiCol_ButtonHovered]);
     const ImU32 childBgColorU32 = ImGui::GetColorU32(style.Colors[ImGuiCol_ChildBg]);
     const ImU32 windowBgColorU32 = ImGui::GetColorU32(style.Colors[ImGuiCol_WindowBg]);
@@ -118,7 +118,7 @@ void TimelineWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

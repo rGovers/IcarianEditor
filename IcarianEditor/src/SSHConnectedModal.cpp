@@ -12,33 +12,33 @@
 #include "SCPPipe.h"
 #include "SSHPipe.h"
 
-static std::string FormatWindowsStr(const std::string_view& a_str)
-{
-    const size_t endPos = a_str.find_last_of('/');
-
-    if (endPos == std::string::npos)
-    {
-        return std::string();
-    }
-
-    // Get and reformat the string to a valid path format because Windows is weird
-    std::string str = std::string(a_str.substr(0, endPos));
-    while (true) 
-    {
-        constexpr char SlashStr[] = "\\";
-        constexpr uint32_t SlashStrLen = sizeof(SlashStr) - 1;
-
-        const size_t pos = str.find(SlashStr);
-        if (pos == std::string::npos)
-        {
-            break;
-        }
-
-        str.replace(pos, SlashStrLen, "/");
-    }
-
-    return str;
-}
+// static std::string FormatWindowsStr(const std::string_view& a_str)
+// {
+//     const size_t endPos = a_str.find_last_of('/');
+//
+//     if (endPos == std::string::npos)
+//     {
+//         return std::string();
+//     }
+//
+//     // Get and reformat the string to a valid path format because Windows is weird
+//     std::string str = std::string(a_str.substr(0, endPos));
+//     while (true)
+//     {
+//         constexpr char SlashStr[] = "\\";
+//         constexpr uint32_t SlashStrLen = sizeof(SlashStr) - 1;
+//
+//         const size_t pos = str.find(SlashStr);
+//         if (pos == std::string::npos)
+//         {
+//             break;
+//         }
+//
+//         str.replace(pos, SlashStrLen, "/");
+//     }
+//
+//     return str;
+// }
 
 SSHConnectedModal::SSHConnectedModal(SSHPipe* a_pipe) : Modal("Syncing SSH")
 {

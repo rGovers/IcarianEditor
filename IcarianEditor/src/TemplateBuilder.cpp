@@ -32,7 +32,7 @@ std::string TemplateBuilder::GenerateFromTemplate(const std::string_view& a_str,
     while (pos != std::string::npos)
     {
         str.replace(pos, ScriptNamePlaceHolderLen, a_fileName);
-        pos += ScriptNamePlaceHolderLen;
+        pos += scriptNameLen;
         pos = str.find(ScriptNamePlaceHolder, pos);
     }
 
@@ -41,7 +41,7 @@ std::string TemplateBuilder::GenerateFromTemplate(const std::string_view& a_str,
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -19,12 +19,12 @@ namespace IcarianEditor.Properties
             Quaternion
         };
 
-        GameObjectDef m_lastDef = null;
+        string       m_lastDef = null;
 
-        Vector3       m_euler;
-        Vector4       m_axisAngle;
+        Vector3      m_euler;
+        Vector4      m_axisAngle;
 
-        RotationMode  m_mode = RotationMode.AxisAngle;
+        RotationMode m_mode = RotationMode.AxisAngle;
 
         public override void OnGUI(object a_object, bool a_sceneObject)
         {
@@ -40,7 +40,7 @@ namespace IcarianEditor.Properties
             
             GUI.EnumField("Rotation Mode", ref m_mode);
 
-            if (m_lastDef != def)
+            if (m_lastDef != def.DefName)
             {
                 Quaternion rotation = def.Rotation;
                 if (rotation == Quaternion.Identity)
@@ -54,7 +54,7 @@ namespace IcarianEditor.Properties
                     m_axisAngle = rotation.ToAxisAngle();
                 }
 
-                m_lastDef = def;
+                m_lastDef = def.DefName;
             }
 
             switch (m_mode)
@@ -235,7 +235,7 @@ namespace IcarianEditor.Properties
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

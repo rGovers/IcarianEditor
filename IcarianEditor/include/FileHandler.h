@@ -9,7 +9,6 @@
 #include <glad/glad.h>
 #include <unordered_map>
 
-class AssetLibrary;
 class RuntimeStorage;
 class Texture;
 class Workspace;
@@ -24,14 +23,13 @@ public:
 private:
     FileTextureHandle                             m_runtimeTexHandle;
 
-    AssetLibrary*                                 m_assets;
     RuntimeStorage*                               m_storage;
 
     std::unordered_map<std::string, Texture*>     m_extTex;
     std::unordered_map<std::string, FileCallback> m_extOpenCallback;
     std::unordered_map<std::string, FileCallback> m_extDragCallback;
 
-    FileHandler(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace);
+    FileHandler(RuntimeStorage* a_storage, Workspace* a_workspace);
     
 protected:
 
@@ -40,7 +38,7 @@ public:
 
     static void SetFileHandle(const FileTextureHandle& a_handle);
 
-    static void Init(AssetLibrary* a_assets, RuntimeStorage* a_storage, Workspace* a_workspace);
+    static void Init(RuntimeStorage* a_storage, Workspace* a_workspace);
     static void Destroy();
 
     static void GetFileData(const std::filesystem::path& a_path, FileCallback** a_openCallback, FileCallback** a_dragCallback, GLuint* a_texture);

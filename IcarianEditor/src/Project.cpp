@@ -11,6 +11,8 @@
 #include "AppMain.h"
 #include "AssetLibrary.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianLambda.h"
+#include "EditorData.h"
 #include "Logger.h"
 #include "Modals/BuildProjectModal.h"
 #include "Modals/CreateProjectModal.h"
@@ -40,10 +42,9 @@ static void GenerateDirs(const std::filesystem::path& a_path)
     }
 }
 
-Project::Project(AppMain* a_app, AssetLibrary* a_assetLibrary, Workspace* a_workspace)
+Project::Project(AppMain* a_app, Workspace* a_workspace)
 {
     m_app = a_app;
-    m_assetLibrary = a_assetLibrary;
     m_workspace = a_workspace;
 
     m_shouldRefresh = false;
@@ -118,7 +119,7 @@ void Project::ReloadProjectFile()
     }
 }
 
-void Project::NewCallback(const std::filesystem::path& a_path, const std::string_view& a_name)
+void Project::NewProject(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
     m_name = std::string(a_name);
     m_path = a_path / m_name;
@@ -153,7 +154,7 @@ void Project::NewCallback(const std::filesystem::path& a_path, const std::string
         Logger::Error("Unable to create About");
     }
 }
-void Project::OpenCallback(const std::filesystem::path& a_path, const std::string_view& a_name)
+void Project::OpenProject(const std::filesystem::path& a_path, const std::string_view& a_name)
 {
     m_path = a_path;
 
@@ -169,6 +170,12 @@ void Project::OpenCallback(const std::filesystem::path& a_path, const std::strin
     }
 
     IDEFER(m_shouldRefresh = true);
+    IDEFER(
+    {
+        EditorData::AddLastProjectPath(a_path);
+
+        EditorData::Serialize();
+    });
 
     ReloadProjectFile();
 
@@ -179,13 +186,13 @@ void Project::New()
 {
     Logger::Message("New Project");
 
-    m_app->PushModal(new CreateProjectModal(m_app, std::bind(&Project::NewCallback, this, std::placeholders::_1, std::placeholders::_2)));
+    m_app->PushModal(new CreateProjectModal(m_app, std::bind(&Project::NewProject, this, std::placeholders::_1, std::placeholders::_2)));
 }
 void Project::Open()
 {
     Logger::Message("Open Project");
 
-    m_app->PushModal(new OpenProjectModal(m_app, std::bind(&Project::OpenCallback, this, std::placeholders::_1, std::placeholders::_2)));
+    m_app->PushModal(new OpenProjectModal(m_app, std::bind(&Project::OpenProject, this, std::placeholders::_1, std::placeholders::_2)));
 }
 void Project::Save() const
 {
@@ -193,7 +200,7 @@ void Project::Save() const
     {
         Logger::Message("Save Project");
 
-        m_assetLibrary->Serialize(this);
+        AssetLibrary::Serialize(this);
 
         SaveProjectFile();
     }
@@ -202,8 +209,45 @@ void Project::Save() const
         m_app->PushModal(new ErrorModal("Saving Invalid Project"));
     }
 }
+
+void Project::OpenProjectFolder(const std::filesystem::path& a_path)
+{
+    const std::filesystem::path name = ILAMBDA(
+    {
+        for (const auto& iter : std::filesystem::directory_iterator(a_path, std::filesystem::directory_options::skip_permission_denied))
+        {
+            if (iter.is_regular_file())
+            {
+                const std::filesystem::path path = iter.path();
+
+                const std::filesystem::path ext = path.extension();
+                if (ext == ".icproj")
+                {
+                    ILRETURN path.filename();
+                }
+            }
+        }
+
+        ILRETURN std::filesystem::path();
+    });
+
+    if (name.empty())
+    {
+        Logger::Error("Failed to find project");
+
+        return;
+    }
+
+    OpenProject(a_path, name.string());
+}
+
 void Project::Build()
 {
+    if (!std::filesystem::exists("BuildFiles"))
+    {
+        return;
+    }
+
     if (IsValidProject())
     {
         Logger::Message("Build Project");
@@ -214,7 +258,10 @@ void Project::Build()
         {
             if (iter.is_directory())
             {
-                buildSystems.emplace_back(iter.path().filename().string());
+                const std::filesystem::path path = iter.path();
+                const std::filesystem::path filename = path.filename();
+
+                buildSystems.emplace_back(filename.string());
             }
         }
 
@@ -225,7 +272,7 @@ void Project::Build()
             return;
         }
 
-        m_app->PushModal(new BuildProjectModal(m_app, m_assetLibrary, this, buildSystems));
+        m_app->PushModal(new BuildProjectModal(m_app, this, buildSystems));
     }
     else
     {
@@ -235,7 +282,7 @@ void Project::Build()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

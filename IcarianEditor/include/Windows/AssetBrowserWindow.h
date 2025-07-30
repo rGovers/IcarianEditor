@@ -11,7 +11,6 @@
 #include <vector>
 
 class AppMain;
-class AssetLibrary;
 class Project;
 
 struct DirectoryNode
@@ -30,7 +29,6 @@ private:
 
     char                       m_searchBuffer[SearchBufferSize];
     AppMain*                   m_app;
-    AssetLibrary*              m_assetLibrary;
     Project*                   m_project;
 
     std::vector<DirectoryNode> m_fileTree;
@@ -51,7 +49,7 @@ private:
 protected:
 
 public:
-    AssetBrowserWindow(AppMain* a_app, Project* a_project, AssetLibrary* a_assetLibrary);
+    AssetBrowserWindow(AppMain* a_app, Project* a_project);
     virtual ~AssetBrowserWindow();
     
     virtual void Refresh();

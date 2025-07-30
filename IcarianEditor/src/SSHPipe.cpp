@@ -280,8 +280,6 @@ void SSHPipe::Flush()
 }
 std::vector<std::string> SSHPipe::Read(uint32_t a_timeout)
 {
-    const std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
-
 #ifndef WIN32
     struct pollfd pollFd
     {
@@ -568,7 +566,6 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::str
         pipe->m_errorPipe = errPipes[0];
         pipe->m_writePipe = writePipes[1];
 
-        e_SSHHostOS host = SSHHostOS_Unknown;
         bool auth = false;
         while (pipe->IsAlive() && !auth)
         {
