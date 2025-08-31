@@ -12,8 +12,6 @@
 #include <GLFW/glfw3.h>
 #include <string_view>
 
-#include "EngineInputInteropStructures.h"
-
 enum e_Cursors
 {
     Cursor_Arrow,
@@ -22,6 +20,13 @@ enum e_Cursors
     Cursor_VResize,
     Cursor_Move,
     Cursor_Last
+};
+
+enum e_ApplicationCursorState
+{
+    ApplicationCursorState_Normal,
+    ApplicationCursorState_Hidden,
+    ApplicationCursorState_Locked
 };
 
 class Application
@@ -59,7 +64,7 @@ public:
     glm::vec2 GetWindowSize() const;
     void SetWindowSize(const glm::vec2& a_size);
 
-    void SetCursorState(e_CursorState a_state);
+    void SetCursorState(e_ApplicationCursorState a_state);
     void SetCursor(e_Cursors a_cursor);
 
     glm::vec2 GetCursorPos() const;

@@ -10,7 +10,7 @@
 
 static constexpr int ProfileNameMax = 16;
 static constexpr int ProfileFrameMax = 64;
-static constexpr int ProfileMaxScopes = 2048;
+static constexpr int ProfileMaxScopes = 1024;
 
 struct ProfileFrame
 {
@@ -38,11 +38,11 @@ struct ProfileSnapshot
 class ProfilerData
 {
 private:
-    static ProfilerData* Instance;
-
     std::vector<ProfileSnapshot> m_snapshots;
+    bool                         m_active;
 
     ProfilerData();
+
 protected:
 
 public:
@@ -51,7 +51,8 @@ public:
     static void Init();
     static void Destroy();
 
-    static void Clear();
+    static bool StartSession();
+    static void EndSession();
 
     static void PushData(const ProfileScope& a_scope);
     static std::vector<ProfileSnapshot> GetSnapshots();

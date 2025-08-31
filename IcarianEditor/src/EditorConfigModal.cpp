@@ -14,7 +14,8 @@ static constexpr const char* EditorConfigTabNames[] =
 {
     "General",
     "Key Bindings",
-    "External Tools"
+    "External Tools",
+    "Engine"
 };
 static constexpr const char* CodeEditorNames[] =
 {
@@ -31,7 +32,7 @@ static constexpr const char* DefEditorNames[] =
     "Kate"
 };
 
-#if WIN32
+#ifdef WIN32
 constexpr static bool CodeEditorEnabled[] =
 {
     true,   // Default
@@ -74,6 +75,7 @@ EditorConfigModal::~EditorConfigModal()
 
 void EditorConfigModal::GeneralTab()
 {
+    ImGui::SetNextItemWidth(ItemWidth);
     bool useDegrees = EditorConfig::GetUseDegrees();
     if (ImGui::Checkbox("Use Degrees", &useDegrees))
     {
@@ -86,7 +88,7 @@ void EditorConfigModal::GeneralTab()
     {
         EditorConfig::SetEditorMouseSensitivity(editorMouseSensitivity);
     }
-    
+
     ImGui::SetNextItemWidth(ItemWidth);
     glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
     if (ImGui::ColorEdit4("Background Color", (float*)&backgroundColor))
@@ -204,6 +206,23 @@ void EditorConfigModal::ExternalToolsTab()
     }
 }
 
+void EditorConfigModal::EngineTab()
+{
+    ImGui::SetNextItemWidth(ItemWidth);
+    float engineShutdownTimeout = EditorConfig::GetEngineShutdownTimeout();
+    if (ImGui::DragFloat("Engine Shutdown Timeout", &engineShutdownTimeout, 0.1f, 1.0f))
+    {
+        EditorConfig::SetEngineShutdownTimeout(engineShutdownTimeout);
+    }
+
+    ImGui::SetNextItemWidth(ItemWidth);
+    float enginePipeTimeout = EditorConfig::GetEnginePipeTimeout();
+    if (ImGui::DragFloat("Engine Pipe Timeout", &enginePipeTimeout, 0.01f, 1.0f))
+    {
+        EditorConfig::SetEnginePipeTimeout(enginePipeTimeout);
+    }
+}
+
 bool EditorConfigModal::Update()
 {
     if (ImGui::BeginChild("##Tabs", ImVec2(100.0f, 230.0f)))
@@ -245,6 +264,10 @@ bool EditorConfigModal::Update()
 
             break;
         }
+        case EditorConfigTab_Engine:
+        {
+            EngineTab();
+        }
         default:
         {
             Logger::Error("Invalid EditorConfigTab: %d", m_currentTab);
@@ -253,7 +276,7 @@ bool EditorConfigModal::Update()
         }
         }
     }
-    
+
     if (ImGui::Button("Apply"))
     {
         EditorConfig::Serialize();
@@ -275,7 +298,7 @@ bool EditorConfigModal::Update()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

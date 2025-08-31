@@ -11,23 +11,37 @@
 
 class AppMain;
 class AssetLibrary;
-class ProcessManager;
+class EngineProcess;
 class Project;
+class SSHPipe;
+
+#include "EngineInputInteropStructures.h"
 
 class GameWindow : public Window
 {
 private:
-    AppMain*        m_app;
+    static constexpr uint32_t ProfilerSessionBit = 0;
+    static constexpr uint32_t CloseBit = 1;
 
-    ProcessManager* m_processManager;
+    AppMain*        m_app;
     Project*        m_project;
-    
+
+    EngineProcess*  m_process;
+
+    uint32_t        m_width;
+    uint32_t        m_height;
+
     glm::vec2       m_lastCursorPos;
+
+    uint8_t         m_flags;
+
 protected:
 
 public:
-    GameWindow(AppMain* a_app, ProcessManager* a_processManager, Project* a_project);
-    ~GameWindow();
+    GameWindow(AppMain* a_app, Project* a_project);
+    virtual ~GameWindow();
+
+    void StartRemote(SSHPipe* a_sshPipe, uint16_t a_clientPort);
 
     virtual void Update(double a_delta);
 };

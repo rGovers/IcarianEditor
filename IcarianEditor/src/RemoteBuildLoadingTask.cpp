@@ -6,18 +6,20 @@
 
 #include <filesystem>
 
+#include "Core/IcarianAssert.h"
 #include "CUBE/CUBE.h"
 #include "Core/IcarianDefer.h"
 #include "IO.h"
 #include "Logger.h"
 #include "MonoProjectGenerator.h"
-#include "ProcessManager.h"
 #include "Project.h"
 #include "SSHPipe.h"
 
-RemoteBuildLoadingTask::RemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project) : LoadingTask()
+RemoteBuildLoadingTask::RemoteBuildLoadingTask(e_SSHHostOS a_hostOS, e_SSHHostArchitecture a_hostArch, Project* a_project) : LoadingTask()
 {
-    m_process = a_process;
+    m_hostOS = a_hostOS;
+    m_hostArch = a_hostArch;
+
     m_project = a_project;
 }
 RemoteBuildLoadingTask::~RemoteBuildLoadingTask()
@@ -29,15 +31,8 @@ void RemoteBuildLoadingTask::Run()
 {
     const std::filesystem::path cwd = std::filesystem::current_path();
 
-    const SSHPipe* pipe = m_process->GetRemotePipe();
-
-    if (pipe == nullptr || !pipe->IsAlive())
-    {
-        return;
-    }
-
     std::filesystem::path icarianCSPath;
-    switch (pipe->GetHostOS()) 
+    switch (m_hostOS) 
     {
     case SSHHostOS_WindowsPowerCMD:
     case SSHHostOS_WindowsPowershell:
@@ -54,7 +49,7 @@ void RemoteBuildLoadingTask::Run()
     }
     default:
     {
-        assert(0);
+        ICARIAN_ASSERT(0);
 
         break;
     }

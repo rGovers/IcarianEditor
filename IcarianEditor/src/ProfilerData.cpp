@@ -4,7 +4,10 @@
 
 #include "ProfilerData.h"
 
-ProfilerData* ProfilerData::Instance = nullptr;
+#define GLM_FORCE_SWIZZLE
+#include <glm/glm.hpp>
+
+static ProfilerData* Instance = nullptr;
 
 ProfilerData::ProfilerData()
 {
@@ -31,7 +34,21 @@ void ProfilerData::Destroy()
     }
 }
 
-void ProfilerData::Clear()
+bool ProfilerData::StartSession()
+{
+    if (!Instance->m_active)
+    {
+        return false;
+    }
+
+    Instance->m_snapshots.clear();
+
+    Instance->m_active = true;
+
+    return true;
+}
+
+void ProfilerData::EndSession()
 {
     Instance->m_snapshots.clear();
 }
@@ -55,14 +72,14 @@ void ProfilerData::PushData(const ProfileScope& a_scope)
             {
                 snapshot.StartIndex = (snapshot.StartIndex + 1) % ProfileMaxScopes;
             }
-            
-            snapshot.Count = std::min(snapshot.Count + 1, (uint32_t)ProfileMaxScopes);
+
+            snapshot.Count = glm::min(snapshot.Count + 1, (uint32_t)ProfileMaxScopes);
 
             return;
         }
     }
 
-    // Stack is too small on windows and will crash so have to do everything on heap memory
+    // Stack is too small on Windows and will crash so have to do everything on heap memory
     ProfileSnapshot& snapshot = Instance->m_snapshots.emplace_back();
     snapshot.Name = a_scope.Name;
     snapshot.Index = 1;

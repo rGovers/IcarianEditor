@@ -6,17 +6,24 @@
 
 #include "LoadingTasks/LoadingTask.h"
 
-class ProcessManager;
+#include <cstdint>
+
+class SSHPipe;
+class GameWindow;
 
 class RunRemoteLoadingTask : public LoadingTask
 {
 private:
-    ProcessManager* m_process;
+    SSHPipe*    m_pipe;
+
+    GameWindow* m_window;
+
+    uint16_t    m_clientPort;
 
 protected:
 
 public:
-    RunRemoteLoadingTask(ProcessManager* a_proces);
+    RunRemoteLoadingTask(SSHPipe* a_sshPipe, uint16_t a_clientPort, GameWindow* a_window);
     virtual ~RunRemoteLoadingTask();
 
     virtual void Run();

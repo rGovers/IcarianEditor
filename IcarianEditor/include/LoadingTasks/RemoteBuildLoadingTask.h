@@ -6,19 +6,22 @@
 
 #include "LoadingTask.h"
 
-class ProcessManager;
+#include "SSHPipe.h"
+
 class Project;
 
 class RemoteBuildLoadingTask : public LoadingTask
 {
 private:
-    ProcessManager* m_process;
-    Project*        m_project;
+    e_SSHHostOS           m_hostOS;
+    e_SSHHostArchitecture m_hostArch;
+
+    Project*              m_project;
 
 protected:
 
 public:
-    RemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project);
+    RemoteBuildLoadingTask(e_SSHHostOS a_hostOS, e_SSHHostArchitecture a_hostArch, Project* a_project);
     virtual ~RemoteBuildLoadingTask();
 
     virtual void Run();

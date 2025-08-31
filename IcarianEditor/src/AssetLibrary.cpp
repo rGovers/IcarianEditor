@@ -59,7 +59,7 @@ RUNTIME_FUNCTION(uint32_t, FileCache, CachedFile,
 RUNTIME_FUNCTION(MonoArray*, FileCache, ReadFileData, 
 {
     IERRBLOCK;
-    
+
     char* str = mono_string_to_utf8(a_path);
     IDEFER(mono_free(str));
 
@@ -93,7 +93,7 @@ RUNTIME_FUNCTION(void, FileCache, WriteFileData,
 }, MonoString* a_path, MonoArray* a_data, uint32_t a_writeFile, uint32_t a_pinFile)
 
 AssetLibrary::AssetLibrary()
-{    
+{
     m_flags = 0;
 
     m_commandBuffers = nullptr;
@@ -102,8 +102,6 @@ AssetLibrary::AssetLibrary()
     m_commandID = 0;
 
     m_shutdown = false;
-    // Want to offload IPC data transfer to a background thread to reduce latency of requests as waiting upto ~16ms could tank performance
-    m_thread = std::thread(RunBuffer);
 
     EDITOR_CREATEDEFMODAL_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
     EDITOR_DEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
@@ -158,6 +156,9 @@ void AssetLibrary::Init()
     if (Instance == nullptr)
     {
         Instance = new AssetLibrary();
+
+        // Want to offload IPC data transfer to a background thread to reduce latency of requests as waiting upto ~16ms could tank performance
+        Instance->m_thread = std::thread(RunBuffer);
     }
 }
 void AssetLibrary::Destroy()

@@ -6,21 +6,23 @@
 
 #include "Application.h"
 
+#include <string>
 #include <vector>
 
-#include "Windows/Window.h"
-#include "Modals/Modal.h"
-
+class Modal;
 class Project;
-class ProcessManager;
 class RuntimeStorage;
+class SSHPipe;
+class Window;
 class Workspace;
+
+#include "EngineInputInteropStructures.h"
 
 class AppMain : public Application
 {
 private:
-    static constexpr int SaveBit = 0;
-    static constexpr int LoadBit = 1;
+    static constexpr uint32_t FocusedBit = 0;
+    static constexpr uint32_t CaptureInputBit = 1;
 
     static constexpr uint32_t MoveBit = 0;
     static constexpr uint32_t TopResizeBit = 1;
@@ -34,14 +36,13 @@ private:
     double               m_titleSet;
 
     std::string          m_fpsText;
-    std::string          m_engineFpsText;
-    std::string          m_engineUpsText;   
+
+    SSHPipe*             m_remotePipe;
 
     std::vector<Window*> m_windows;
     std::vector<Modal*>  m_modals;
 
     Project*             m_project;
-    ProcessManager*      m_process;
     RuntimeStorage*      m_rStorage;
     Workspace*           m_workspace;
 
@@ -51,9 +52,11 @@ private:
 
     GLuint               m_vao;
 
-    bool                 m_focused;
+    uint16_t             m_clientPort;
+    e_CursorState        m_cursorState;
 
     uint8_t              m_windowActions;
+    uint8_t              m_flags;
 
     std::vector<bool>    m_runtimeModalState;
 
@@ -67,6 +70,29 @@ public:
 
     bool GetRuntimeModalState(uint32_t a_index);
     void SetRuntimeModalState(uint32_t a_index, bool a_state);
+
+    bool ConnectRemote(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress);
+
+    bool CapturesInput() const;
+
+    inline void SetGameCursorState(e_CursorState a_state)
+    {
+        m_cursorState = a_state;
+    }
+    inline e_CursorState GetGameCursorState() const
+    {
+        return m_cursorState;
+    }
+
+    inline SSHPipe* GetSSHPipe() const
+    {
+        return m_remotePipe;
+    }
+
+    inline uint16_t GetClientPort() const
+    {
+        return m_clientPort;
+    }
 
     void PushModal(Modal* a_modal);
     void DispatchRuntimeModal(const std::string_view& a_title, const glm::vec2& a_size, uint32_t a_index);

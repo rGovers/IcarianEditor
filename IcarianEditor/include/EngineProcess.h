@@ -8,18 +8,13 @@
 #include "Core/WindowsHeaders.h"
 #endif
 
-#define GLM_FORCE_SWIZZLE 
-#include <glm/glm.hpp>
-
 #include <cstdint>
 #include <filesystem>
 #include <glad/glad.h>
-#include <string_view>
+#include <queue>
 
-#include "Core/InputBindings.h"
 #include "Core/CommunicationPipe.h"
-
-#include "EngineInputInteropStructures.h"
+#include "Core/InputBindings.h"
 
 class SSHPipe;
 
@@ -34,15 +29,19 @@ struct DMASwapchainImage
     uint64_t Offset;
 };
 
-class ProcessManager
+class EngineProcess
 {
-    private:
-    static constexpr char PipeName[] = "IcarianEngine-IPC";
-    
-    static constexpr uint32_t RemoteModeBit = 0;
-    static constexpr uint32_t ResizeBit = 1;
-    static constexpr uint32_t DMAModeBit = 2;
-    static constexpr uint32_t CaptureInputBit = 3;
+private:
+    static constexpr char PipeName[] = "IcarianEditor-IPC";
+
+    static constexpr uint32_t DMAModeBit = 0;
+    static constexpr uint32_t RemoteModeBit = 1;
+    static constexpr uint32_t ResizeBit = 2;
+
+    static constexpr float UPSUpdateRate = 4.0f;
+    static constexpr float FPSUpdateRate = 4.0f;
+
+    static uint32_t IPCID;
 
 #ifdef WIN32
     PROCESS_INFORMATION             m_processInfo;
@@ -52,118 +51,77 @@ class ProcessManager
 #else
     pid_t                           m_process;
     int                             m_processFD;
-#endif   
+#endif
 
-    uint32_t                        m_pipefileID;
+    IcarianCore::CommunicationPipe* m_ipcPipe;
+
+    std::vector<DMASwapchainImage>  m_dmaImages;
+
+    double                          m_updateTime;
+    double                          m_frameTime;
+
+    float                           m_ups;
+    float                           m_fps;
 
     uint32_t                        m_curFrame;
     uint32_t                        m_dmaSwaps;
-    std::vector<DMASwapchainImage>  m_dmaImages;
-
-    SSHPipe*                        m_remotePipe;
-    IcarianCore::CommunicationPipe* m_ipcPipe;
-
-    double                          m_updateTime;
-    double                          m_ups;
-
-    double                          m_frameTime;
-    double                          m_fps;
 
     uint32_t                        m_width;
     uint32_t                        m_height;
 
-    int                             m_updates;
-    int                             m_frames;                    
-
     GLuint                          m_texture;
     GLuint                          m_dmaTexture;
 
-    e_CursorState                   m_cursorState;
-    uint16_t                        m_clientPort;
-    
+    uint32_t                        m_pipefileID;
+
+    uint16_t                        m_updates;
+    uint16_t                        m_frames;
+
     uint8_t                         m_flags;
 
-    void PollMessage(bool a_blockError = false);
+    EngineProcess(IcarianCore::CommunicationPipe* a_pipe, uint32_t a_width, uint32_t a_height);
 
-    void DMAUpdate();
+#ifdef WIN32
+    EngineProcess(HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo, IcarianCore::CommunicationPipe* a_pipe);
+#else
+    EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::CommunicationPipe* a_pipe, uint32_t a_pipefileID, uint32_t a_width, uint32_t a_height);
+#endif
 
     void FlushDMAImages();
-    void Terminate();
-    void Cleanup();
+    void DMAUpdate();
 
 protected:
 
 public:
-    ProcessManager();
-    ~ProcessManager();
+    ~EngineProcess();
 
-    bool IsRunning() const;
-
-    // This makes me uncomfortable handing over a SSHPipe
-    inline SSHPipe* GetRemotePipe() const
-    {
-#ifdef WIN32
-        return nullptr;
-#else
-        return m_remotePipe;
-#endif
-    }
-
-    bool IsRemoteConnected() const;
-    inline bool IsRemoteRunning() const
-    {
-        return IISBITSET(m_flags, RemoteModeBit) && IsRunning();
-    }
-
-    GLuint GetImage() const;
-
-    inline uint32_t GetWidth()
-    {
-        return m_width;
-    }
-    inline uint32_t GetHeight()
-    {
-        return m_height;
-    }
-
-    inline double GetFPS() const
+    inline float GetFPS() const
     {
         return m_fps;
     }
-    inline double GetUPS() const
+    inline float GetUPS() const
     {
         return m_ups;
     }
 
-    inline bool GetCaptureInput() const
-    {
-        return IISBITSET(m_flags, CaptureInputBit);
-    }
-    inline void SetCaptureInput(bool a_capture)
-    {
-        ITOGGLEBIT(a_capture, m_flags, CaptureInputBit);
-    }
-    inline e_CursorState GetCursorState() const
-    {
-        return m_cursorState;
-    }
+    bool IsAlive() const;
+    bool IsPipeAlive() const;
+    bool IsRemote() const;
+
+    GLuint GetImage() const;
 
     void SetSize(uint32_t a_width, uint32_t a_height);
-   
-    void CaptureFrame();
 
     void PushCursorPos(const glm::vec2& a_cPos);
     void PushMouseState(uint8_t a_state);
     void PushKeyboardState(const IcarianCore::KeyboardState& a_state);
 
-    bool ConnectRemotePassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress);
+    void CaptureFrame();
 
-    bool Start(const std::filesystem::path& a_workingDir);
-    bool StartRemote();
-    
-    void Update();
+    static EngineProcess* CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height);
+    static EngineProcess* CreateRemoteProcess(SSHPipe* a_sshPipe, uint16_t a_clientPort, uint32_t a_width, uint32_t a_height);
 
-    void Stop();
+    bool Update(std::queue<IcarianCore::PipeMessage>* a_msgs);
 };
 
 // MIT License

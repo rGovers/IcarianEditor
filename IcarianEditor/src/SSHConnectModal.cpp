@@ -10,12 +10,10 @@
 #include "FlareImGui.h"
 #include "Modals/ErrorModal.h"
 #include "Modals/SSHConnectedModal.h"
-#include "ProcessManager.h"
 
-SSHConnectModal::SSHConnectModal(AppMain* a_app, ProcessManager* a_processManager) : Modal("Connect SSH")
+SSHConnectModal::SSHConnectModal(AppMain* a_app) : Modal("Connect SSH")
 {
     m_app = a_app;
-    m_processManager = a_processManager;
 
     m_user[0] = 0;
     m_addr[0] = 0;
@@ -33,6 +31,10 @@ SSHConnectModal::~SSHConnectModal()
 
 bool SSHConnectModal::Update()
 {
+    ImGui::Text("%s", "Those not aware of the security implications of SSH and giving it to an application. DO NOT CONTINUE, click cancel.");
+
+    ImGui::Separator();
+
     FlareImGui::Label("User");
     ImGui::SameLine();
     ImGui::InputText("##User", m_user, sizeof(m_user));
@@ -71,14 +73,14 @@ bool SSHConnectModal::Update()
             return true;
         }
 
-        if (!m_processManager->ConnectRemotePassword(m_user, m_addr, (uint16_t)m_port, (uint16_t)m_clientPort, m_compress))
+        if (!m_app->ConnectRemote(m_user, m_addr, (uint16_t)m_port, (uint16_t)m_clientPort, m_compress))
         {
             m_app->PushModal(new ErrorModal("Failed to connect"));
 
             return true;
         }
 
-        SSHPipe* sshPipe = m_processManager->GetRemotePipe();
+        SSHPipe* sshPipe = m_app->GetSSHPipe();
 
         m_app->PushModal(new SSHConnectedModal(sshPipe));
 

@@ -7,7 +7,6 @@
 #include "Modals/Modal.h"
 
 class AppMain;
-class ProcessManager;
 
 class SSHConnectModal : public Modal
 {
@@ -16,7 +15,6 @@ private:
     // IF THE CLIENT HAS A MECHANISM TO HANDLE IT IT CAN PROBABLY DO IT MORE SECURELY OTHERWISE GET USERS TO USE A DIFFERENT CLIENT
     // I KNOW ALOT DESPITE BEING CONSOLE APPLICATIONS DO HAVE ENOUGH TO POP UP A GUI TO ENTER THE PASSWORD AUTOMATICALLY
     AppMain*        m_app;
-    ProcessManager* m_processManager;
 
     char            m_addr[256];
     char            m_user[256];
@@ -27,7 +25,7 @@ private:
 protected:
 
 public:
-    SSHConnectModal(AppMain* a_app, ProcessManager* a_processManager);
+    SSHConnectModal(AppMain* a_app);
     virtual ~SSHConnectModal();
 
     virtual bool Update();

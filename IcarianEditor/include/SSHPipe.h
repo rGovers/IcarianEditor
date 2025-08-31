@@ -37,7 +37,7 @@ private:
 
 #ifndef WIN32
     pid_t                 m_process;
-    
+
     int                   m_readPipe;
     int                   m_errorPipe;
     int                   m_writePipe;
@@ -56,7 +56,7 @@ private:
     int ExitCode() const;
 
     SSHPipe();
-    
+
 protected:
 
 public:
@@ -104,7 +104,7 @@ public:
 
     // Cannot make guarantees about std::string_view so pointer it is for the password
     // NOTE: This is fucking terrible I am a bumbling buffon do not do this
-    static SSHPipe* ConnectPassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress);
+    static SSHPipe* Connect(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress);
 };
 
 // MIT License

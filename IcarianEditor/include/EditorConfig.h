@@ -51,6 +51,9 @@ private:
 
     bool         m_useDegrees = false;
 
+    float        m_engineShutdownTimeout = 5.0f;
+    float        m_enginePipeTimeout = 5.0f;
+
     glm::vec4    m_backgroundColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
     float        m_editorMouseSensitivity = 0.01f;
 
@@ -87,6 +90,12 @@ public:
     static ImGuiKey GetKeyBind(e_KeyBindTarget a_keyBind);
     static const char* GetKeyBindName(e_KeyBindTarget a_keyBind);
     static void SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key);
+
+    static float GetEngineShutdownTimeout();
+    static void SetEngineShutdownTimeout(float a_timeoutSec);
+
+    static float GetEnginePipeTimeout();
+    static void SetEnginePipeTimeout(float a_timeoutSec);
 
     static void Deserialize();
     static void Serialize();

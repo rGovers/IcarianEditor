@@ -120,23 +120,23 @@ Application::~Application()
     }
 }
 
-void Application::SetCursorState(e_CursorState a_state)
+void Application::SetCursorState(e_ApplicationCursorState a_state)
 {
     switch (a_state) 
     {
-    case CursorState_Normal:
+    case ApplicationCursorState_Normal:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
         break;
     }
-    case CursorState_Hidden:
+    case ApplicationCursorState_Hidden:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
         break;
     }
-    case CursorState_Locked:
+    case ApplicationCursorState_Locked:
     {
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 

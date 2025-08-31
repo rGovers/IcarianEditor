@@ -4,11 +4,15 @@
 
 #include "LoadingTasks/RunRemoteLoadingTask.h"
 
-#include "ProcessManager.h"
+#include "Windows/GameWindow.h"
 
-RunRemoteLoadingTask::RunRemoteLoadingTask(ProcessManager* a_process)
+RunRemoteLoadingTask::RunRemoteLoadingTask(SSHPipe* a_sshPipe, uint16_t a_clientPort, GameWindow* a_window)
 {
-    m_process = a_process;
+    m_pipe = a_sshPipe;
+
+    m_window = a_window;
+
+    m_clientPort = a_clientPort;
 }
 RunRemoteLoadingTask::~RunRemoteLoadingTask()
 {
@@ -17,7 +21,7 @@ RunRemoteLoadingTask::~RunRemoteLoadingTask()
 
 void RunRemoteLoadingTask::Run()
 {
-    m_process->StartRemote();
+    m_window->StartRemote(m_pipe, m_clientPort);
 }
 
 // MIT License

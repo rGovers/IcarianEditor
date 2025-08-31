@@ -7,36 +7,41 @@
 #include <thread>
 
 #include "Core/IcarianAssert.h"
-#include "Core/IcarianError.h"
-#include "ProcessManager.h"
 #include "Project.h"
 #include "SCPPipe.h"
 #include "SSHPipe.h"
 
-SyncRemoteBuildLoadingTask::SyncRemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project)
+SyncRemoteBuildLoadingTask::SyncRemoteBuildLoadingTask(SSHPipe* a_sshPipe, Project* a_project)
 {
-    IERRBLOCK;
+    m_scpPipe = nullptr;
 
-    SSHPipe* pipe = a_process->GetRemotePipe();
+    if (a_sshPipe == nullptr)
+    {
+        return;
+    }
 
-    IERRCHECK(pipe != nullptr && pipe->IsAlive());
+    if (!a_sshPipe->IsAlive())
+    {
+        return;
+    }
 
-    const std::string user = pipe->GetUser();
-    const std::string addr = pipe->GetAddr();
-    const uint16_t port = pipe->GetSSHPort();
-    const bool compress = pipe->IsCompressed();
+    const std::string user = a_sshPipe->GetUser();
+    const std::string addr = a_sshPipe->GetAddr();
+    const uint16_t port = a_sshPipe->GetSSHPort();
+    const bool compress = a_sshPipe->IsCompressed();
 
-    const std::filesystem::path tmpPath = pipe->GetTempDirectory();
+    const std::filesystem::path tmpPath = a_sshPipe->GetTempDirectory();
     const std::filesystem::path remotePath = tmpPath / "IcarianRemote";
     const std::filesystem::path remoteCore = remotePath / "Core";
 
-    switch (pipe->GetHostOS()) 
+    const e_SSHHostOS hostOS = a_sshPipe->GetHostOS();
+    switch (hostOS) 
     {
     case SSHHostOS_WindowsPowerCMD:
     {
         const std::string cmd = "rd /s /q \"" + remoteCore.generic_string() + "\"";
-        
-        pipe->Send(cmd.c_str());
+
+        a_sshPipe->Send(cmd.c_str());
 
         break;
     }
@@ -44,7 +49,7 @@ SyncRemoteBuildLoadingTask::SyncRemoteBuildLoadingTask(ProcessManager* a_process
     {
         const std::string cmd = "rd -r \"" + remoteCore.generic_string() + "\"";
 
-        pipe->Send(cmd.c_str()); 
+        a_sshPipe->Send(cmd.c_str()); 
 
         break;
     }
@@ -52,7 +57,7 @@ SyncRemoteBuildLoadingTask::SyncRemoteBuildLoadingTask(ProcessManager* a_process
     {
         const std::string cmd = "rm -rf \"" + remoteCore.generic_string() + "\"";
 
-        pipe->Send(cmd.c_str());
+        a_sshPipe->Send(cmd.c_str());
 
         break;
     }
@@ -74,7 +79,7 @@ SyncRemoteBuildLoadingTask::~SyncRemoteBuildLoadingTask()
     if (m_scpPipe != nullptr)
     {
         delete m_scpPipe;
-    }   
+    }
 }
 
 void SyncRemoteBuildLoadingTask::Run()

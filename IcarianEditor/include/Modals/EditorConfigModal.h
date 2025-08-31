@@ -13,6 +13,7 @@ enum e_EditorConfigTab
     EditorConfigTab_General,
     EditorConfigTab_KeyBindings,
     EditorConfigTab_ExternalTools,
+    EditorConfigTab_Engine,
     EditorConfigTab_End
 };
 
@@ -27,6 +28,7 @@ private:
     static void GeneralTab();
     void KeyBindingsTab();
     static void ExternalToolsTab();
+    static void EngineTab();
 
 protected:
 

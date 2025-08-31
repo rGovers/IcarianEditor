@@ -7,35 +7,81 @@
 #include <imgui.h>
 
 #include "AppMain.h"
+#include "Core/IcarianDefer.h"
 #include "Core/IcarianLambda.h"
 #include "Core/InputBindings.h"
+#include "EngineProcess.h"
 #include "FlareImGui.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
 #include "LoadingTasks/RemoteBuildLoadingTask.h"
 #include "LoadingTasks/RunRemoteLoadingTask.h"
 #include "LoadingTasks/SerializeAssetsLoadingTask.h"
 #include "LoadingTasks/SyncRemoteBuildLoadingTask.h"
+#include "Logger.h"
 #include "Modals/ErrorModal.h"
 #include "Modals/LoadingModal.h"
 #include "Modals/SSHConnectModal.h"
-#include "ProcessManager.h"
+#include "ProfilerData.h"
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
-GameWindow::GameWindow(AppMain* a_app, ProcessManager* a_processManager, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
 {
     m_app = a_app;
 
-    m_processManager = a_processManager;
     m_project = a_project;
+
+    m_process = nullptr;
+
+    m_width = 0;
+    m_height = 0;
+
+    m_flags = 0;
 }
 GameWindow::~GameWindow()
 {
+    if (m_process != nullptr)
+    {
+        delete m_process;
+    }
+}
 
+void GameWindow::StartRemote(SSHPipe* a_sshPipe, uint16_t a_clientPort)
+{
+    m_process = EngineProcess::CreateRemoteProcess(a_sshPipe, a_clientPort, m_width, m_height);
 }
 
 void GameWindow::Update(double a_delta)
 {
+    if (m_process != nullptr && !m_process->IsAlive())
+    {
+        delete m_process;
+        m_process = nullptr;
+
+        ICLEARBIT(m_flags, CloseBit);
+    }
+
+    if (IISBITSET(m_flags, CloseBit))
+    {
+        if (m_process != nullptr)
+        {
+            delete m_process;
+            m_process = nullptr;
+        }
+
+        ICLEARBIT(m_flags, CloseBit);
+    }
+
+    if (IISBITSET(m_flags, ProfilerSessionBit) && m_process == nullptr)
+    {
+        if (IISBITSET(m_flags, ProfilerSessionBit))
+        {
+            ProfilerData::EndSession();
+
+            ICLEARBIT(m_flags, ProfilerSessionBit);
+        }
+    }
+
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     const ImVec2 winPos = ImGui::GetWindowPos();
@@ -43,91 +89,160 @@ void GameWindow::Update(double a_delta)
     const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
     const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
 
-    m_processManager->SetSize((uint32_t)sizeIm.x, (uint32_t)sizeIm.y);
-
-    const bool locked = m_processManager->GetCursorState() == CursorState_Locked;
-
-    // The oh fuck the app has taken input away button stop giving control
-    if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
-    {
-        const bool captureInput = !m_processManager->GetCaptureInput();
-
-        m_processManager->SetCaptureInput(captureInput);
-
-        if (captureInput && locked)
-        {
-            m_app->SetCursorState(CursorState_Locked);
-        }
-        else
-        {
-            m_app->SetCursorState(CursorState_Normal);
-        }
-    }
-
+    const bool locked = m_app->GetGameCursorState() == CursorState_Locked;
     const bool focused = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
-    const bool captureInput = m_processManager->GetCaptureInput();
 
-    if (captureInput && (focused || locked))
+    m_width = (uint32_t)sizeIm.x;
+    m_height = (uint32_t)sizeIm.y;
+
+    SSHPipe* sshPipe = m_app->GetSSHPipe();
+
+    const bool isRunning = m_process != nullptr && m_process->IsAlive();
+    if (isRunning)
     {
-        if (locked)
+        m_process->SetSize(m_width, m_height);
+
+        const bool captureInput = m_app->CapturesInput();
+
+        if (captureInput && (focused || locked))
         {
-            m_app->SetCursorState(CursorState_Locked);
-
-            const glm::vec2 cursorPos = m_app->GetCursorPos();
-
-            const glm::vec2 delta = cursorPos - m_lastCursorPos;
-            m_processManager->PushCursorPos(delta);
-
-            m_lastCursorPos = cursorPos;
-        }
-        else 
-        {
-            m_app->SetCursorState(CursorState_Normal);
-
-            const ImVec2 mousePosIm = ImGui::GetMousePos();
-
-            const glm::vec2 cPos = glm::vec2(mousePosIm.x - (winPos.x + vMinIm.x), mousePosIm.y - (winPos.y + vMinIm.y));
-
-            m_processManager->PushCursorPos(cPos);
-        }
-
-        uint8_t mouseState = 0;
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-        {
-            mouseState |= 0b1 << MouseButton_Left;
-        }
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-        {
-            mouseState |= 0b1 << MouseButton_Middle;
-        }
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
-        {
-            mouseState |= 0b1 << MouseButton_Right;
-        }
-
-        m_processManager->PushMouseState(mouseState);
-
-        IcarianCore::KeyboardState state;
-        for (uint32_t i = 0; i < KeyCode_Last; ++i)
-        {
-            const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
-            if (key != ImGuiKey_None)
+            if (locked)
             {
-                if (ImGui::IsKeyDown(key))
+                m_app->SetGameCursorState(CursorState_Locked);
+
+                const glm::vec2 cursorPos = m_app->GetCursorPos();
+
+                const glm::vec2 delta = cursorPos - m_lastCursorPos;
+                m_process->PushCursorPos(delta);
+
+                m_lastCursorPos = cursorPos;
+            }
+            else
+            {
+                m_app->SetGameCursorState(CursorState_Normal);
+
+                const ImVec2 mousePosIm = ImGui::GetMousePos();
+
+                const glm::vec2 cPos = glm::vec2(mousePosIm.x - (winPos.x + vMinIm.x), mousePosIm.y - (winPos.y + vMinIm.y));
+
+                m_process->PushCursorPos(cPos);
+            }
+
+            uint8_t mouseState = 0;
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                mouseState |= 0b1 << MouseButton_Left;
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+            {
+                mouseState |= 0b1 << MouseButton_Middle;
+            }
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+            {
+                mouseState |= 0b1 << MouseButton_Right;
+            }
+
+            m_process->PushMouseState(mouseState);
+
+            IcarianCore::KeyboardState state;
+            for (uint32_t i = 0; i < KeyCode_Last; ++i)
+            {
+                const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
+                if (key != ImGuiKey_None)
                 {
-                    state.SetKey((e_KeyCode)i, true);
+                    if (ImGui::IsKeyDown(key))
+                    {
+                        state.SetKey((e_KeyCode)i, true);
+                    }
                 }
+            }
+
+            m_process->PushKeyboardState(state);
+        }
+
+        std::queue<IcarianCore::PipeMessage> messages;
+        m_process->Update(&messages);
+
+        while (!messages.empty())
+        {
+            const IcarianCore::PipeMessage msg = messages.front();
+            IDEFER(
+            if (msg.Data != nullptr)
+            {
+                delete[] msg.Data;
+            });
+            messages.pop();
+
+            switch (msg.Type)
+            {
+            case IcarianCore::PipeMessageType_SetCursorState:
+            {
+                // Not sure the best way to handle this as there can be multiple windows but the cursor can only be in 1 state at a time in the desktop environment
+                // Currently I just use the last set cursor state but not sure the best way to handle it need to think for a bit
+                m_app->SetGameCursorState(*(e_CursorState*)msg.Data);
+
+                break;
+            }
+            case IcarianCore::PipeMessageType_Message:
+            {
+                constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
+
+                const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
+
+                switch (*(e_LoggerMessageType*)msg.Data)
+                {
+                case LoggerMessageType_Message:
+                {
+                    Logger::Message(str, false, false);
+
+                    break;
+                }
+                case LoggerMessageType_Warning:
+                {
+                    Logger::Warning(str, false, false);
+
+                    break;
+                }
+                case LoggerMessageType_Error:
+                {
+                    Logger::Error(str, false, false);
+
+                    break;
+                }
+                }
+
+                break;
+            }
+            case IcarianCore::PipeMessageType_ProfileScope:
+            {
+                if (IISBITSET(m_flags, ProfilerSessionBit))
+                {
+                    ProfilerData::PushData(*(ProfileScope*)msg.Data);
+                }
+
+                break;
+            }
+            case IcarianCore::PipeMessageType_RuntimeMessage:
+            {
+                // Ignore for now as the engine should not need to send runtime messages back and forth to the editor in the game window at this current stage
+
+                break;
+            }
+            default:
+            {
+                Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
+
+                break;
+            }
             }
         }
 
-        m_processManager->PushKeyboardState(state);
+        const GLuint imageHandle = m_process->GetImage();
+        ImGui::Image((ImTextureID)(uintptr_t)imageHandle, sizeIm);
     }
 
-    ImGui::Image((ImTextureID)(uintptr_t)m_processManager->GetImage(), sizeIm);
-
-    const bool isRunning = m_processManager->IsRunning();
-    const bool isRemote = m_processManager->IsRemoteConnected();
-    const bool isRemoteRunning = m_processManager->IsRemoteRunning();
+    const bool isRemote = m_app->GetSSHPipe() != nullptr;
+    const bool isRemoteRunning = isRunning && isRemote && m_process->IsRemote();
 
     const uint32_t buttonCount = ILAMBDA(
     {
@@ -140,7 +255,7 @@ void GameWindow::Update(double a_delta)
 
             ILRETURN 2;
         }
-        
+
 #ifdef WIN32
         ILRETURN 1;
 #else
@@ -174,9 +289,9 @@ void GameWindow::Update(double a_delta)
 
         if (FlareImGui::ImageButton("Stop Game", stopTexture, glm::vec2(25.0f), false))
         {
-            m_processManager->Stop();
-
-            m_app->SetCursorState(CursorState_Normal);
+            // Annoying with the way ImGui works as call order matters and prefer not create a buffer texture as that seems like a waste of VRAM
+            // Defer closing the application to the next frame
+            ISETBIT(m_flags, CloseBit);
         }
 
         if (!isRemoteRunning)
@@ -185,7 +300,7 @@ void GameWindow::Update(double a_delta)
 
             if (FlareImGui::ImageButton("Capture Frame", "Textures/Icons/Controls_Screencapture.png", glm::vec2(25.0f), false))
             {
-                m_processManager->CaptureFrame();
+                m_process->CaptureFrame();
             }
         }
     }
@@ -200,9 +315,17 @@ void GameWindow::Update(double a_delta)
                 return;
             }
 
+            ICLEARBIT(m_flags, ProfilerSessionBit);
+            if (ProfilerData::StartSession())
+            {
+                ISETBIT(m_flags, ProfilerSessionBit);
+            }
+
             const std::filesystem::path cachePath = m_project->GetCachePath();
 
-            m_processManager->Start(cachePath);
+            m_app->SetGameCursorState(CursorState_Normal);
+
+            m_process = EngineProcess::CreateProcess(cachePath, m_width, m_height);
         }
 
 #ifndef WIN32
@@ -217,13 +340,18 @@ void GameWindow::Update(double a_delta)
 
                 const std::string name = m_project->GetName();
 
+                const e_SSHHostOS hostOS = sshPipe->GetHostOS();
+                const e_SSHHostArchitecture hostArch = sshPipe->GetHostArchitecture();
+
+                const uint16_t clientPort = m_app->GetClientPort();
+
                 LoadingTask* tasks[] = 
                 {
-                    new RemoteBuildLoadingTask(m_processManager, m_project),
+                    new RemoteBuildLoadingTask(hostOS, hostArch, m_project),
                     new GenerateConfigLoadingTask(remotePath, name, "Vulkan"),
                     new SerializeAssetsLoadingTask(remotePath, m_project),
-                    new SyncRemoteBuildLoadingTask(m_processManager, m_project),
-                    new RunRemoteLoadingTask(m_processManager)
+                    new SyncRemoteBuildLoadingTask(sshPipe, m_project),
+                    new RunRemoteLoadingTask(sshPipe, clientPort, this)
                 };
 
                 m_app->PushModal(new LoadingModal(tasks, sizeof(tasks) / sizeof(*tasks)));
@@ -233,7 +361,7 @@ void GameWindow::Update(double a_delta)
         {
             if (FlareImGui::ImageButton("Connect", "Textures/Icons/Controls_Remote.png", glm::vec2(25.0f), false))
             {
-                m_app->PushModal(new SSHConnectModal(m_app, m_processManager));
+                m_app->PushModal(new SSHConnectModal(m_app));
             }
         }
 #endif

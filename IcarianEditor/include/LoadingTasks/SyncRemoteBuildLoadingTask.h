@@ -6,9 +6,9 @@
 
 #include "LoadingTasks/LoadingTask.h"
 
-class ProcessManager;
 class Project;
 class SCPPipe;
+class SSHPipe;
 
 class SyncRemoteBuildLoadingTask : public LoadingTask
 {
@@ -18,7 +18,7 @@ private:
 protected:
 
 public:
-    SyncRemoteBuildLoadingTask(ProcessManager* a_process, Project* a_project);
+    SyncRemoteBuildLoadingTask(SSHPipe* a_sshPipe, Project* a_project);
     virtual ~SyncRemoteBuildLoadingTask();
 
     virtual void Run();

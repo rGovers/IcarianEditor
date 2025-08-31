@@ -45,134 +45,153 @@ EditorConfig::~EditorConfig()
 
 void EditorConfig::Deserialize()
 {
-    if (std::filesystem::exists(ConfigFile))
+    if (!std::filesystem::exists(ConfigFile))
     {
-        tinyxml2::XMLDocument doc;
-        if (doc.LoadFile(ConfigFile) == tinyxml2::XML_SUCCESS)
+        return;
+    }
+
+    tinyxml2::XMLDocument doc;
+    if (doc.LoadFile(ConfigFile) != tinyxml2::XML_SUCCESS)
+    {
+        return;
+    }
+
+    tinyxml2::XMLElement* root = doc.FirstChildElement("Config");
+    if (root == nullptr)
+    {
+        return;
+    }
+
+    for (const tinyxml2::XMLElement* element = root->FirstChildElement(); element != nullptr; element = element->NextSiblingElement())
+    {
+        const char* name = element->Name();
+
+        switch (StringHash(name))
         {
-            tinyxml2::XMLElement* root = doc.FirstChildElement("Config");
-            if (root != nullptr)
+        case StringHash("UseDegrees"):
+        {
+            Instance->m_useDegrees = element->BoolText();
+
+            break;
+        }
+        case StringHash("EngineShutdownTimeout"):
+        {
+            Instance->m_engineShutdownTimeout = element->FloatText();
+
+            break;
+        }
+        case StringHash("EnginePipeTimeout"):
+        {
+            Instance->m_enginePipeTimeout = element->FloatText();
+
+            break;
+        }
+        case StringHash("BackgroundColor"):
+        {
+            for (const tinyxml2::XMLElement* colorElement = element->FirstChildElement(); colorElement != nullptr; colorElement = colorElement->NextSiblingElement())
             {
-                for (const tinyxml2::XMLElement* element = root->FirstChildElement(); element != nullptr; element = element->NextSiblingElement())
+                const char* colorName = colorElement->Name();
+
+                switch (StringHash<uint32_t>(colorName))
                 {
-                    const char* name = element->Name();
+                case StringHash<uint32_t>("R"):
+                {
+                    Instance->m_backgroundColor.r = colorElement->FloatText();
 
-                    switch (StringHash(name))
-                    {
-                    case StringHash("UseDegrees"):
-                    {
-                        Instance->m_useDegrees = element->BoolText();
+                    break;   
+                }
+                case StringHash<uint32_t>("G"):
+                {
+                    Instance->m_backgroundColor.g = colorElement->FloatText();
 
-                        break;
-                    }
-                    case StringHash("BackgroundColor"):
-                    {
-                        for (const tinyxml2::XMLElement* colorElement = element->FirstChildElement(); colorElement != nullptr; colorElement = colorElement->NextSiblingElement())
-                        {
-                            const char* colorName = colorElement->Name();
-                            switch (StringHash<uint32_t>(colorName))
-                            {
-                            case StringHash<uint32_t>("R"):
-                            {
-                                Instance->m_backgroundColor.r = colorElement->FloatText();
+                    break;
+                }
+                case StringHash<uint32_t>("B"):
+                {
+                    Instance->m_backgroundColor.b = colorElement->FloatText();
 
-                                break;   
-                            }
-                            case StringHash<uint32_t>("G"):
-                            {
-                                Instance->m_backgroundColor.g = colorElement->FloatText();
+                    break;
+                }
+                case StringHash<uint32_t>("A"):
+                {
+                    Instance->m_backgroundColor.a = colorElement->FloatText();
 
-                                break;
-                            }
-                            case StringHash<uint32_t>("B"):
-                            {
-                                Instance->m_backgroundColor.b = colorElement->FloatText();
-
-                                break;
-                            }
-                            case StringHash<uint32_t>("A"):
-                            {
-                                Instance->m_backgroundColor.a = colorElement->FloatText();
-
-                                break;
-                            }
-                            }
-                        }
-
-                        break;
-                    }
-                    case StringHash("EditorMouseSensitivity"):
-                    {
-                        Instance->m_editorMouseSensitivity = element->FloatText();
-
-                        break;
-                    }
-                    case StringHash("CodeEditor"):
-                    {
-                        const char* codeEditor = element->GetText();
-                        switch (StringHash(codeEditor))
-                        {
-                        case StringHash("Default"):
-                        {
-                            Instance->m_codeEditor = CodeEditor_Default;
-
-                            break;
-                        }
-                        case StringHash("VisualStudioCode"):
-                        {
-                            Instance->m_codeEditor = CodeEditor_VisualStudioCode;
-
-                            break;
-                        }
-                        case StringHash("VisualStudio"):
-                        {
-                            Instance->m_codeEditor = CodeEditor_VisualStudio;
-
-                            break;
-                        }
-                        case StringHash("Kate"):
-                        {
-                            Instance->m_codeEditor = CodeEditor_Kate;
-
-                            break;
-                        }
-                        }
-
-                        break;
-                    }
-                    case StringHash("DefEditor"):
-                    {
-                        const char* defEditor = element->GetText();
-                        if (strcmp(defEditor, "Editor") == 0)
-                        {
-                            Instance->m_defEditor = DefEditor_Editor;
-                        }
-                        else if (strcmp(defEditor, "VisualStudioCode") == 0)
-                        {
-                            Instance->m_defEditor = DefEditor_VisualStudioCode;
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
-                        {
-                            const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
-
-                            if (keyBindName == name)
-                            {
-                                Instance->m_keyBinds[i] = (ImGuiKey)element->IntText();
-
-                                break;
-                            }
-                        }
-
-                        break;
-                    }
-                    }
+                    break;
+                }
                 }
             }
+
+            break;
+        }
+        case StringHash("EditorMouseSensitivity"):
+        {
+            Instance->m_editorMouseSensitivity = element->FloatText();
+
+            break;
+        }
+        case StringHash("CodeEditor"):
+        {
+            const char* codeEditor = element->GetText();
+            switch (StringHash(codeEditor))
+            {
+            case StringHash("Default"):
+            {
+                Instance->m_codeEditor = CodeEditor_Default;
+
+                break;
+            }
+            case StringHash("VisualStudioCode"):
+            {
+                Instance->m_codeEditor = CodeEditor_VisualStudioCode;
+
+                break;
+            }
+            case StringHash("VisualStudio"):
+            {
+                Instance->m_codeEditor = CodeEditor_VisualStudio;
+
+                break;
+            }
+            case StringHash("Kate"):
+            {
+                Instance->m_codeEditor = CodeEditor_Kate;
+
+                break;
+            }
+            }
+
+            break;
+        }
+        case StringHash("DefEditor"):
+        {
+            const char* defEditor = element->GetText();
+            if (strcmp(defEditor, "Editor") == 0)
+            {
+                Instance->m_defEditor = DefEditor_Editor;
+            }
+            else if (strcmp(defEditor, "VisualStudioCode") == 0)
+            {
+                Instance->m_defEditor = DefEditor_VisualStudioCode;
+            }
+
+            break;
+        }
+        default:
+        {
+            for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
+            {
+                const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
+
+                if (keyBindName == name)
+                {
+                    Instance->m_keyBinds[i] = (ImGuiKey)element->IntText();
+
+                    break;
+                }
+            }
+
+            break;
+        }
         }
     }
 }
@@ -188,6 +207,14 @@ void EditorConfig::Serialize()
     tinyxml2::XMLElement* useDegrees = doc.NewElement("UseDegrees");
     useDegrees->SetText(Instance->m_useDegrees);
     root->InsertEndChild(useDegrees);
+
+    tinyxml2::XMLElement* engineShutdownTimeout = doc.NewElement("EngineShutdownTimeout");
+    engineShutdownTimeout->SetText(Instance->m_engineShutdownTimeout);
+    root->InsertEndChild(engineShutdownTimeout);
+
+    tinyxml2::XMLElement* pipeTimeout = doc.NewElement("EnginePipeTimeout");
+    pipeTimeout->SetText(Instance->m_enginePipeTimeout);
+    root->InsertEndChild(pipeTimeout);
 
     tinyxml2::XMLElement* backgroundColor = doc.NewElement("BackgroundColor");
     root->InsertEndChild(backgroundColor);
@@ -342,6 +369,24 @@ const char* EditorConfig::GetKeyBindName(e_KeyBindTarget a_keyBind)
 void EditorConfig::SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key)
 {
     Instance->m_keyBinds[a_keyBind] = a_key;
+}
+
+float EditorConfig::GetEngineShutdownTimeout()
+{
+    return Instance->m_engineShutdownTimeout;
+}
+void EditorConfig::SetEngineShutdownTimeout(float a_timeout)
+{
+    Instance->m_engineShutdownTimeout = a_timeout;
+}
+
+float EditorConfig::GetEnginePipeTimeout()
+{
+    return Instance->m_enginePipeTimeout;
+}
+void EditorConfig::SetEnginePipeTimeout(float a_timeout)
+{
+    Instance->m_enginePipeTimeout = a_timeout;
 }
 
 // MIT License

@@ -24,10 +24,10 @@ SSHPipe::SSHPipe()
 {
     m_hostOS = SSHHostOS_Unknown;
     m_hostArchitecture = SSHHostArchitecture_Unknown;
-    
+
 #ifndef WIN32
     m_process = -1;
-    
+
     m_readPipe = -1;
     m_errorPipe = -1;
     m_writePipe = -1;
@@ -466,7 +466,7 @@ static std::string FormatWindowsPathStr(const std::string_view& a_str)
     return str;
 }
 
-SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress)
+SSHPipe* SSHPipe::Connect(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, bool a_compress)
 {
     IERRBLOCK;
 
@@ -532,9 +532,7 @@ SSHPipe* SSHPipe::ConnectPassword(const std::string_view& a_user, const std::str
             " -M"
             " -S ~/.ssh/IcarianSSHControl:%h:%p:%r"
             " -o NumberOfPasswordPrompts=1"
-            " -o PubkeyAuthentication=no"
             " -o ControlPersist=1m"
-            " -o PreferredAuthentications=password" + 
             " -p " + std::to_string(a_port);
 
         if (a_compress)

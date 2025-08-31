@@ -28,12 +28,12 @@
 #include "Modals/EditorConfigModal.h"
 #include "Modals/ProjectConfigModal.h"
 #include "Modals/RuntimeModal.h"
-#include "ProcessManager.h"
 #include "ProfilerData.h"
 #include "Project.h"
 #include "RenderCommand.h"
 #include "Runtime/RuntimeManager.h"
 #include "Runtime/RuntimeStorage.h"
+#include "SSHPipe.h"
 #include "Windows/AssetBrowserWindow.h"
 #include "Windows/ConsoleWindow.h"
 #include "Windows/EditorWindow.h"
@@ -195,6 +195,12 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     Instance = this;
 
+    m_flags = 0;
+    m_cursorState = CursorState_Normal;
+    m_windowActions = 0;
+
+    ISETBIT(m_flags, CaptureInputBit);
+
     EditorData::Init();
 
     IMGUI_CHECKVERSION();
@@ -207,7 +213,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 #endif
 
     ImGuiIO& io = ImGui::GetIO();
-    // Disabling keyboary input due to it taking control from the Game window with some binds
+    // Disabling keyboard input due to it taking control from the Game window with some binds
     // Lowers accessibility so may find a more elegant solution down the line
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -221,8 +227,6 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     ProfilerData::Init();
 
     FlareImGui::Init();
-
-    m_process = new ProcessManager();
     RuntimeManager::Init();
 
     EditorInputManager::Init();
@@ -241,10 +245,10 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     GUI::Init(this);
 
     FileHandler::Init(m_rStorage, m_workspace);
-    
+
     m_windows.emplace_back(new ConsoleWindow());
     m_windows.emplace_back(new EditorWindow(m_workspace));
-    m_windows.emplace_back(new GameWindow(this, m_process, m_project));
+    m_windows.emplace_back(new GameWindow(this, m_project));
     m_windows.emplace_back(new AssetBrowserWindow(this, m_project));
     m_windows.emplace_back(new HierarchyWindow());
     m_windows.emplace_back(new PropertiesWindow());
@@ -252,6 +256,7 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     m_windows.emplace_back(new WelcomeWindow(m_project));
 
+    // OpenGL is funny about procedural rendering so we just create and bind an empty VAO to suppress the errors
     glGenVertexArrays(1, &m_vao);
 
     glBindVertexArray(m_vao);
@@ -263,17 +268,6 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 }
 AppMain::~AppMain()
 {
-    glDeleteVertexArrays(1, &m_vao);
-
-    delete m_project;
-
-    AssetLibrary::Destroy();
-
-    if (m_process->IsRunning())
-    {
-        m_process->Stop();
-    }
-
     for (Window* wind : m_windows)
     {
         delete wind;
@@ -284,7 +278,12 @@ AppMain::~AppMain()
         delete modal;
     }
 
-    delete m_process;
+    glDeleteVertexArrays(1, &m_vao);
+
+    delete m_project;
+
+    AssetLibrary::Destroy();
+
     RuntimeManager::Destroy();
     delete m_rStorage;
 
@@ -314,7 +313,7 @@ static bool InBounds(const glm::vec2& a_point, const glm::vec2& a_min, const glm
 }
 
 void AppMain::Update(double a_delta, double a_time)
-{    
+{
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -340,12 +339,30 @@ void AppMain::Update(double a_delta, double a_time)
     bool maximized = IsMaximized();
 
     const bool validProject = m_project->IsValidProject();
-    
+
     bool refresh = false;
+
+    // The oh fuck the app has taken input away button stop giving control
+    if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
+    {
+        const bool captureInput = !IISBITSET(m_flags, CaptureInputBit);
+        ITOGGLEBIT(captureInput, m_flags, CaptureInputBit);
+
+        const bool locked = m_cursorState == CursorState_Locked;
+
+        if (captureInput && locked)
+        {
+            SetCursorState(ApplicationCursorState_Locked);
+        }
+        else
+        {
+            SetCursorState(ApplicationCursorState_Normal);
+        }
+    }
 
     if (validProject)
     {
-        if (!m_focused && focusState)
+        if (!IISBITSET(m_flags, FocusedBit) && focusState)
         {
             const std::filesystem::path workingDir = m_project->GetPath();
 
@@ -361,19 +378,17 @@ void AppMain::Update(double a_delta, double a_time)
         }
     }
 
-    m_focused = focusState;
+    ITOGGLEBIT(focusState, m_flags, FocusedBit);
 
     if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
     }
 
-    m_process->Update();
-
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 10.0f));
         IDEFER(ImGui::PopStyleVar());
-        
+
         const bool open = ImGui::BeginMainMenuBar();
         IDEFER(ImGui::EndMainMenuBar());
 
@@ -445,13 +460,13 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Game"))
                     {
-                        m_windows.emplace_back(new GameWindow(this, m_process, m_project));
+                        m_windows.emplace_back(new GameWindow(this, m_project));
                     }
 
                     if (ImGui::MenuItem("Asset Browser"))
                     {
                         m_windows.emplace_back(new AssetBrowserWindow(this, m_project));
-                    }                
+                    }
 
                     if (ImGui::MenuItem("Console"))
                     {
@@ -537,42 +552,6 @@ void AppMain::Update(double a_delta, double a_time)
                 drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
 
                 ImGui::Text("%s", m_fpsText.c_str());
-            }
-
-            if (!m_engineFpsText.empty())
-            {
-                const ImVec2 size = ImGui::CalcTextSize(m_engineFpsText.c_str());
-
-                offset += size.x + 20.0f;
-
-                const float xPos = width - offset;
-
-                ImGui::SetCursorPosX(xPos);
-
-                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
-                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
-
-                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
-
-                ImGui::Text("%s", m_engineFpsText.c_str());
-            }
-
-            if (!m_engineUpsText.empty())
-            {
-                const ImVec2 size = ImGui::CalcTextSize(m_engineUpsText.c_str());
-
-                offset += size.x + 20.0f;
-
-                const float xPos = width - offset;
-
-                ImGui::SetCursorPosX(xPos);
-
-                const ImVec2 minRect = ImVec2(windowPos.x + xPos - style.ItemSpacing.x, windowPos.y);
-                const ImVec2 maxRect = ImVec2(windowPos.x + xPos + size.x + style.ItemSpacing.x, windowPos.y + MenuBarSize);
-
-                drawList->AddRectFilled(minRect, maxRect, headerColor, 5.0f);
-
-                ImGui::Text("%s", m_engineUpsText.c_str());
             }
 
             if (validProject)
@@ -673,10 +652,10 @@ void AppMain::Update(double a_delta, double a_time)
         const glm::vec2 mousePos = GetMousePos();
 
         const glm::vec2 cDelta = mousePos - m_startMousePos;
-        
+
         const float newHeight = m_startWindowSize.y - cDelta.y;
         const float newYPos = m_startWindowPos.y + cDelta.y;
-        
+
         SetWindowSize(glm::vec2(m_startWindowSize.x, newHeight));
         SetWindowPos(glm::vec2(m_startWindowPos.x, newYPos));
 
@@ -810,20 +789,6 @@ void AppMain::Update(double a_delta, double a_time)
         const double fps = 1.0 / a_delta;
 
         m_fpsText = "FPS " + std::to_string((uint32_t)fps);
-
-        if (m_process->IsRunning())
-        {
-            const int ups = (int)m_process->GetUPS();
-            const int fps = (int)m_process->GetFPS();
-
-            m_engineFpsText = "Engine FPS " + std::to_string(fps);
-            m_engineUpsText = "Engine UPS " + std::to_string(ups);
-        }
-        else
-        {
-            m_engineFpsText.clear();
-            m_engineUpsText.clear();
-        }
     }
 
     if (!maximized)
@@ -868,6 +833,30 @@ void AppMain::SetRuntimeModalState(uint32_t a_index, bool a_state)
     }
 
     m_runtimeModalState[a_index] = a_state;
+}
+
+bool AppMain::ConnectRemote(const std::string_view& a_user, const std::string_view& a_addr, uint16_t a_port, uint16_t a_clientPort, bool a_compress)
+{
+#ifdef WIN32
+    return false;
+#else
+    if (m_remotePipe != nullptr)
+    {
+        return false;
+    }
+
+    m_clientPort = a_clientPort;
+    m_remotePipe = SSHPipe::Connect(a_user, a_addr, a_port, a_compress);
+
+    return m_remotePipe != nullptr;
+#endif
+
+    return false;
+}
+
+bool AppMain::CapturesInput() const
+{
+    return IISBITSET(m_flags, CaptureInputBit);
 }
 
 void AppMain::PushModal(Modal* a_modal)
