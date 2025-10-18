@@ -29,6 +29,14 @@ struct DMASwapchainImage
     uint64_t Offset;
 };
 
+enum e_EngineFrameWaitStatus
+{
+    EngineFrameWaitStatus_Sucess,
+    EngineFrameWaitStatus_Wait,
+    EngineFrameWaitStatus_InvalidMode,
+    EngineFrameWaitStatus_Reset,
+};
+
 class EngineProcess
 {
 private:
@@ -88,7 +96,6 @@ private:
 #endif
 
     void FlushDMAImages();
-    void DMAUpdate();
 
 protected:
 
@@ -104,6 +111,8 @@ public:
         return m_ups;
     }
 
+    bool IsDMAMode() const;
+
     bool IsAlive() const;
     bool IsPipeAlive() const;
     bool IsRemote() const;
@@ -118,10 +127,16 @@ public:
 
     void CaptureFrame();
 
-    static EngineProcess* CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height);
+    void SendRuntimeMessage(const std::string_view& a_string, const void* a_data, uint32_t a_dataLength);
+
+    static EngineProcess* CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height, uint32_t a_threadCount);
     static EngineProcess* CreateRemoteProcess(SSHPipe* a_sshPipe, uint16_t a_clientPort, uint32_t a_width, uint32_t a_height);
 
     bool Update(std::queue<IcarianCore::PipeMessage>* a_msgs);
+    void DMAUpdate();
+
+    void SignalImage();
+    e_EngineFrameWaitStatus WaitImage();
 };
 
 // MIT License

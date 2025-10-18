@@ -9,11 +9,7 @@
 #include <glad/glad.h>
 #include <unordered_map>
 
-class RuntimeStorage;
 class Texture;
-class Workspace;
-
-#include "EditorFileHandlerInteropStructures.h"
 
 class FileHandler
 {
@@ -21,24 +17,18 @@ public:
     using FileCallback = std::function<void(const std::filesystem::path&, const std::filesystem::path&, uint32_t, const uint8_t*)>;
 
 private:
-    FileTextureHandle                             m_runtimeTexHandle;
-
-    RuntimeStorage*                               m_storage;
-
     std::unordered_map<std::string, Texture*>     m_extTex;
     std::unordered_map<std::string, FileCallback> m_extOpenCallback;
     std::unordered_map<std::string, FileCallback> m_extDragCallback;
 
-    FileHandler(RuntimeStorage* a_storage, Workspace* a_workspace);
-    
+    FileHandler();
+
 protected:
 
 public:
     ~FileHandler();
 
-    static void SetFileHandle(const FileTextureHandle& a_handle);
-
-    static void Init(RuntimeStorage* a_storage, Workspace* a_workspace);
+    static void Init();
     static void Destroy();
 
     static void GetFileData(const std::filesystem::path& a_path, FileCallback** a_openCallback, FileCallback** a_dragCallback, GLuint* a_texture);

@@ -4,59 +4,58 @@
 
 #pragma once
 
-#define GLM_FORCE_SWIZZLE 
-#include <glm/glm.hpp>
+#include "Windows/Window.h"
 
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-
-#include "Window.h"
-
-#include <cstdint>
 #include <glad/glad.h>
 
+class EngineProcess;
 class ShaderProgram;
-class Workspace;
+
+#include "EditorGizmosInteropStructures.h"
+#include "EditorLightInteropStructures.h"
 
 class EditorWindow : public Window
 {
 private:
-    static uint32_t RefCount;
-    static ShaderProgram* GridShader;
-    
-    Workspace*      m_workspace;
-    
-    glm::vec3       m_translation;
-    glm::quat       m_rotation;
-    
-    uint32_t        m_width;
-    uint32_t        m_height;
-    
-    glm::vec2       m_prevMousePos;
-    
-    double          m_lastUpdate;
-    float           m_moveSpeed;
-    float           m_zoom;
-    
-    GLuint          m_textureHandle;
-    GLuint          m_depthTextureHandle;
-    GLuint          m_framebufferHandle;
-    
-    bool            m_refresh;
-    
+    static constexpr float TrayOffset = 55.0f;
+
+    EngineProcess*     m_process;
+
+    ShaderProgram*     m_compositeProgram;
+
+    glm::quat          m_rotation;
+    glm::vec3          m_translation;
+    glm::vec2          m_prevMousePos;
+
+    float              m_moveSpeed;
+    float              m_zoom;
+    double             m_lastUpdate;
+
+    uint32_t           m_width;
+    uint32_t           m_height;
+
+    GLuint             m_gizmosRenderTexture;
+    GLuint             m_renderTexture;
+
+    GLuint             m_gizmosFramebuffer;
+    GLuint             m_renderFramebuffer;
+
+    e_EditorLightMode  m_lightMode;
+    e_ManipulationMode m_manipulationMode;
+
+    void UpdateProcess();
+    void BuildFrame();
+
+    void TransformToolbar();
+    void LightModeToolbar();
+
 protected:
 
 public:
-    EditorWindow(Workspace* a_workspace);
+    EditorWindow();
     virtual ~EditorWindow();
 
-    void Draw();
-
-    inline void Refresh()
-    {
-        m_refresh = true;
-    }
-
+    virtual void Refresh();
     virtual void Update(double a_delta);
 };
 

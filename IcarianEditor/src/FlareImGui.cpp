@@ -119,11 +119,11 @@ namespace FlareImGui
         return DragVecScalar(a_label, ImGuiDataType_Float, a_val, Vec4Names, Vec4Colors, 4, a_speed, a_min, a_max, a_format, a_flags);
     }
 
-    void Label(const std::string_view& a_label)
+    void Label(const std::string_view& a_label, float a_ratio)
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         const float width = ImGui::GetContentRegionAvail().x;
-        const float itemWidth = width * 0.7f;
+        const float itemWidth = width * a_ratio;
 
         const ImVec2 textSize = ImGui::CalcTextSize(a_label.data());
         const ImVec2 pos = ImGui::GetCursorScreenPos();

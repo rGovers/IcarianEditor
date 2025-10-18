@@ -2,19 +2,47 @@
 // 
 // License at end of file.
 
-#pragma once
+using IcarianEngine;
+using IcarianEngine.Maths;
+using IcarianEngine.Rendering;
+using System;
 
-#include "InteropTypes.h"
+namespace IcarianEditor.Engine
+{
+    public class CameraController : Component
+    {
+        Camera m_cam;
 
-#define WORKSPACE_EXPORT_TABLE(F) \
-    F(IOP_STRING, IcarianEditor, WorkspaceInterop, GetCurrentScene, { return mono_string_new_wrapper(Instance->GetCurrentScene().string().c_str()); }) \
-    F(void, IcarianEditor, WorkspaceInterop, SetCurrentScene, { char* str = mono_string_to_utf8(a_path); IDEFER(mono_free(str)); Instance->SetCurrentScene(str); }, IOP_STRING a_path) \
-    \
-    F(IOP_UINT32, IcarianEditor, WorkspaceInterop, GetManipulationMode, { return (uint32_t)Instance->GetManipulationMode(); })
+        void ReceiveMessage(string a_type, byte[] a_data)
+        {
+            if (a_type != "Editor:CameraTransform")
+            {
+                return;
+            }
+
+            float[] dat = new float[16];
+            for (uint i = 0; i < 16; ++i)
+            {
+                dat[i] = BitConverter.ToSingle(a_data, (int)i * sizeof(float));
+            }
+
+            Transform.SetMatrix(new Matrix4(dat));
+        }
+
+        public override void Init()
+        {
+            PipeMessage.AddCallback("Editor:CameraTransform", ReceiveMessage);
+
+            m_cam = AddComponent<Camera>();
+            m_cam.FOV = Mathf.PI * 0.4f;
+            m_cam.Far = 1000.0f;
+        }
+    }
+}
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

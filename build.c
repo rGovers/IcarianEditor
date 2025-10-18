@@ -13,6 +13,7 @@
 
 #include "IcarianEditor/BuildIcarianEditor.h"
 #include "IcarianEditorCS/BuildIcarianEditorCS.h"
+#include "IcarianEditorEngineCS/BuildIcarianEditorEngineCS.h"
 
 int main(int a_argc, char** a_argv)
 {
@@ -24,6 +25,7 @@ int main(int a_argc, char** a_argv)
     CUBE_CProject icarianNativeProject;
     CUBE_CProject icarianModManagerProject;
     CUBE_CSProject icarianEditorCSProject;
+    CUBE_CSProject icarianEditorEngineCSProject;
     CUBE_CProject icarianEditorProject;
 
     e_CUBE_CProjectCompiler compiler;
@@ -169,7 +171,7 @@ int main(int a_argc, char** a_argv)
             printf("Generating compile commands projects \n");
             dependencyProjects = BuildDependencies(&dependencyProjectCount, targetPlatform, buildConfiguration);
             engineDependencies = BuildIcarianNativeDependencies(&engineDependencyCount, targetPlatform, buildConfiguration);
-            
+
             CBUINT32 finalCount = dependencyProjectCount + engineDependencyCount + 4;
             CUBE_CProject* projects = malloc(sizeof(CUBE_CProject) * finalCount);
             offset = 0;
@@ -478,6 +480,19 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
+    icarianEditorEngineCSProject = BuildIcarianEditorEngineCSProject(CBTRUE);
+
+    ret = CUBE_CSProject_PreProcessCompile(&icarianEditorEngineCSProject, "IcarianEditorEngineCS", "../IcarianEngine/deps/Mono/Linux/bin/csc", compiler, CBNULL, &lines, &lineCount);
+
+    FlushLines(&lines, &lineCount);
+
+    if (!ret)
+    {
+        printf("Failed to compile IcarianEditorEngineCS\n");
+
+        return 1;
+    }
+
     printf("Writing shaders to header files...\n");
     if (!WriteIcarianEditorShadersToHeader("IcarianEditor"))
     {
@@ -512,6 +527,8 @@ int main(int a_argc, char** a_argv)
     PrintHeader("Copying Files");
 
     CUBE_IO_CreateDirectoryC("build");
+    CUBE_IO_CreateDirectoryC("build/Core");
+    CUBE_IO_CreateDirectoryC("build/Core/Assemblies");
 
     CUBE_IO_CreateDirectoryC("build/lib");
     CUBE_IO_CreateDirectoryC("build/etc");
@@ -521,6 +538,8 @@ int main(int a_argc, char** a_argv)
     CUBE_IO_CopyFileC("IcarianEngine/IcarianCS/build/IcarianCS.dll", "build/IcarianCS.dll");
 
     CUBE_IO_CopyDirectoryC("bin", "build", CBTRUE);
+
+    CUBE_IO_CopyFileC("IcarianEditorEngineCS/build/IcarianEditorEngineCS.dll", "build/Core/Assemblies/IcarianEditorEngineCS.dll");
 
     switch (targetPlatform)
     {

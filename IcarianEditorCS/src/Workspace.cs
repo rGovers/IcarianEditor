@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 #include "InteropBinding.h"
-#include "WorkspaceInterop.h"
+#include "EditorWorkspaceInterop.h"
 
 WORKSPACE_EXPORT_TABLE(IOP_BIND_FUNCTION)
 
@@ -168,7 +168,7 @@ namespace IcarianEditor
 
         static List<SelectionObject> s_selection = new List<SelectionObject>();
         static List<string>          s_selectedDefs = new List<string>();
-        
+
         public static IEnumerable<SelectionObject> Selection
         {
             get
@@ -298,7 +298,7 @@ namespace IcarianEditor
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

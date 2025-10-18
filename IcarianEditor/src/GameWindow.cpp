@@ -5,6 +5,7 @@
 #include "Windows/GameWindow.h"
 
 #include <imgui.h>
+#include <thread>
 
 #include "AppMain.h"
 #include "Core/IcarianDefer.h"
@@ -25,7 +26,12 @@
 #include "Project.h"
 #include "Runtime/RuntimeManager.h"
 
-GameWindow::GameWindow(AppMain* a_app, Project* a_project) : Window("Game", "Textures/WindowIcons/WindowIcon_Game.png")
+GameWindow::GameWindow(AppMain* a_app, Project* a_project) : Window
+(
+    "Game", 
+    "Textures/WindowIcons/WindowIcon_Game.png", 
+    true
+)
 {
     m_app = a_app;
 
@@ -83,6 +89,34 @@ void GameWindow::Update(double a_delta)
     }
 
     ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    if (ImGui::BeginMenuBar())
+    {
+        IDEFER(ImGui::EndMenuBar());
+
+        if (m_process != nullptr)
+        {
+            const float width = ImGui::GetWindowWidth();
+
+            const uint32_t fps = (uint32_t)m_process->GetFPS();
+            const uint32_t ups = (uint32_t)m_process->GetUPS();
+
+            const std::string fpsText = "FPS: " + std::to_string(fps);
+            const std::string upsText = "UPS: " + std::to_string(ups);
+
+            const ImVec2 fpsSize = ImGui::CalcTextSize(fpsText.c_str());
+            const ImVec2 upsSize = ImGui::CalcTextSize(upsText.c_str());
+
+            const float fpsOffset = fpsSize.x + 20.0f;
+            const float upsOffset = fpsOffset + upsSize.x + 20.0f;
+
+            ImGui::SetCursorPosX(width - fpsOffset);
+            ImGui::Text("%s", fpsText.c_str());
+
+            ImGui::SetCursorPosX(width - upsOffset);
+            ImGui::Text("%s", upsText.c_str());
+        }
+    }
 
     const ImVec2 winPos = ImGui::GetWindowPos();
     const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
@@ -237,6 +271,11 @@ void GameWindow::Update(double a_delta)
             }
         }
 
+        if (m_process->IsAlive())
+        {
+            m_process->DMAUpdate();
+        }
+
         const GLuint imageHandle = m_process->GetImage();
         ImGui::Image((ImTextureID)(uintptr_t)imageHandle, sizeIm);
     }
@@ -268,12 +307,12 @@ void GameWindow::Update(double a_delta)
     const glm::vec2 winSize = glm::vec2(buttonCount * 45.0f, 40.0f);
     const glm::vec2 winHalfSize = winSize * 0.5f;
 
-    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - winHalfSize.x, winPos.y + 40.0f);
-    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + winHalfSize.x, winPos.y + 40.0f + winSize.y);
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - winHalfSize.x, winPos.y + TrayOffset);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + winHalfSize.x, winPos.y + TrayOffset + winSize.y);
 
     drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - winHalfSize.x + 5.0f, 45.0f));
+    ImGui::SetCursorPos(ImVec2(halfSize.x - winHalfSize.x + 5.0f, TrayOffset + 5.0f));
 
     if (isRunning)
     {
@@ -325,7 +364,16 @@ void GameWindow::Update(double a_delta)
 
             m_app->SetGameCursorState(CursorState_Normal);
 
-            m_process = EngineProcess::CreateProcess(cachePath, m_width, m_height);
+            // We are in a multi process enviroment so use less CPU threads because we end up overallocating otherwise and tank performance due to context switching
+            // Yes it is counter intuitive that we give less threads to improve performance but a context switch is very expensive and pulls us under 30 FPS even on a very strong CPU
+            // Engine defaults to 1/2 of the process so use a 1/4 when in the editor environment
+            // And we never allocate everything as the system still needs threads for background things in modern systems
+            // Rule of thumb performance goes up sharply to the number of physical cores 
+            // Up slightly to the number of threads on a CPU if there is points it can do a CPU context switch over an OS context switch
+            // Then starts going down after you exceed the number of threads as OS context switches are needed
+            // I am ignoring big-little based CPUs as they complicate things and just a rule of thumb
+            const uint32_t threadCount = (uint32_t)std::thread::hardware_concurrency() / 4;
+            m_process = EngineProcess::CreateProcess(cachePath, m_width, m_height, threadCount);
         }
 
 #ifndef WIN32

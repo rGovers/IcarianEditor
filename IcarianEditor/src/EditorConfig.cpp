@@ -20,9 +20,15 @@ EDITORCONFIG_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 static constexpr const char* KeyBindNames[] =
 {
     "Null",
+
     "Translate",
     "Rotate",
     "Scale",
+
+    "AmbientLightMode",
+    "ViewportLightMode",
+    "SceneLightMode",
+
     "MoveUp",
     "MoveDown",
     "CameraModifier"
@@ -33,6 +39,10 @@ EditorConfig::EditorConfig()
     m_keyBinds[KeyBindTarget_Translate] = ImGuiKey_Q;
     m_keyBinds[KeyBindTarget_Rotate] = ImGuiKey_W;
     m_keyBinds[KeyBindTarget_Scale] = ImGuiKey_E;
+
+    m_keyBinds[KeyBindTarget_AmbientLightMode] = ImGuiKey_I;
+    m_keyBinds[KeyBindTarget_ViewportLightMode] = ImGuiKey_O;
+    m_keyBinds[KeyBindTarget_SceneLightMode] = ImGuiKey_P;
 
     m_keyBinds[KeyBindTarget_MoveUp] = ImGuiKey_Space;
     m_keyBinds[KeyBindTarget_MoveDown] = ImGuiKey_LeftShift;
@@ -68,6 +78,12 @@ void EditorConfig::Deserialize()
 
         switch (StringHash(name))
         {
+        case StringHash("EditorUnfocusedFPS"):
+        {
+            Instance->m_editorUnfocusedFPS = (uint32_t)element->UnsignedText();
+
+            break;
+        }
         case StringHash("UseDegrees"):
         {
             Instance->m_useDegrees = element->BoolText();
@@ -98,7 +114,7 @@ void EditorConfig::Deserialize()
                 {
                     Instance->m_backgroundColor.r = colorElement->FloatText();
 
-                    break;   
+                    break;
                 }
                 case StringHash<uint32_t>("G"):
                 {
@@ -132,6 +148,7 @@ void EditorConfig::Deserialize()
         case StringHash("CodeEditor"):
         {
             const char* codeEditor = element->GetText();
+
             switch (StringHash(codeEditor))
             {
             case StringHash("Default"):
@@ -165,13 +182,21 @@ void EditorConfig::Deserialize()
         case StringHash("DefEditor"):
         {
             const char* defEditor = element->GetText();
-            if (strcmp(defEditor, "Editor") == 0)
+
+            switch (StringHash(defEditor))
+            {
+            case StringHash("Editor"):
             {
                 Instance->m_defEditor = DefEditor_Editor;
+
+                break;
             }
-            else if (strcmp(defEditor, "VisualStudioCode") == 0)
+            case StringHash("VisualStudioCode"):
             {
                 Instance->m_defEditor = DefEditor_VisualStudioCode;
+
+                break;
+            }
             }
 
             break;
@@ -203,6 +228,10 @@ void EditorConfig::Serialize()
 
     tinyxml2::XMLElement* root = doc.NewElement("Config");
     doc.InsertEndChild(root);
+
+    tinyxml2::XMLElement* editorUnfocusedFPS = doc.NewElement("EditorUnfocusedFPS");
+    editorUnfocusedFPS->SetText(Instance->m_editorUnfocusedFPS);
+    root->InsertEndChild(editorUnfocusedFPS);
 
     tinyxml2::XMLElement* useDegrees = doc.NewElement("UseDegrees");
     useDegrees->SetText(Instance->m_useDegrees);
@@ -311,6 +340,15 @@ void EditorConfig::Destroy()
         delete Instance;
         Instance = nullptr;
     }
+}
+
+uint32_t EditorConfig::GetEditorUnfocusedFPS()
+{
+    return Instance->m_editorUnfocusedFPS;
+}
+void EditorConfig::SetEditorUnfocusedFPS(uint32_t a_fps)
+{
+    Instance->m_editorUnfocusedFPS = a_fps;
 }
 
 bool EditorConfig::GetUseDegrees()

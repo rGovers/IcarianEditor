@@ -4,43 +4,30 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include "InteropTypes.h"
 
-class RuntimeStorage;
-class UniformBuffer;
-
-struct TextureBinding
-{
-    uint32_t Slot;
-    uint32_t Sampler;
-};
-
-class ShaderStorage
-{
-private:
-    RuntimeStorage*             m_storage;
-
-    uint32_t                    m_userUBOSlot;
-    UniformBuffer*              m_userUniformBuffer;    
-
-    std::vector<TextureBinding> m_texBindings;
-
-protected:
-
-public:
-    ShaderStorage(RuntimeStorage* a_runtimeStorage);
-    ~ShaderStorage();
-
-    void Bind();
-
-    void SetTexture(uint32_t a_slot, uint32_t a_sampler);
-    void SetUserUBO(uint32_t a_slot, const void* a_object, uint32_t a_size);
-};
+#define WORKSPACE_EXPORT_TABLE(F) \
+    F(IOP_STRING, IcarianEditor, WorkspaceInterop, GetCurrentScene, \
+    {  \
+        const std::filesystem::path scene = Workspace::GetCurrentScene(); \
+        const std::string sceneStr = scene.generic_string(); \
+        return mono_string_new_wrapper(sceneStr.c_str()); \
+    }) \
+    F(void, IcarianEditor, WorkspaceInterop, SetCurrentScene, \
+    { \
+        char* str = mono_string_to_utf8(a_path); \
+        IDEFER(mono_free(str)); \
+        Workspace::SetCurrentScene(str); \
+    }, IOP_STRING a_path) \
+    \
+    F(IOP_UINT32, IcarianEditor, WorkspaceInterop, GetManipulationMode, \
+    { \
+        return (uint32_t)Workspace::GetManipulationMode(); \
+    })
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -2,67 +2,42 @@
 // 
 // License at end of file.
 
-using IcarianEngine;
-using IcarianEngine.Rendering;
-using System;
-using System.IO;
-using System.Reflection;
+using IcarianEngine.Definitions;
+using IcarianEngine.Maths;
+using IcarianEngine.Rendering.Lighting;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 #include "InteropBinding.h"
-#include "EditorFileHandlerInterop.h"
-#include "EditorFileHandlerInteropStructures.h"
+#include "EditorRenderCommandInterop.h"
 
-FILEHANDLER_EXPORT_TABLE(IOP_BIND_FUNCTION);
+EDITOR_RENDERCOMMAND_EXPORT_TABLE(IOP_BIND_FUNCTION);
 
 namespace IcarianEditor
 {
-    public static class FileHandler
+    public static class EditorRenderCommand
     {
-        internal static void Update()
+        public static void PushAmbientLight(AmbientLightDef a_def)
         {
-            
+            EditorRenderCommandInterop.PushAmbientLight(a_def.Intensity, a_def.Color.ToVector4());
         }
-
-        internal static void Clear()
+        public static void PushDirectionalLight(Matrix4 a_transform, DirectionalLightDef a_def)
         {
-
+            EditorRenderCommandInterop.PushDirectionalLight(a_transform, a_def.Intensity, a_def.Color.ToVector4());
         }
-
-        static void GetFileHandle(string a_file)
+        public static void PushPointLight(Matrix4 a_transform, PointLightDef a_def)
         {
-            FileTextureHandle handle = new FileTextureHandle();
-            handle.Addr = uint.MaxValue;
-            handle.Mode = FileTextureMode.Null;
-
-            switch (Path.GetExtension(a_file))
-            {
-            case ".png":
-            case ".ktx2":
-            {
-                Texture tex = AssetLibrary.LoadTexture(a_file);
-                if (tex != null)
-                {
-                    Type type = typeof(Texture);
-                    FieldInfo info = type.GetField("m_bufferAddr", BindingFlags.NonPublic | BindingFlags.Instance);
-
-                    handle.Addr = (uint)info.GetValue(tex);
-                    handle.Mode = FileTextureMode.Texture;
-                }
-
-                break;
-            }
-            }
-
-            FileHandlerInterop.SetFileHandle(handle.Addr, (uint)handle.Mode);
+            EditorRenderCommandInterop.PushPointLight(a_transform, a_def.Intensity, a_def.Radius, a_def.Color.ToVector4());
+        }
+        public static void PushSpotLight(Matrix4 a_transform, SpotLightDef a_def)
+        {
+            EditorRenderCommandInterop.PushSpotLight(a_transform, a_def.Intensity, a_def.Radius, a_def.InnerCutoffAngle, a_def.OuterCutoffAngle, a_def.Color.ToVector4());
         }
     }
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

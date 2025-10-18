@@ -6,13 +6,13 @@
 
 #include <imgui.h>
 
+#include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
 #include "Runtime/RuntimeManager.h"
-#include "Windows/EditorWindow.h"
 
 static Workspace* Instance = nullptr;
 
-#include "WorkspaceInterop.h"
+#include "EditorWorkspaceInterop.h"
 
 WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
@@ -21,45 +21,60 @@ Workspace::Workspace()
     m_manipulationMode = ManipulationMode_Translate;
 
     WORKSPACE_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
-
-    Instance = this;
 }
 Workspace::~Workspace()
 {
-    
+
 }
 
-void Workspace::AddEditorWindow(EditorWindow* a_window)
+void Workspace::Init()
 {
-    m_editorWindows.emplace_back(a_window);
-}
-void Workspace::RemoveEditorWindow(EditorWindow* a_window)
-{
-    for (auto iter = m_editorWindows.begin(); iter != m_editorWindows.end(); ++iter)
+    if (Instance == nullptr)
     {
-        if (*iter == a_window)
-        {
-            m_editorWindows.erase(iter);
-
-            return;
-        }
+        Instance = new Workspace();
+    }
+}
+void Workspace::Destroy()
+{
+    if (Instance != nullptr)
+    {
+        delete Instance;
+        Instance = nullptr;
     }
 }
 
-void Workspace::SetScene(const std::filesystem::path& a_path)
+std::filesystem::path Workspace::GetCurrentScene()
 {
-    m_currentScene = a_path;
+    ICARIAN_ASSERT(Instance != nullptr);
 
-    for (EditorWindow* wind : m_editorWindows)
-    {
-        wind->Refresh();
-    }
+    return Instance->m_currentScene;
+}
+void Workspace::SetCurrentScene(const std::filesystem::path& a_path)
+{
+    ICARIAN_ASSERT(Instance != nullptr);
+
+    Instance->m_currentScene = a_path;
+}
+
+e_ManipulationMode Workspace::GetManipulationMode()
+{
+    ICARIAN_ASSERT(Instance != nullptr);
+
+    return Instance->m_manipulationMode;
+}
+void Workspace::SetManipulationMode(e_ManipulationMode a_mode) 
+{
+    ICARIAN_ASSERT(Instance != nullptr);
+
+    Instance->m_manipulationMode = a_mode;
 }
 
 void Workspace::OpenDef(const std::filesystem::path& a_path)
 {
-    const std::u32string str = a_path.u32string();
-    MonoString* pathString = mono_string_from_utf32((mono_unichar4*)str.c_str());
+    ICARIAN_ASSERT(Instance != nullptr);
+
+    const std::u16string str = a_path.u16string();
+    MonoString* pathString = mono_string_from_utf16((mono_unichar2*)str.c_str());
 
     void* args[] =
     {

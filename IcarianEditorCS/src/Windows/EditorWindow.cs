@@ -54,7 +54,7 @@ namespace IcarianEditor.Windows
                     // Crashes on Windows so we'll use the above method
                     // C# is portable btw
                     // EDisplayAttribute att = t.GetCustomAttribute<EDisplayAttribute>();
-                    
+
                     if (att != null)
                     {
                         if (s_componentLookup.ContainsKey(att.OverrideType))
@@ -184,7 +184,7 @@ namespace IcarianEditor.Windows
             if (def != null)
             {
                 Matrix4 transform = new Matrix4(Vector4.UnitX, Vector4.UnitY, Vector4.UnitZ, new Vector4(a_editorPos, 1.0f));
-                
+
                 RenderComponents(def, true, transform, a_view, a_proj, a_screenWidth, a_screenHeight);
             }
 
@@ -347,7 +347,7 @@ namespace IcarianEditor.Windows
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

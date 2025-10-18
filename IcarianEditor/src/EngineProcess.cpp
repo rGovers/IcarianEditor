@@ -7,6 +7,7 @@
 #ifndef WIN32
 #include <csignal>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -232,7 +233,17 @@ EngineProcess::~EngineProcess()
     {
         if (m_process > 0)
         {
-            kill(m_process, SIGTERM);
+            kill(m_process, SIGKILL);
+
+            waitpid(m_process, NULL, 0);
+        }
+    });
+
+    IDEFER(
+    {
+        if (m_processFD > 0)
+        {
+            close(m_processFD);
         }
     });
 #endif
@@ -314,6 +325,11 @@ bool EngineProcess::IsRemote() const
     return IISBITSET(m_flags, RemoteModeBit);
 }
 
+bool EngineProcess::IsDMAMode() const
+{
+    return IISBITSET(m_flags, DMAModeBit);
+}
+
 #ifndef WIN32
 static std::filesystem::path GetAddr(const std::string_view& a_addr)
 {
@@ -323,7 +339,7 @@ static std::filesystem::path GetAddr(const std::string_view& a_addr)
 }
 #endif
 
-EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height)
+EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height, uint32_t a_threadCount)
 {
     IERRBLOCK;
 
@@ -337,6 +353,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
     const std::string workingDirArg = "--wDir=" + a_workingDir.generic_string();
     const std::string pipefileArg = "--pipefile=" + std::to_string(pipefileID);
     const std::string ipcArg = "--ipc-id=" + ipcIDStr;
+    const std::string threadArg = "--threads=" + std::to_string(a_threadCount);
 
     // TODO: Windows is completely broken dropping support for now but need to re-implement down the line
     // Got in that annoying position that Linux works, remote Windows execution worked, Windows on WINE works but Native Windows was fucked
@@ -369,7 +386,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
         // Starting the engine
         // In a weird state cause in a forked process so doing stuff C style
         // Once execution is started state is normal again
-        if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), NULL) < 0)
+        if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), threadArg.c_str(), NULL) < 0)
         {
             printf("Failed to start process \n");
             perror("execl");
@@ -378,7 +395,12 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
     }
     else
     {
-        IERRDEFER(kill(process, SIGTERM));
+        IERRDEFER(
+        {
+            kill(process, SIGKILL);
+
+            waitpid(process, NULL, 0);
+        });
 
         const float timeout = EditorConfig::GetEnginePipeTimeout();
 
@@ -575,7 +597,16 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
             ++m_frames;
 
             m_frameTime -= delta;
-            if (m_frameTime <= 0)
+            if (m_frameTime < -1.0)
+            {
+                // We are out of range so can assume the FPS is zero
+                // Reset
+                // This mostly occurs in the editor window as we do not update when hidden
+                m_fps = 0.0f;
+                m_frameTime = (1.0 / FPSUpdateRate);
+                m_frames = 0;
+            }
+            else if (m_frameTime <= 0.0)
             {
                 m_fps = m_frames * FPSUpdateRate;
                 m_frameTime += (1.0 / FPSUpdateRate);
@@ -599,6 +630,9 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
 
             // I am a fucking idiot it is the process file descriptor it needs not the process id
             // We need to remap the file descriptors as they will not be valid in this process due to different descriptor tables
+            // Sigh.... fuck OpenGL drivers have to pick between undefined behaviour and leaking the file descriptor
+            // I love non spec compliant drivers
+            // OpenGL spec states that import hands ownership of the fd to OpenGL and all operations after are undefined behaviour
             const int imageFD = sys_pidfd_getfd(m_processFD, swapBuffer.ImageFD, 0);
             const int startSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.StartSemaphore, 0);
             const int endSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.EndSemaphore, 0);
@@ -767,7 +801,15 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
             ++m_updates;
 
             m_updateTime -= delta;
-            if (m_updateTime <= 0)
+            if (m_updateTime < -1.0)
+            {
+                // We are out of range so can assume the UPS is zero
+                // Reset
+                m_ups = 0;
+                m_updateTime = (1.0 / UPSUpdateRate);
+                m_updates = 0;
+            }
+            else if (m_updateTime <= 0.0)
             {
                 m_ups = m_updates * UPSUpdateRate;
                 m_updateTime += (1.0 / UPSUpdateRate);
@@ -784,7 +826,9 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
 
             m_processHandle = INVALID_HANDLE_VALUE;
 #else
-            // This does not feel right but the process should close on its own
+            // Process will be a zombie until it is waited upon or the parent dies
+            waitpid(m_process, NULL, 0);
+
             m_process = -1;
 #endif
 
@@ -805,17 +849,18 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
         }
     }
 
-    if (IsAlive())
-    {
-        DMAUpdate();
-    }
-
     return true;
 }
 
 void EngineProcess::DMAUpdate()
 {
     if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return;
+    }
+
+    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
+    if (m_curFrame >= imageCount)
     {
         return;
     }
@@ -827,7 +872,7 @@ void EngineProcess::DMAUpdate()
         const DMASwapchainImage& img = m_dmaImages[m_curFrame];
 
         constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-        glWaitSemaphoreEXT(img.EndSemaphore, 0, nullptr, 1, &img.Texture, &Layout);
+        glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
 
         if (m_dmaSwaps == 1 && img.Width == m_width && img.Height == m_height)
         {
@@ -845,12 +890,76 @@ void EngineProcess::DMAUpdate()
             );
         }
 
-        m_curFrame = (m_curFrame + 1) % (uint32_t)m_dmaImages.size();
+        m_curFrame = (m_curFrame + 1) % imageCount;
 
         const DMASwapchainImage& nextImage = m_dmaImages[m_curFrame];
         glSignalSemaphoreEXT(nextImage.StartSemaphore, 0, NULL, 1, &nextImage.Texture, &Layout);
     }
 }
+
+void EngineProcess::SignalImage()
+{
+    if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return;
+    }
+
+    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
+    if (m_curFrame >= imageCount)
+    {
+        return;
+    }
+
+    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+
+    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+    glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+}
+e_EngineFrameWaitStatus EngineProcess::WaitImage()
+{
+    if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return EngineFrameWaitStatus_InvalidMode;
+    }
+
+    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
+    if (m_curFrame >= imageCount)
+    {
+        return EngineFrameWaitStatus_Reset;
+    }
+
+    if (m_dmaSwaps <= 0)
+    {
+        return EngineFrameWaitStatus_Wait;
+    }
+
+    --m_dmaSwaps;
+    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+
+    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+    glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+
+    if (img.Width == m_width && img.Height == m_height)
+    {
+        glCopyImageSubData
+        (
+            img.Texture,
+            GL_TEXTURE_2D,
+            0,
+            0, 0, 0,
+            m_dmaTexture,
+            GL_TEXTURE_2D,
+            0,
+            0, 0, 0,
+            (GLsizei)img.Width, (GLsizei)img.Height, 1
+        );
+    }
+
+    m_curFrame = (m_curFrame + 1) % imageCount;
+
+    return EngineFrameWaitStatus_Sucess;
+}
+
 void EngineProcess::FlushDMAImages()
 {
     m_curFrame = 0;
@@ -924,6 +1033,43 @@ void EngineProcess::CaptureFrame()
 
         return;
     }
+}
+
+void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const void* a_data, uint32_t a_dataLength)
+{
+    if (!IsPipeAlive())
+    {
+        return;
+    }
+
+    const uint32_t strLen = (uint32_t)a_string.length();
+
+    if (a_data == nullptr && a_dataLength <= 0)
+    {
+        const uint32_t bufferSize = strLen + 1;
+
+        char* dat = (char*)malloc(strLen + 1);
+        IDEFER(free(dat));
+
+        memcpy(dat, a_string.data(), strLen);
+        dat[strLen] = 0;
+
+        m_ipcPipe->Send({ IcarianCore::PipeMessageType_RuntimeMessage, bufferSize, dat });
+
+        return;
+    }
+
+    const uint32_t bufferSize = strLen + 1 + a_dataLength;
+
+    char* dat = (char*)malloc(bufferSize);
+    IDEFER(free(dat));
+
+    memset(dat, 0, bufferSize);
+
+    memcpy(dat, a_string.data(), strLen);
+    memcpy(dat + strLen + 1, a_data, a_dataLength);
+
+    m_ipcPipe->Send({ IcarianCore::PipeMessageType_RuntimeMessage, bufferSize, dat });
 }
 
 // MIT License

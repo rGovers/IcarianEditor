@@ -20,7 +20,6 @@ private:
     constexpr static uint32_t ConvertKTXBit = 0;
 
     AppMain*              m_app;
-    Workspace*            m_workspace;
 
     std::filesystem::path m_path;
     std::string           m_name;
@@ -37,7 +36,7 @@ private:
 protected:
 
 public:
-    Project(AppMain* a_app, Workspace* a_workspace);
+    Project(AppMain* a_app);
     ~Project();
 
     void ReloadProjectFile();

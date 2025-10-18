@@ -20,7 +20,7 @@ enum e_EditorConfigTab
 class EditorConfigModal : public Modal
 {
 private:
-    static constexpr float ItemWidth = 150.0f;
+    static constexpr float LabelRatio = 0.45f;
 
     e_EditorConfigTab m_currentTab = EditorConfigTab_General;
     e_KeyBindTarget   m_keyBindTarget = KeyBindTarget_Null;
@@ -41,7 +41,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

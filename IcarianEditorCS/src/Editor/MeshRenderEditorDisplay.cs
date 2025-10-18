@@ -6,29 +6,16 @@ using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
 using IcarianEngine.Rendering;
-using IcarianEngine.Rendering.Animation;
 
 namespace IcarianEditor.Editor
 {
-    [EDisplay(typeof(SkinnedModelRenderer))]
-    public class SkinnedModelRendererEditorDisplay : EditorDisplay
+    [EDisplay(typeof(MeshRenderer))]
+    public class MeshRendererEditorDisplay : EditorDisplay
     {
         public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
-            SkinnedModelRendererDef def = a_component as SkinnedModelRendererDef;
+            MeshRendererDef def = a_component as MeshRendererDef;
             if (def == null)
-            {
-                return false;
-            }
-
-            Model model = AssetLibrary.LoadSkinnedModel(def.ModelPath);
-            if (model == null)
-            {
-                return false;
-            }
-
-            Skeleton skeleton = AssetLibrary.LoadSkeleton(def.SkeletonPath);
-            if (skeleton == null)
             {
                 return false;
             }
@@ -46,9 +33,10 @@ namespace IcarianEditor.Editor
                 return false;
             }
 
-            RenderCommand.BindMaterial(mat);
+            Mesh mesh = AssetLibrary.LoadModel(def.ModelPath);
 
-            AnimationMaster.DrawSkeleton(skeleton, model, a_transform);
+            RenderCommand.BindMaterial(mat);
+            RenderCommand.DrawMesh(a_transform, mesh);
 
             return false;
         }
@@ -57,7 +45,7 @@ namespace IcarianEditor.Editor
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -11,7 +11,7 @@ static ProfilerData* Instance = nullptr;
 
 ProfilerData::ProfilerData()
 {
-
+    m_active = false;
 }
 ProfilerData::~ProfilerData()
 {
@@ -36,7 +36,7 @@ void ProfilerData::Destroy()
 
 bool ProfilerData::StartSession()
 {
-    if (!Instance->m_active)
+    if (Instance->m_active)
     {
         return false;
     }
@@ -50,7 +50,7 @@ bool ProfilerData::StartSession()
 
 void ProfilerData::EndSession()
 {
-    Instance->m_snapshots.clear();
+    Instance->m_active = false;
 }
 
 void ProfilerData::PushData(const ProfileScope& a_scope)

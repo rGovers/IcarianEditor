@@ -2,37 +2,30 @@
 // 
 // License at end of file.
 
-#pragma once
+using IcarianEngine;
+using IcarianEngine.Definitions;
+using IcarianEngine.Maths;
+using IcarianEngine.Rendering.Lighting;
 
-#include <filesystem>
-
-#include "EditorGizmosInteropStructures.h"
-
-class Workspace
+namespace IcarianEditor.Editor
 {
-private:
-    std::filesystem::path      m_currentScene;
+    [EDisplay(typeof(PointLight))]
+    public class PointLightEditorDisplay : EditorDisplay
+    {
+        public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
+        {
+            PointLightDef def = a_component as PointLightDef;
+            if (def == null)
+            {
+                return false;
+            }
 
-    e_ManipulationMode         m_manipulationMode;
+            EditorRenderCommand.PushPointLight(a_transform, def);
 
-    Workspace();
-
-protected:
-
-public:
-    ~Workspace();
-
-    static void Init();
-    static void Destroy();
-
-    static std::filesystem::path GetCurrentScene();
-    static void SetCurrentScene(const std::filesystem::path& a_path);
-
-    static e_ManipulationMode GetManipulationMode();
-    static void SetManipulationMode(e_ManipulationMode a_mode);
-
-    static void OpenDef(const std::filesystem::path& a_path);
-};
+            return false;
+        }
+    }
+}
 
 // MIT License
 // 

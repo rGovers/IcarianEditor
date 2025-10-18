@@ -31,7 +31,7 @@ namespace FlareImGui
         ImGuiKey_RightBracket,
         ImGuiKey_Semicolon,
         ImGuiKey_GraveAccent,
-    
+
         ImGuiKey_A, 
         ImGuiKey_B, 
         ImGuiKey_C, 
@@ -58,7 +58,7 @@ namespace FlareImGui
         ImGuiKey_X, 
         ImGuiKey_Y, 
         ImGuiKey_Z,
-    
+
         ImGuiKey_0, 
         ImGuiKey_1, 
         ImGuiKey_2, 
@@ -69,7 +69,7 @@ namespace FlareImGui
         ImGuiKey_7, 
         ImGuiKey_8, 
         ImGuiKey_9,
-    
+
         ImGuiKey_KeypadDecimal,
         ImGuiKey_KeypadDivide,
         ImGuiKey_KeypadMultiply,
@@ -77,7 +77,7 @@ namespace FlareImGui
         ImGuiKey_KeypadAdd,
         ImGuiKey_KeypadEqual,
         ImGuiKey_KeypadEnter,
-    
+
         ImGuiKey_Keypad0, 
         ImGuiKey_Keypad1, 
         ImGuiKey_Keypad2, 
@@ -88,7 +88,7 @@ namespace FlareImGui
         ImGuiKey_Keypad7, 
         ImGuiKey_Keypad8, 
         ImGuiKey_Keypad9,
-    
+
         ImGuiKey_Escape,
         ImGuiKey_Enter,
         ImGuiKey_Tab,
@@ -108,17 +108,17 @@ namespace FlareImGui
         ImGuiKey_ScrollLock,
         ImGuiKey_PrintScreen,
         ImGuiKey_Pause,
-    
+
         ImGuiKey_LeftShift,
         ImGuiKey_LeftCtrl,
         ImGuiKey_LeftAlt,
         ImGuiKey_LeftSuper,
-    
+
         ImGuiKey_RightShift,
         ImGuiKey_RightCtrl,
         ImGuiKey_RightAlt,
         ImGuiKey_RightSuper,
-    
+
         ImGuiKey_F1, 
         ImGuiKey_F2, 
         ImGuiKey_F3, 
@@ -144,13 +144,13 @@ namespace FlareImGui
         ImGuiKey_None, // 23
         ImGuiKey_None, // 24
         ImGuiKey_None, // 25
-    
+
         ImGuiKey_Menu
     };
 
     void Init();
 
-    void Label(const std::string_view& a_label);
+    void Label(const std::string_view& a_label, float a_ratio = 0.7f);
 
     void Header(const std::string_view& a_str);
 

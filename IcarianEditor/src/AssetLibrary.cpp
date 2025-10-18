@@ -56,6 +56,17 @@ RUNTIME_FUNCTION(uint32_t, FileCache, CachedFile,
 
     return (uint32_t)(size > 0 && dat != nullptr);
 }, MonoString* a_path)
+RUNTIME_FUNCTION(uint32_t, FileCache, ExistingFile, 
+{
+    char* str = mono_string_to_utf8(a_path);
+    IDEFER(mono_free(str));
+
+    uint32_t size;
+    const uint8_t* dat;
+    Instance->GetAsset(str, &size, &dat);
+
+    return (uint32_t)(size > 0 && dat != nullptr);
+}, MonoString* a_path)
 RUNTIME_FUNCTION(MonoArray*, FileCache, ReadFileData, 
 {
     IERRBLOCK;
@@ -107,6 +118,7 @@ AssetLibrary::AssetLibrary()
     EDITOR_DEFLIBRARY_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
     EDITOR_SCENE_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
 
+    BIND_FUNCTION(IcarianEngine, FileCache, ExistingFile);
     BIND_FUNCTION(IcarianEngine, FileCache, CachedFile);
     BIND_FUNCTION(IcarianEngine, FileCache, ReadFileData);
     BIND_FUNCTION(IcarianEngine, FileCache, WriteFileData);
@@ -194,8 +206,10 @@ uint32_t AssetLibrary::CreateAssetCommandBuffer()
     const std::string commandStr = CommandBufferName + idStr;
     const std::string dataStr = DataBufferName + idStr;
 
-#ifndef WIN32
+#ifdef WIN32
     // TODO: Stare at WIN32 docs again and implement WIN32 version
+    ICARIAN_ASSERT(0);
+#else
     // To my knowledge fork inherits the group from the parent so 0660 should be fine need to validate but
     const int commandFd = shm_open(commandStr.c_str(), O_CREAT | O_RDWR, 0660);
     // So if I am understanding this correctly it is a file handle and once you have mmaped it you can close the handle

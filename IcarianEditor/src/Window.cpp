@@ -11,16 +11,23 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "Core/Bitfield.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianLambda.h"
 #include "Datastore.h"
 #include "FlareImGui.h"
 #include "Texture.h"
 
-Window::Window(const std::string_view& a_displayName, const std::string_view& a_texturePath)
+Window::Window(const std::string_view& a_displayName, const std::string_view& a_texturePath, bool a_menubar)
 {
     static uint64_t ID = 0;
 
-    m_open = true;
+    m_flags = 0;
+
+    if (a_menubar)
+    {
+        ISETBIT(m_flags, MenuBarBit);
+    }
 
     m_displayName = std::string(a_displayName);
     m_texturePath = std::string(a_texturePath);
@@ -33,63 +40,88 @@ Window::~Window()
 
 }
 
+void Window::CloseWindow()
+{
+    ISETBIT(m_flags, CloseBit);
+}
+
 bool Window::Display(double a_delta)
 {
-    if (m_open)
+    bool open = !IISBITSET(m_flags, CloseBit);
+    if (!open)
     {
-        if (ImGui::Begin(m_idStr.c_str(), &m_open))
-        {
-            // That is a hack and a half to get the icon to display in the title bar.
-            if (!m_texturePath.empty())
-            {
-                const Texture* texture = Datastore::GetTexture(m_texturePath);
-
-                if (texture != nullptr)
-                {
-                    const ImGuiWindow* window = ImGui::GetCurrentWindow();
-                    const ImGuiDockNode* dockNode = window->DockNode;
-                    ImDrawList* drawList = ImGui::GetWindowDrawList();
-                    const ImGuiStyle& style = ImGui::GetStyle();
-
-                    const glm::vec2 windowPos = glm::vec2(window->Pos.x, window->Pos.y);
-                    const glm::vec2 offset = glm::vec2(style.FramePadding.x, style.FramePadding.y);
-
-                    const ImRect titleBarRect = window->TitleBarRect();
-                    const float titleBarHeight = titleBarRect.Max.y - titleBarRect.Min.y;
-
-                    const float size = titleBarHeight - (offset.y * 2.0f);
-
-                    ImGui::PushClipRect(titleBarRect.Min, titleBarRect.Max, false);
-                    IDEFER(ImGui::PopClipRect());
-                    
-                    if (dockNode != nullptr)
-                    {
-                        const ImRect r = window->DockTabItemRect;
-
-                        const glm::vec2 basePos = glm::vec2(r.Min.x - titleBarRect.Min.x, 0.0f);
-
-                        const glm::vec2 startRect = windowPos + basePos + offset;
-                        const glm::vec2 endRect = startRect + glm::vec2(size);
-
-                        drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
-                    }
-                    else
-                    {
-                        const glm::vec2 startRect = windowPos + offset;
-                        const glm::vec2 endRect = startRect + glm::vec2(size);
-
-                        drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
-                    }
-                }                
-            }
-            
-            Update(a_delta);
-        }
-
-        ImGui::End();
+        return false;
     }
 
-    return m_open;
+    const ImGuiWindowFlags flags = ILAMBDA(
+    {
+        ImGuiWindowFlags val = 0;
+
+        if (IISBITSET(m_flags, MenuBarBit))
+        {
+            val |= ImGuiWindowFlags_MenuBar;
+        }
+
+        ILRETURN val;
+    });
+
+    if (ImGui::Begin(m_idStr.c_str(), &open, flags))
+    {
+        // That is a hack and a half to get the icon to display in the title bar.
+        if (!m_texturePath.empty())
+        {
+            const Texture* texture = Datastore::GetTexture(m_texturePath);
+
+            if (texture != nullptr)
+            {
+                const ImGuiWindow* window = ImGui::GetCurrentWindow();
+                const ImGuiDockNode* dockNode = window->DockNode;
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                const ImGuiStyle& style = ImGui::GetStyle();
+
+                const glm::vec2 windowPos = glm::vec2(window->Pos.x, window->Pos.y);
+                const glm::vec2 offset = glm::vec2(style.FramePadding.x, style.FramePadding.y);
+
+                const ImRect titleBarRect = window->TitleBarRect();
+                const float titleBarHeight = titleBarRect.Max.y - titleBarRect.Min.y;
+
+                const float size = titleBarHeight - (offset.y * 2.0f);
+
+                ImGui::PushClipRect(titleBarRect.Min, titleBarRect.Max, false);
+                IDEFER(ImGui::PopClipRect());
+
+                if (dockNode != nullptr)
+                {
+                    const ImRect r = window->DockTabItemRect;
+
+                    const glm::vec2 basePos = glm::vec2(r.Min.x - titleBarRect.Min.x, 0.0f);
+
+                    const glm::vec2 startRect = windowPos + basePos + offset;
+                    const glm::vec2 endRect = startRect + glm::vec2(size);
+
+                    drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
+                }
+                else
+                {
+                    const glm::vec2 startRect = windowPos + offset;
+                    const glm::vec2 endRect = startRect + glm::vec2(size);
+
+                    drawList->AddImage(TexToImHandle(texture), ImVec2(startRect.x, startRect.y), ImVec2(endRect.x, endRect.y));
+                }
+            }
+        }
+
+        Update(a_delta);
+    }
+
+    ImGui::End();
+
+    if (!open)
+    {
+        ISETBIT(m_flags, CloseBit);
+    }
+
+    return open;
 }
 
 // MIT License

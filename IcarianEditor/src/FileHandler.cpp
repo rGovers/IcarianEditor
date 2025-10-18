@@ -12,15 +12,10 @@
 #include "EditorConfig.h"
 #include "IO.h"
 #include "Runtime/RuntimeManager.h"
-#include "Runtime/RuntimeStorage.h"
 #include "Texture.h"
 #include "Workspace.h"
 
-#include "EditorFileHandlerInterop.h"
-
 FileHandler* Instance = nullptr;
-
-FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
 static void OpenCSScript(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
@@ -57,7 +52,6 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
 static void OpenShader(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
-
     switch (codeEditor)
     {
     case CodeEditor_VisualStudioCode:
@@ -81,7 +75,7 @@ static void OpenShader(const std::filesystem::path& a_path, const std::filesyste
     }
 }
 
-static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
+static void OpenDef(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
@@ -101,27 +95,25 @@ static void OpenDef(Workspace* a_workspace, const std::filesystem::path& a_path,
     }
     default:
     {
-        a_workspace->OpenDef(a_relativePath);
+        Workspace::OpenDef(a_relativePath);
 
         break;
     }
     }
 }
-static void SetScene(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
+static void SetScene(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
-    a_workspace->SetScene(a_relativePath);
+    Workspace::SetCurrentScene(a_relativePath);
 }
 
-static void PushDef(Workspace* a_workspace, const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
+static void PushDef(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
     const std::string str = a_relativePath.string();
     ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
-FileHandler::FileHandler(RuntimeStorage* a_storage, Workspace* a_workspace)
+FileHandler::FileHandler()
 {
-    m_storage = a_storage;
-
     m_extTex.emplace(".cs", Datastore::GetTexture("Textures/FileIcons/FileIcon_CSharpScript.png"));
     m_extTex.emplace(".def", Datastore::GetTexture("Textures/FileIcons/FileIcon_Def.png"));
     m_extTex.emplace(".scrb", Datastore::GetTexture("Textures/FileIcons/FileIcon_Scribe.png"));
@@ -133,27 +125,25 @@ FileHandler::FileHandler(RuntimeStorage* a_storage, Workspace* a_workspace)
     m_extTex.emplace(".wav", Datastore::GetTexture("Textures/FileIcons/FileIcon_Sound.png"));
     m_extTex.emplace(".ogg", Datastore::GetTexture("Textures/FileIcons/FileIcon_Sound.png"));
 
-    m_extOpenCallback.emplace(".def", FileCallback(std::bind(OpenDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
-    m_extOpenCallback.emplace(".iscene", FileCallback(std::bind(SetScene, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".def", FileCallback(std::bind(OpenDef, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".iscene", FileCallback(std::bind(SetScene, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".cs", FileCallback(std::bind(OpenCSScript, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".fvert", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".fpix", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".ffrag", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-    m_extDragCallback.emplace(".def", FileCallback(std::bind(PushDef, a_workspace, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
-
-    FILEHANDLER_EXPORT_TABLE(RUNTIME_FUNCTION_ATTACH);
+    m_extDragCallback.emplace(".def", FileCallback(std::bind(PushDef, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 }
 FileHandler::~FileHandler()
 {
-    
+
 }
 
-void FileHandler::Init(RuntimeStorage* a_storage, Workspace* a_workspace)
+void FileHandler::Init()
 {
     if (Instance == nullptr)
     {
-        Instance = new FileHandler(a_storage, a_workspace);
+        Instance = new FileHandler();
     }
 }
 void FileHandler::Destroy()
@@ -163,11 +153,6 @@ void FileHandler::Destroy()
         delete Instance;
         Instance = nullptr;
     }
-}
-
-void FileHandler::SetFileHandle(const FileTextureHandle& a_handle)
-{
-    Instance->m_runtimeTexHandle = a_handle;
 }
 
 void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback** a_openCallback, FileCallback** a_dragCallback, GLuint* a_texture)
@@ -190,43 +175,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     {
     case AssetType_Texture:
     {
-        if (!RuntimeManager::IsBuilt())
-        {
-            break;
-        }
-
-        MonoDomain* domain = RuntimeManager::GetEditorDomain();
-
-        const std::string pathString = a_path.u8string();
-        MonoString* str = mono_string_new(domain, pathString.c_str());
-
-        void* args[] =
-        {
-            str
-        };
-
-        RuntimeManager::ExecFunction("IcarianEditor", "FileHandler", ":GetFileHandle(string)", args);
-
-        const FileTextureHandle& handle = Instance->m_runtimeTexHandle;
-
-        if (handle.Addr != uint32_t(-1))
-        {
-            switch (handle.Mode)
-            {
-            case FileTextureMode_Texture:
-            {
-                const Texture* tex = Instance->m_storage->GetTexture(handle.Addr);
-
-                *a_texture = tex->GetHandle();
-
-                break;
-            }
-            default:
-            {
-                break;
-            }
-            }
-        }
+        // TODO: Reimplement me!~
 
         break;
     }

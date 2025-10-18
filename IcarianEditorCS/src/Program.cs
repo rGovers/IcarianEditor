@@ -21,9 +21,9 @@ namespace IcarianEditor
             MethodInfo assetLibraryInitMethod = assetLibraryType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
             assetLibraryInitMethod.Invoke(null, new object[] { });
 
-            Type shaderImportType = ModControl.GetTypeValue("IcarianEngine.Rendering.ShaderImports");
-            MethodInfo shaderImportInitMethod = shaderImportType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
-            shaderImportInitMethod.Invoke(null, new object[] { });
+            // Type shaderImportType = ModControl.GetTypeValue("IcarianEngine.Rendering.ShaderImports");
+            // MethodInfo shaderImportInitMethod = shaderImportType.GetMethod("Init", BindingFlags.Static | BindingFlags.NonPublic);
+            // shaderImportInitMethod.Invoke(null, new object[] { });
 
             ClipBoard.Init();
             PropertiesWindow.Init();
@@ -32,8 +32,7 @@ namespace IcarianEditor
 
         static void Update(double a_delta)
         {
-            AnimationMaster.Update(a_delta);
-            FileHandler.Update();
+
         }
 
         static void Unload()
@@ -41,10 +40,8 @@ namespace IcarianEditor
             ClipBoard.Clear();
             AssetLibrary.ClearAssets();
             EditorDefLibrary.Clear();
-            AnimationMaster.Destroy();
-            FileHandler.Clear();
         }
-        
+
         // On Windows seems to need a main function and be executable to work
         // Needs it even if it is not used for some odd reason
         static void Main(string[] a_args)
@@ -56,7 +53,7 @@ namespace IcarianEditor
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

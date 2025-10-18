@@ -5,34 +5,22 @@
 using IcarianEngine;
 using IcarianEngine.Definitions;
 using IcarianEngine.Maths;
-using IcarianEngine.Rendering.Animation;
+using IcarianEngine.Rendering.Lighting;
 
 namespace IcarianEditor.Editor
 {
-    [EDisplay(typeof(SkeletonAnimator))]
-    public class SkeletonAnimatorEditorDisplay : EditorDisplay
+    [EDisplay(typeof(SpotLight))]
+    public class SpottLightEditorDisplay : EditorDisplay
     {
         public override bool Render(bool a_selected, Def a_component, Matrix4 a_transform, Matrix4 a_view, Matrix4 a_proj, uint a_screenWidth, uint a_screenHeight)
         {
-            SkeletonAnimatorDef def = a_component as SkeletonAnimatorDef;
+            SpotLightDef def = a_component as SpotLightDef;
             if (def == null)
             {
                 return false;
             }
 
-            // Engine need full def to work properly cannot do partial generation
-            SkeletonAnimatorDef skeletonAnimatorDef = EditorDefLibrary.GenerateDef<SkeletonAnimatorDef>(def.DefName, true);
-            if (skeletonAnimatorDef == null)
-            {
-                return false;
-            }
-
-            AnimationMaster.UpdateSkeleton(skeletonAnimatorDef);
-            
-            if (a_selected)
-            {
-                AnimationMaster.DrawBones(a_transform, AssetLibrary.LoadSkeleton(skeletonAnimatorDef.SkeletonPath));
-            }
+            // EditorRenderCommand.PushPointLight(a_transform, def);
 
             return false;
         }
@@ -41,7 +29,7 @@ namespace IcarianEditor.Editor
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

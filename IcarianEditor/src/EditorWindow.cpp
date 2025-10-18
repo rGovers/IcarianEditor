@@ -4,264 +4,297 @@
 
 #include "Windows/EditorWindow.h"
 
-#include <glm/ext/matrix_clip_space.hpp>
 #include <imgui.h>
 #include <ImGuizmo.h>
+#include <thread>
+#include <queue>
 
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianLambda.h"
+#include "Core/PipeMessage.h"
 #include "EditorConfig.h"
-#include "EditorInputManager.h"
+#include "EngineProcess.h"
 #include "FlareImGui.h"
 #include "Gizmos.h"
+#include "Logger.h"
 #include "PixelShader.h"
 #include "RenderCommand.h"
 #include "Runtime/RuntimeManager.h"
+#include "RuntimeAssetStore.h"
 #include "ShaderProgram.h"
 #include "Shaders.h"
 #include "VertexShader.h"
 #include "Workspace.h"
 
-uint32_t EditorWindow::RefCount = 0;
-ShaderProgram* EditorWindow::GridShader = nullptr;
-
-EditorWindow::EditorWindow(Workspace* a_workspace) : Window("Editor", "Textures/WindowIcons/WindowIcon_Editor.png")
+EditorWindow::EditorWindow() : Window("Editor", "Textures/WindowIcons/WindowIcon_Editor.png", true)
 {
-    if (GridShader == nullptr)
-    {
-        const VertexShader* v = VertexShader::GenerateShader(GridVertexShader);
-        IDEFER(delete v);
-        const PixelShader* p = PixelShader::GenerateShader(GridPixelShader);
-        IDEFER(delete p);
+    m_process = nullptr;
 
-        GridShader = ShaderProgram::GenerateProgram(v, p);
-    }
-
-    ++RefCount;
-
-    m_workspace = a_workspace;
-
-    m_width = -1;
-    m_height = -1;
-
-    glGenTextures(1, &m_textureHandle);
-    glBindTexture(GL_TEXTURE_2D, m_textureHandle);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glGenTextures(1, &m_depthTextureHandle);
-    glBindTexture(GL_TEXTURE_2D, m_depthTextureHandle);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 1, 1, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glGenFramebuffers(1, &m_framebufferHandle);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferHandle);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_textureHandle, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_depthTextureHandle, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    m_lightMode = EditorLightMode_Ambient;
+    m_manipulationMode = ManipulationMode_Translate;
 
     m_translation = glm::vec3(0.0f, -1.0f, 10.0f);
-
     m_rotation = glm::identity<glm::quat>();
 
     m_moveSpeed = 10.0f;
     m_zoom = 10.0f;
 
-    m_refresh = true;
+    m_width = 640;
+    m_height = 480;
 
-    m_workspace->AddEditorWindow(this);
+    m_lastUpdate = 0;
+
+    glGenTextures(1, &m_gizmosRenderTexture);
+    glBindTexture(GL_TEXTURE_2D, m_gizmosRenderTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenTextures(1, &m_renderTexture);
+    glBindTexture(GL_TEXTURE_2D, m_renderTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)m_width, (GLsizei)m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenFramebuffers(1, &m_gizmosFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_gizmosFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_gizmosRenderTexture, 0);
+
+    glGenFramebuffers(1, &m_renderFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_renderFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_renderTexture, 0);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    VertexShader* vShader = VertexShader::GenerateShader(CompositeVertexShader);
+    IDEFER(delete vShader);
+
+    PixelShader* pShader = PixelShader::GenerateShader(CompositePixelShader);
+    IDEFER(delete pShader);
+
+    m_compositeProgram = ShaderProgram::GenerateProgram(vShader, pShader);
 }
 EditorWindow::~EditorWindow()
 {
-    m_workspace->RemoveEditorWindow(this);
-
-    if (--RefCount == 0)
+    if (m_process != nullptr)
     {
-        delete GridShader;
-        GridShader = nullptr;
+        delete m_process;
+        m_process = nullptr;
     }
 
-    glDeleteTextures(1, &m_textureHandle);
-    glDeleteTextures(1, &m_depthTextureHandle);
+    glDeleteFramebuffers(1, &m_gizmosFramebuffer);
+    glDeleteFramebuffers(1, &m_renderFramebuffer);
 
-    glDeleteFramebuffers(1, &m_framebufferHandle);
+    glDeleteTextures(1, &m_gizmosRenderTexture);
+    glDeleteTextures(1, &m_renderTexture);
+
+    delete m_compositeProgram;
 }
 
-void EditorWindow::Draw()
+void EditorWindow::UpdateProcess()
 {
-    m_refresh = false;
-    m_lastUpdate = 0.0;
-
-    ImGuizmo::SetDrawlist();
-
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebufferHandle);
-    glViewport(0, 0, (GLsizei)m_width, (GLsizei)m_height);
-    const ImVec2 wPos = ImGui::GetWindowPos();
-    const ImVec2 min = ImGui::GetWindowContentRegionMin();
-    ImGuizmo::SetRect(wPos.x + min.x, wPos.y + min.y, m_width, m_height);
-
-    const glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
-
-    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glEnable(GL_DEPTH_TEST);
-
-    glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
-    const glm::mat4 invProj = glm::inverse(proj);
-
-    const glm::mat4 rotMat = glm::toMat4(m_rotation);
-    const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
-
-    const glm::mat4 trans = transMat * rotMat;
-    glm::mat4 view = glm::inverse(trans);
-
-    const IcarianCore::ShaderCameraBuffer camBuffer =
-    {
-        .View = view,
-        .Proj = proj,
-        .InvView = trans,
-        .InvProj = invProj,
-        .ViewProj = proj * view
-    };
-    
-    RenderCommand::PushCameraBuffer(camBuffer);
-    Gizmos::SetMatrices(view, proj);
-
-    void* args[] =
-    {
-        &view,
-        &proj,
-        &m_width,
-        &m_height
-    };
-
-    RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI(Matrix4,Matrix4,uint,uint)", args);
-
-    const GLuint handle = GridShader->GetHandle();
-
-    glUseProgram(handle);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    glUniformMatrix4fv(0, 1, GL_FALSE, (GLfloat*)&view);
-    glUniformMatrix4fv(1, 1, GL_FALSE, (GLfloat*)&proj);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDisable(GL_BLEND);
-
-    Gizmos::Render();
-}
-
-void EditorWindow::Update(double a_delta)
-{
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-    const ImGuiIO& io = ImGui::GetIO();
-
-    const ImVec2 winPos = ImGui::GetWindowPos();
-    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
-    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
-    const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
-
-    if (sizeIm.x != m_width || sizeIm.y != m_height)
-    {
-        m_width = (uint32_t)sizeIm.x;
-        m_height = (uint32_t)sizeIm.y;
-
-        glBindTexture(GL_TEXTURE_2D, m_textureHandle);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-        glBindTexture(GL_TEXTURE_2D, m_depthTextureHandle);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_width, m_height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, NULL);
-
-        m_refresh = true;
-    }
-
-    if (m_width <= 0 || m_height <= 0)
+    if (m_process == nullptr)
     {
         return;
     }
 
-    ImGui::Image((ImTextureID)(uintptr_t)m_textureHandle, sizeIm);
+    std::queue<IcarianCore::PipeMessage> messages;
+    m_process->Update(&messages);
 
-    bool delivery = false;
-    char* payloadData = nullptr;
-    char payloadTarget[128] = { 0 };
-    if (ImGui::BeginDragDropTarget())
+    while (!messages.empty())
     {
-        IDEFER(ImGui::EndDragDropTarget());
-
-        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DefPath", ImGuiDragDropFlags_AcceptPeekOnly);
-        if (payload != nullptr)
+        const IcarianCore::PipeMessage msg = messages.front();
+        IDEFER(
+        if (msg.Data != nullptr)
         {
-            payloadData = new char[payload->DataSize + 1] { 0 };
-            memcpy(payloadData, payload->Data, payload->DataSize);
-            memcpy(payloadTarget, payload->DataType, sizeof(payload->DataType));
+            delete[] msg.Data;
+        });
+        messages.pop();
 
-            delivery = payload->IsDelivery();
+        switch (msg.Type)
+        {
+        case IcarianCore::PipeMessageType_SetCursorState:
+        case IcarianCore::PipeMessageType_ProfileScope:
+        {
+            // Ignore as we are the editor window
 
-            m_refresh = true;
-        }   
+            break;
+        }
+        case IcarianCore::PipeMessageType_Message:
+        {
+            constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
+
+            const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
+
+            switch (*(e_LoggerMessageType*)msg.Data)
+            {
+            case LoggerMessageType_Message:
+            {
+#ifdef DEBUG
+                // Suppress when not in debug to reduce the console noise
+                // When we are not in debug the end user likely does not care about messages coming from the editor window
+                Logger::Message(str, true, false);
+#endif
+
+                break;
+            }
+            case LoggerMessageType_Warning:
+            {
+                Logger::Warning(str, true, false);
+
+                break;
+            }
+            case LoggerMessageType_Error:
+            {
+                Logger::Error(str, true, false);
+
+                break;
+            }
+            }
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_RuntimeMessage:
+        {
+            // TODO: Implement me!~
+
+            break;
+        }
+        default:
+        {
+            Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
+
+            break;
+        }
+        }
+    }
+}
+void EditorWindow::BuildFrame()
+{
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
+    while (true)
+    {
+        const e_EngineFrameWaitStatus imageWait = m_process->WaitImage();
+        switch (imageWait) 
+        {
+        case EngineFrameWaitStatus_Sucess:
+        {
+            break;
+        }
+        case EngineFrameWaitStatus_Reset:
+        {
+            return;
+        }
+        case EngineFrameWaitStatus_Wait:
+        {
+            UpdateProcess();
+
+            const std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(250));
+            if (timeout)
+            {
+                Logger::Warning("Editor window timeout");
+
+                return;
+            }
+
+            // Yield in case it is a resource contention issue
+            std::this_thread::yield();
+
+            continue;
+        }
+        case EngineFrameWaitStatus_InvalidMode:
+        {
+            return;
+        }
+        }
+
+        break;
     }
 
-    const ImVec2 halfSize = ImVec2(sizeIm.x * 0.5f, sizeIm.y * 0.5f);
+    // We want to composite the engines frame with the editor gizmos
+    const GLuint engineTexture = m_process->GetImage();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_renderFramebuffer);
+
+    glViewport(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+    glScissor(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+
+    const glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
+    glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    const GLuint handle = m_compositeProgram->GetHandle();
+    glUseProgram(handle);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, engineTexture);
+    glUniform1i(0, 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, m_gizmosRenderTexture);
+    glUniform1i(1, 1);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+void EditorWindow::TransformToolbar()
+{
+    const ImVec2 winPos = ImGui::GetWindowPos();
+    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
+    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
+    const glm::vec2 size = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
+
+    const glm::vec2 halfSize = size * 0.5f;
     constexpr glm::vec2 WinSize = glm::vec2(117.0f, 40.0f);
     constexpr glm::vec2 WinHalfSize = WinSize * 0.5f;
 
-    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + 40.0f);
-    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + 40.0f + WinSize.y);
+    const ImVec2 rectMin = ImVec2(winPos.x + halfSize.x - WinHalfSize.x, winPos.y + TrayOffset);
+    const ImVec2 rectMax = ImVec2(winPos.x + halfSize.x + WinHalfSize.x, winPos.y + TrayOffset + WinSize.y);
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150), 2.0f);
 
     float offset = 5.0f;
 
-    const e_ManipulationMode mode = m_workspace->GetManipulationMode();
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, TrayOffset + 5.0f));
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
-
-    if (FlareImGui::ImageButton("Translate", "Textures/Icons/Icon_Translate.png", glm::vec2(25.0f), mode == ManipulationMode_Translate))
+    const bool showTranslateBackground = m_manipulationMode == ManipulationMode_Translate;
+    if (FlareImGui::ImageButton("Translate", "Textures/Icons/Icon_Translate.png", glm::vec2(25.0f), showTranslateBackground))
     {
-        m_workspace->SetManipulationMode(ManipulationMode_Translate);
-    }    
+        m_manipulationMode = ManipulationMode_Translate;
+    }
 
     if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
     {
         IDEFER(ImGui::EndTooltip());
 
         ImGui::Text("Translate");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_Translate);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
     }
 
     offset += 35.0f;
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, TrayOffset + 5.0f));
 
-    if (FlareImGui::ImageButton("Rotate", "Textures/Icons/Icon_Rotate.png", glm::vec2(25.0f), mode == ManipulationMode_Rotate))
+    const bool showRotateBackground = m_manipulationMode == ManipulationMode_Rotate;
+    if (FlareImGui::ImageButton("Rotate", "Textures/Icons/Icon_Rotate.png", glm::vec2(25.0f), showRotateBackground))
     {
-        m_workspace->SetManipulationMode(ManipulationMode_Rotate);
+        m_manipulationMode = ManipulationMode_Rotate;
     }
 
     if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -269,15 +302,21 @@ void EditorWindow::Update(double a_delta)
         IDEFER(ImGui::EndTooltip());
 
         ImGui::Text("Rotate");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_Rotate);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
     }
 
     offset += 35.0f;
 
-    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, 45.0f));
+    ImGui::SetCursorPos(ImVec2(halfSize.x - WinHalfSize.x + offset, TrayOffset + 5.0f));
 
-    if (FlareImGui::ImageButton("Scale", "Textures/Icons/Icon_Scale.png", glm::vec2(25.0f), mode == ManipulationMode_Scale))
+    const bool showScaleBackground = m_manipulationMode == ManipulationMode_Scale;
+    if (FlareImGui::ImageButton("Scale", "Textures/Icons/Icon_Scale.png", glm::vec2(25.0f), showScaleBackground))
     {
-        m_workspace->SetManipulationMode(ManipulationMode_Scale);
+        m_manipulationMode = ManipulationMode_Scale;
     }
 
     if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
@@ -285,15 +324,194 @@ void EditorWindow::Update(double a_delta)
         IDEFER(ImGui::EndTooltip());
 
         ImGui::Text("Scale");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_Scale);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
+    }
+}
+void EditorWindow::LightModeToolbar()
+{
+    const ImVec2 winPos = ImGui::GetWindowPos();
+    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
+    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
+    const glm::vec2 size = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
+
+    constexpr float BorderOffset = 10.0f;
+    constexpr glm::vec2 WinSize = glm::vec2(117.0f, 40.0f);
+
+    const ImVec2 rectMin = ImVec2(winPos.x + size.x - WinSize.x - BorderOffset, winPos.y + TrayOffset);
+    const ImVec2 rectMax = ImVec2(winPos.x + size.x - BorderOffset, winPos.y + TrayOffset + WinSize.y);
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    drawList->AddRectFilled(rectMin, rectMax, IM_COL32(30, 30, 30, 150));
+
+    float offset = 5.0f;
+
+    ImGui::SetCursorPos(ImVec2(size.x - WinSize.x - BorderOffset + offset, TrayOffset + 5.0f));
+
+    const bool showAmbientBackground = m_lightMode == EditorLightMode_Ambient;
+    if (FlareImGui::ImageButton("Ambient Light", "Textures/Icons/Icon_Ambient.png", glm::vec2(25.0f), showAmbientBackground))
+    {
+        m_lightMode = EditorLightMode_Ambient;
     }
 
-    const bool focused = ImGui::IsWindowFocused() || ImGui::IsWindowHovered();
-    // No point wasting resources on something that is not focused
-    if (focused)
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Ambient Light Mode");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_AmbientLightMode);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
+    }
+
+    offset += 35.0f;
+
+    ImGui::SetCursorPos(ImVec2(size.x - WinSize.x - BorderOffset + offset, TrayOffset + 5.0f));
+
+    const bool showViewportBackground = m_lightMode == EditorLightMode_Viewport;
+    if (FlareImGui::ImageButton("Viewport Light", "Textures/Icons/Icon_Viewport.png", glm::vec2(25.0f), showViewportBackground))
+    {
+        m_lightMode = EditorLightMode_Viewport;
+    }
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Viewport Light Mode");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_ViewportLightMode);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
+    }
+
+    offset += 35.0f;
+
+    ImGui::SetCursorPos(ImVec2(size.x - WinSize.x - BorderOffset + offset, TrayOffset + 5.0f));
+
+    const bool showSceneBackground = m_lightMode == EditorLightMode_Scene;
+    if (FlareImGui::ImageButton("Scene Light", "Textures/Icons/Icon_Scene.png", glm::vec2(25.0f), showSceneBackground))
+    {
+        m_lightMode = EditorLightMode_Scene;
+    }
+
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
+    {
+        IDEFER(ImGui::EndTooltip());
+
+        ImGui::Text("Scene Light Mode");
+
+        ImGui::Separator();
+
+        const ImGuiKey key = EditorConfig::GetKeyBind(KeyBindTarget_SceneLightMode);
+        ImGui::Text("KeyBind: %s", ImGui::GetKeyName(key));
+    }
+}
+
+void EditorWindow::Refresh()
+{
+    if (m_process != nullptr)
+    {
+        delete m_process;
+        m_process = nullptr;
+    }
+
+    const std::filesystem::path path = std::filesystem::current_path();
+    // No need for the engine to have a lot of threads as it just needs to render the scene
+    const uint32_t threadCount = glm::min((uint32_t)std::thread::hardware_concurrency() / 4, uint32_t(4));
+    m_process = EngineProcess::CreateProcess(path, m_width, m_height, threadCount);
+}
+void EditorWindow::Update(double a_delta)
+{
+    if (m_process != nullptr && !m_process->IsAlive())
+    {
+        Logger::Error("Editor window engine process died");
+
+        delete m_process;
+        m_process = nullptr;
+    }
+
+    if (ImGui::BeginMenuBar())
+    {
+        IDEFER(ImGui::EndMenuBar());
+
+        if (m_process != nullptr)
+        {
+            const float width = ImGui::GetWindowWidth();
+
+            const uint32_t ups = (uint32_t)m_process->GetUPS();
+            const std::string upsText = "UPS: " + std::to_string(ups);
+
+            const ImVec2 upsSize = ImGui::CalcTextSize(upsText.c_str());
+
+            const float upsOffset = upsSize.x + 20.0f;
+
+            ImGui::SetCursorPosX(width - upsOffset);
+            ImGui::Text("%s", upsText.c_str());
+        }
+    }
+
+    UpdateProcess();
+
+    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
+    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
+    const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
+
+    // The window is too small so do not bother updating
+    if (sizeIm.x < 4 || sizeIm.y < 4)
+    {
+        return;
+    }
+
+    const uint32_t unfocusedFPS = EditorConfig::GetEditorUnfocusedFPS();
+    const float unfocusedFrameTime = 1.0f / unfocusedFPS;
+
+    const bool isFocused = ImGui::IsWindowHovered() || ImGui::IsWindowFocused();
+    const bool shouldUpdate = isFocused || m_lastUpdate >= unfocusedFrameTime;
+
+    if (m_process != nullptr)
+    {
+        if (m_width != sizeIm.x || m_height != sizeIm.y)
+        {
+            const uint32_t newWidth = (uint32_t)sizeIm.x;
+            IDEFER(m_width = newWidth);
+            const uint32_t newHeight = (uint32_t)sizeIm.y;
+            IDEFER(m_height = newHeight);
+
+            m_process->SetSize(newWidth, newHeight);
+
+            glBindTexture(GL_TEXTURE_2D, m_gizmosRenderTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)newWidth, (GLsizei)newHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+            glBindTexture(GL_TEXTURE_2D, m_renderTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)newWidth, (GLsizei)newHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        }
+
+        if (shouldUpdate)
+        {
+            BuildFrame();
+        }
+
+        ImGui::Image((ImTextureID)(uintptr_t)m_renderTexture, sizeIm);
+    }
+
+    TransformToolbar();
+    LightModeToolbar();
+
+    if (isFocused)
     {
         const ImVec2 imPos = ImGui::GetMousePos();
-
         const glm::vec2 mPos = glm::vec2(imPos.x, imPos.y);
+        IDEFER(m_prevMousePos = mPos);
+
+        const ImGuiIO& io = ImGui::GetIO();
 
         const ImGuiKey cameraModifierKey = EditorConfig::GetKeyBind(KeyBindTarget_CameraModifier);
 
@@ -320,7 +538,7 @@ void EditorWindow::Update(double a_delta)
 
             const ImGuiKey moveUpKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveUp);
             const ImGuiKey moveDownKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveDown);
-            
+
             if (ImGui::IsKeyDown(moveUpKey))
             {
                 mov += m_rotation * glm::vec3(0.0f, -1.0f, 0.0f);
@@ -330,11 +548,15 @@ void EditorWindow::Update(double a_delta)
                 mov += m_rotation * glm::vec3(0.0f, 1.0f, 0.0f);
             }
 
-            float modifier = 1.0f;
-            if (ImGui::IsKeyDown(cameraModifierKey))
+            const float modifier = ILAMBDA(
             {
-                modifier = 0.1f;
-            }
+                if (ImGui::IsKeyDown(cameraModifierKey))
+                {
+                    ILRETURN 0.1f;
+                }
+
+                ILRETURN 1.0f;
+            });
 
             m_moveSpeed = glm::max(0.1f, m_moveSpeed + io.MouseWheel * 2.0f * modifier);
 
@@ -342,7 +564,10 @@ void EditorWindow::Update(double a_delta)
 
             const float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
 
-            m_rotation = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f)) * m_rotation;
+            const glm::quat horAxis = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f));
+            const glm::quat verAxis = glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f));
+
+            m_rotation = horAxis * verAxis * m_rotation;
 
             m_translation += mov * m_moveSpeed * (float)a_delta;
         }
@@ -361,7 +586,7 @@ void EditorWindow::Update(double a_delta)
                 m_translation += right * mMov.x * m_zoom * Sensitivity;
             }
             else
-            {   
+            {
                 const float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
 
                 const glm::quat rot = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f));
@@ -387,66 +612,63 @@ void EditorWindow::Update(double a_delta)
             m_translation += forward * zoomDelta;
 
             const ImGuiKey translateKey = EditorConfig::GetKeyBind(KeyBindTarget_Translate);
-            const ImGuiKey rotateKey = EditorConfig::GetKeyBind(KeyBindTarget_Rotate);
-            const ImGuiKey scaleKey = EditorConfig::GetKeyBind(KeyBindTarget_Scale);
-
             if (ImGui::IsKeyPressed(translateKey))
             {
-                m_workspace->SetManipulationMode(ManipulationMode_Translate);
+                m_manipulationMode = ManipulationMode_Translate;
             }
+
+            const ImGuiKey rotateKey = EditorConfig::GetKeyBind(KeyBindTarget_Rotate);
             if (ImGui::IsKeyPressed(rotateKey))
             {
-                m_workspace->SetManipulationMode(ManipulationMode_Rotate);
+                m_manipulationMode = ManipulationMode_Rotate;
             }
+
+            const ImGuiKey scaleKey = EditorConfig::GetKeyBind(KeyBindTarget_Scale);
             if (ImGui::IsKeyPressed(scaleKey))
             {
-                m_workspace->SetManipulationMode(ManipulationMode_Scale);
+                m_manipulationMode = ManipulationMode_Scale;
             }
-        }
 
-        for (uint32_t i = 0; i < MouseButton_Last; ++i)
-        {
-            EditorInputManager::SetMouseButton((e_MouseButton)i, ImGui::IsMouseDown((ImGuiMouseButton)i));
-        }
-
-        for (uint32_t i = 0; i < KeyCode_Last; ++i)
-        {
-            const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
-            if (key != ImGuiKey_None)
+            const ImGuiKey ambientLightKey = EditorConfig::GetKeyBind(KeyBindTarget_AmbientLightMode);
+            if (ImGui::IsKeyPressed(ambientLightKey))
             {
-                EditorInputManager::SetKeyboardKey((e_KeyCode)i, ImGui::IsKeyDown(key));
+                m_lightMode = EditorLightMode_Ambient;
+            }
+
+            const ImGuiKey viewportLightKey = EditorConfig::GetKeyBind(KeyBindTarget_ViewportLightMode);
+            if (ImGui::IsKeyPressed(viewportLightKey))
+            {
+                m_lightMode = EditorLightMode_Viewport;
+            }
+
+            const ImGuiKey sceneLightKey = EditorConfig::GetKeyBind(KeyBindTarget_SceneLightMode);
+            if (ImGui::IsKeyPressed(sceneLightKey))
+            {
+                m_lightMode = EditorLightMode_Scene;
             }
         }
 
-        const glm::vec2 cPos = glm::vec2(mPos.x - (winPos.x + vMinIm.x), mPos.y - (winPos.y + vMinIm.y));
-        EditorInputManager::SetCursorPos(cPos);
-
-        m_prevMousePos = mPos;
-
-        Draw();
-    }   
-    else 
-    {
-        if (m_refresh || m_lastUpdate > 0.5)
+        if (m_process != nullptr)
         {
-            Draw();
+            if (ImGui::IsKeyPressed(ImGuiKey_F9))
+            {
+                m_process->CaptureFrame();
+            }
         }
-
-        m_lastUpdate += a_delta;
     }
 
-    if (payloadData != nullptr)
+    if (m_process != nullptr && shouldUpdate)
     {
-        IDEFER(delete[] payloadData);
-
-        const ImVec2 imMousePos = ImGui::GetMousePos();
         const ImVec2 winPos = ImGui::GetWindowPos();
-        const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
 
-        const glm::vec2 mousePos = glm::vec2(imMousePos.x - (winPos.x + vMinIm.x), imMousePos.y - (winPos.y + vMinIm.y));        
+        // Want to set the workspace manipulation mode to the current manipulation mode of the editor window as each can have their own
+        Workspace::SetManipulationMode(m_manipulationMode);
 
-        glm::mat4 proj = glm::perspective(glm::pi<float>() * 0.4f, (float)m_width / m_height, 0.01f, 1000.0f);
-        const glm::mat4 invProj = glm::inverse(proj);
+        RuntimeAssetStore::SetActiveEngineProcess(m_process);
+        IDEFER(RuntimeAssetStore::SetActiveEngineProcess(nullptr));
+
+        constexpr float FOV = glm::pi<float>() * 0.4f;
+        glm::mat4 proj = glm::perspective(FOV, (float)sizeIm.x / sizeIm.y, 0.01f, 1000.0f);
 
         const glm::mat4 rotMat = glm::toMat4(m_rotation);
         const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
@@ -454,31 +676,46 @@ void EditorWindow::Update(double a_delta)
         const glm::mat4 trans = transMat * rotMat;
         glm::mat4 view = glm::inverse(trans);
 
-        const glm::vec2 sP = (mousePos / glm::vec2((float)m_width, (float)m_height)) * 2.0f - glm::vec2(1.0f);
+        Gizmos::SetMatrices(view, proj);
 
-        glm::vec4 cP = invProj * glm::vec4(sP, 0.975f, 1.0f);
-        cP /= cP.w;
-        const glm::vec4 wP = trans * cP;
+        m_process->SendRuntimeMessage("Editor:CameraTransform", &trans, sizeof(glm::mat4));
+        m_process->SendRuntimeMessage("Editor:SceneView:LightMode", &m_lightMode, sizeof(e_EditorLightMode));
 
-        glm::vec3 p = glm::vec3(wP.xyz());
-
-        MonoString* mString = mono_string_new(RuntimeManager::GetEditorDomain(), payloadData);
         void* args[] =
         {
-            mString,
-            &p,
             &view,
             &proj,
             &m_width,
             &m_height
         };
 
-        RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":PeekDefPath(string,Vector3,Matrix4,Matrix4,uint,uint)", args);
+        RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI(Matrix4,Matrix4,uint,uint)", args);
 
-        if (delivery)
-        {
-            RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":AcceptDefPath(string,Vector3)", args);        
-        }
+        RenderCommand::Flush(m_process);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, m_gizmosFramebuffer);
+
+        glViewport(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+        glScissor(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        Gizmos::Render();
+
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(winPos.x + vMinIm.x, winPos.y + vMinIm.y, m_width, m_height);
+
+        m_process->SignalImage();
+    }
+
+    if (shouldUpdate)
+    {
+        m_lastUpdate = 0;
+    }
+    else
+    {
+        m_lastUpdate += a_delta;
     }
 }
 

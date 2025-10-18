@@ -42,10 +42,9 @@ static void GenerateDirs(const std::filesystem::path& a_path)
     }
 }
 
-Project::Project(AppMain* a_app, Workspace* a_workspace)
+Project::Project(AppMain* a_app)
 {
     m_app = a_app;
-    m_workspace = a_workspace;
 
     m_shouldRefresh = false;
 
@@ -125,7 +124,7 @@ void Project::NewProject(const std::filesystem::path& a_path, const std::string_
     m_path = a_path / m_name;
 
     GenerateDirs(m_path);
-    
+
     SaveProjectFile();
 
     IDEFER(m_shouldRefresh = true);

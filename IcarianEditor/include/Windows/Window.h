@@ -4,21 +4,25 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 class Window
 {
 private:
-    bool        m_open;
+    static constexpr uint32_t CloseBit = 0;
+    static constexpr uint32_t MenuBarBit = 1;
 
     std::string m_texturePath;
     std::string m_idStr;
     std::string m_displayName;
 
+    uint8_t     m_flags;
+
 protected:
 
 public:
-    Window(const std::string_view& a_displayName, const std::string_view& a_texturePath = "");
+    Window(const std::string_view& a_displayName, const std::string_view& a_texturePath = "", bool a_menubar = false);
     virtual ~Window();
 
     virtual bool RequiresProject() const
@@ -26,10 +30,7 @@ public:
         return true;
     }
 
-    inline void CloseWindow()
-    {
-        m_open = false;
-    }
+    void CloseWindow();
 
     bool Display(double a_delta);
 

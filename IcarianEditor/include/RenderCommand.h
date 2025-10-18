@@ -7,69 +7,89 @@
 #define GLM_FORCE_SWIZZLE 
 #include <glm/glm.hpp>
 
-#include <string>
-#include <unordered_map>
-#include <vector>
+class EngineProcess;
 
-class RuntimeStorage;
-class Shader;
-class ShaderProgram;
-class ShaderStorageObject;
-class UniformBuffer;
-
-#include "Core/ShaderBuffers.h"
-
-struct RBoneData
+struct MeshTable
 {
-    std::string Name;
-    uint32_t Parent;
-    glm::mat4 InvBind;
-    glm::mat4 Transform;
+    uint32_t MaterialID;
+    uint32_t MeshID;
+    uint32_t IndexCount;
+
+    uint32_t TransformCount;
+    uint32_t TransformCapacity;
+    glm::mat4* Transforms;
 };
-struct SkeletonData
+
+struct ModelTable
 {
-    std::vector<RBoneData> Bones;
+    uint32_t MaterialID;
+    uint32_t ModelID;
+
+    uint32_t TransformCount;
+    uint32_t TransformCapapcity;
+    glm::mat4* Transforms;
 };
+
+#include "EditorLightInteropStructures.h"
 
 class RenderCommand
 {
 private:
-    RuntimeStorage*                              m_storage;
+    uint32_t              m_ambientLightCount;
+    uint32_t              m_ambientLightCapacity;
+    AmbientLightData*     m_ambientLightData;
 
-    uint32_t                                     m_boundShader;
-    std::unordered_map<uint32_t, ShaderProgram*> m_shaders; 
+    uint32_t              m_directionalLightCount;
+    uint32_t              m_directionalLightCapacity;
+    DirectionalLightData* m_directionalLightData;
 
-    UniformBuffer*                               m_cameraBuffer;
-    UniformBuffer*                               m_transformBuffer;
-    ShaderStorageObject*                         m_transformBatchBuffer;
-    ShaderStorageObject*                         m_skeletonBuffer;
+    uint32_t              m_pointLightCount;
+    uint32_t              m_pointLightCapacity;
+    PointLightData*       m_pointLightData;
 
-    std::vector<SkeletonData>                    m_skeletonData;
+    uint32_t              m_spotLightCount;
+    uint32_t              m_spotLightCapacity;
+    SpotLightData*        m_spotLightData;
 
-    RenderCommand(RuntimeStorage* a_storage);
-    
-    static void BindBuffers(const Shader* a_shader);
+    uint32_t              m_meshTableCount;
+    uint32_t              m_meshTableCapacity;
+    MeshTable*            m_meshTables;
+
+    uint32_t              m_modelTableCount;
+    uint32_t              m_modelTableCapacity;
+    ModelTable*           m_modelTables;
+
+    uint32_t              m_currentMaterial;
+
+    RenderCommand();
+
+    static void FlushAmbientLight(EngineProcess* a_process);
+    static void FlushDirectionalLight(EngineProcess* a_process);
+    static void FlushPointLight(EngineProcess* a_process);
+    static void FlushSpotLight(EngineProcess* a_process);
+
+    static void FlushMesh(EngineProcess* a_process);
+    static void FlushModel(EngineProcess* a_process);
 
 protected:
 
 public:
     ~RenderCommand();
 
-    static void Init(RuntimeStorage* a_storage);
-    static void Clear();
+    static void Init();
     static void Destroy();
 
+    static void Flush(EngineProcess* a_process);
+
     static void BindMaterial(uint32_t a_materialAddr);
+
+    static void PushAmbientLight(float a_intensity, const glm::vec4& a_color);
+    static void PushDirectionalLight(const glm::mat4& a_transform, float a_intensity, const glm::vec4& a_color);
+    static void PushPointLight(const glm::mat4& a_transform, float a_intensity, float a_radius, const glm::vec4& a_color);
+    static void PushSpotLight(const glm::mat4& a_transform, float a_intensity, float a_radius, float a_innerCutoffAngle, float a_outerCutoffAngle, const glm::vec4& a_color);
+
+    static void DrawMesh(const glm::mat4& a_transform, uint32_t a_meshAddr, uint32_t a_indexCount);
     static void DrawModel(const glm::mat4& a_transform, uint32_t a_modelAddr);
-
-    static void PushCameraBuffer(const IcarianCore::ShaderCameraBuffer& a_buffer);
-
-    static uint32_t GenerateSkeletonBuffer();
-    static void PushBoneData(uint32_t a_addr, const std::string_view& a_object, uint32_t a_parent, const glm::mat4& a_bindPose, const glm::mat4& a_invBindPose);
-    static void SetBoneTransform(uint32_t a_addr, const std::string_view& a_object, const glm::mat4& a_transform);
-    static void BindSkeletonBuffer(uint32_t a_addr);
-
-    static void DrawBones(uint32_t a_addr, const glm::mat4& a_transform);
 };
 
 // MIT License

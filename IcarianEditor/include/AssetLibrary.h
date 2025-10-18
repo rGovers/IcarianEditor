@@ -69,6 +69,7 @@ struct AssetCommand
 };
 
 // TODO: Can probably clean up this class a bit been just hacking stuff on as needed and patching can probably tear out and clean up
+// TODO: I can probably break this out to a seperate process from the editor with a watchdog that saves to a backup archive in the event of an unexpected close
 class AssetLibrary
 {
 private:

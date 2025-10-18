@@ -6,29 +6,27 @@
 
 #include "InteropTypes.h"
 
-#ifdef CUBE_LANGUAGE_CSHARP
-namespace IcarianEditor {
-#endif
-
-IOP_CSINTERNAL enum IOP_ENUM_NAME(FileTextureMode) : IOP_UINT16
-{
-    IOP_ENUM_VALUE(FileTextureMode, Null) = IOP_UINT16_MAX,
-    IOP_ENUM_VALUE(FileTextureMode, Texture) = 0,
-};
-
-IOP_PACKED IOP_CSINTERNAL struct FileTextureHandle
-{
-    IOP_CSPUBLIC IOP_UINT32 Addr;
-    IOP_CSPUBLIC IOP_ENUM_NAME(FileTextureMode) Mode;
-};
-
-#ifdef CUBE_LANGUAGE_CSHARP
-}
-#endif
+#define EDITOR_RENDERCOMMAND_EXPORT_TABLE(F) \
+    F(void, IcarianEditor, EditorRenderCommandInterop, PushAmbientLight, \
+    { \
+        RenderCommand::PushAmbientLight(a_intensity, a_color); \
+    }, float a_intensity, IOP_VEC4 a_color) \
+    F(void, IcarianEditor, EditorRenderCommandInterop, PushDirectionalLight, \
+    { \
+        RenderCommand::PushDirectionalLight(a_transform, a_intensity, a_color); \
+    }, IOP_MAT4 a_transform, float a_intensity, IOP_VEC4 a_color) \
+    F(void, IcarianEditor, EditorRenderCommandInterop, PushPointLight, \
+    { \
+        RenderCommand::PushPointLight(a_transform, a_intensity, a_radius, a_color); \
+    }, IOP_MAT4 a_transform, float a_intensity, float a_radius, IOP_VEC4 a_color) \
+    F(void, IcarianEditor, EditorRenderCommandInterop, PushSpotLight, \
+    { \
+        RenderCommand::PushSpotLight(a_transform, a_intensity, a_radius, a_innerCutoffAngle, a_outerCutoffAngle, a_color); \
+    }, IOP_MAT4 a_transform, float a_intensity, float a_radius, float a_innerCutoffAngle, float a_outerCutoffAngle, IOP_VEC4 a_color) \
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -2,22 +2,40 @@
 // 
 // License at end of file.
 
-#pragma once 
+using IcarianEngine.Mod;
 
-#include "InteropTypes.h"
+namespace IcarianEditor.Engine
+{
+    // This is the engine runtime that is used by the editor window used to render the scene for the editor
+    // We need to do some special things to communicate with the main editor process
+    public class IcarianEditorAssemblyControl : AssemblyControl
+    {
+        public override void Init()
+        {
+            AssetStore.Init();
+            SceneView.Init();
+        }
 
-#define FILEHANDLER_EXPORT_TABLE(F) \
-    F(void, IcarianEditor, FileHandlerInterop, SetFileHandle, \
-    { \
-        FileTextureHandle handle; \
-        handle.Addr = a_addr; \
-        handle.Mode = (e_FileTextureMode)a_mode; \
-        Instance->SetFileHandle(handle); \
-    }, IOP_UINT32 a_addr, IOP_UINT32 a_mode) \
+        public override void Update()
+        {
+            SceneView.Update();
+        }
+        public override void FixedUpdate()
+        {
+
+        }
+
+        public override void Close()
+        {
+            SceneView.Destroy();
+            AssetStore.Destroy();
+        }
+    }
+}
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -36,6 +36,10 @@ enum e_KeyBindTarget : uint32_t
     KeyBindTarget_Rotate,
     KeyBindTarget_Scale,
 
+    KeyBindTarget_AmbientLightMode,
+    KeyBindTarget_ViewportLightMode,
+    KeyBindTarget_SceneLightMode,
+
     KeyBindTarget_MoveUp,
     KeyBindTarget_MoveDown,
     KeyBindTarget_CameraModifier,
@@ -54,6 +58,8 @@ private:
     float        m_engineShutdownTimeout = 5.0f;
     float        m_enginePipeTimeout = 5.0f;
 
+    uint32_t     m_editorUnfocusedFPS = 10;
+
     glm::vec4    m_backgroundColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
     float        m_editorMouseSensitivity = 0.01f;
 
@@ -71,6 +77,9 @@ public:
 
     static void Init();
     static void Destroy();
+
+    static uint32_t GetEditorUnfocusedFPS();
+    static void SetEditorUnfocusedFPS(uint32_t a_fps);
 
     static bool GetUseDegrees();
     static void SetUseDegrees(bool a_useDegrees);

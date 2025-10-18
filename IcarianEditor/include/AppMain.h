@@ -11,10 +11,8 @@
 
 class Modal;
 class Project;
-class RuntimeStorage;
 class SSHPipe;
 class Window;
-class Workspace;
 
 #include "EngineInputInteropStructures.h"
 
@@ -41,10 +39,9 @@ private:
 
     std::vector<Window*> m_windows;
     std::vector<Modal*>  m_modals;
+    std::vector<bool>    m_runtimeModalState;
 
     Project*             m_project;
-    RuntimeStorage*      m_rStorage;
-    Workspace*           m_workspace;
 
     glm::vec2            m_startWindowPos;
     glm::vec2            m_startWindowSize;
@@ -57,8 +54,6 @@ private:
 
     uint8_t              m_windowActions;
     uint8_t              m_flags;
-
-    std::vector<bool>    m_runtimeModalState;
 
 protected:
 

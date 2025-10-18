@@ -20,44 +20,45 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
     CUBE_CSProject_AppendIncludePath(&project, "../IcarianEngine/EngineInterop");
 
     CUBE_CSProject_AppendSources(&project, 
-        "src/AnimationMaster.cs",
-        "src/ClipBoard.cs",
-        "src/ColliderRenderer.cs",
-        "src/EditorConfig.cs",
-        "src/EditorDefLibrary.cs",
-        "src/EditorScene.cs",
-        "src/FileHandler.cs",
-        "src/Gizmos.cs",
-        "src/GUI.cs",
-        "src/Program.cs",
-        "src/Workspace.cs",
+        "./src/ClipBoard.cs",
+        "./src/ColliderRenderer.cs",
+        "./src/EditorConfig.cs",
+        "./src/EditorDefLibrary.cs",
+        "./src/EditorRenderCommand.cs",
+        "./src/EditorScene.cs",
+        "./src/Gizmos.cs",
+        "./src/GUI.cs",
+        "./src/Program.cs",
+        "./src/Workspace.cs",
 
-        "src/Editor/EditorDisplay.cs",
-        "src/Editor/ModelRendererEditorDisplay.cs",
-        "src/Editor/PhysicsBodyEditorDisplay.cs",
-        "src/Editor/RigidBodyEditorDisplay.cs",
-        "src/Editor/SkeletonAnimatorEditorDisplay.cs",
-        "src/Editor/SkinnedModelRendererEditorDisplay.cs",
-        "src/Editor/TriggerBodyEditorDisplay.cs",
+        "./src/Editor/AmbientLightEditorDisplay.cs",
+        "./src/Editor/DirectionalLightEditorDisplay.cs",
+        "./src/Editor/EditorDisplay.cs",
+        "./src/Editor/ModelRendererEditorDisplay.cs",
+        "./src/Editor/PhysicsBodyEditorDisplay.cs",
+        "./src/Editor/PointLightEditorDisplay.cs",
+        "./src/Editor/RigidBodyEditorDisplay.cs",
+        "./src/Editor/SpotLightEditorDisplay.cs",
+        "./src/Editor/TriggerBodyEditorDisplay.cs",
 
-        "src/Modals/AddComponentModal.cs",
-        "src/Modals/CreateDefModal.cs",
-        "src/Modals/ConfirmModal.cs",
-        "src/Modals/CreateSceneDefModal.cs",
-        "src/Modals/DeleteSceneObjectModal.cs",
-        "src/Modals/GUIGetDefSelectorModal.cs",
-        "src/Modals/Modal.cs",
-        "src/Modals/NewSceneObjectModal.cs",
+        "./src/Modals/AddComponentModal.cs",
+        "./src/Modals/CreateDefModal.cs",
+        "./src/Modals/ConfirmModal.cs",
+        "./src/Modals/CreateSceneDefModal.cs",
+        "./src/Modals/DeleteSceneObjectModal.cs",
+        "./src/Modals/GUIGetDefSelectorModal.cs",
+        "./src/Modals/Modal.cs",
+        "./src/Modals/NewSceneObjectModal.cs",
 
-        "src/Properties/GameObjectPropertiesWindow.cs",
-        "src/Properties/MaterialPropertiesWindow.cs",
-        "src/Properties/PropertiesEditorWindow.cs",
-        "src/Properties/SelectionObjectPropertiesWindow.cs",
-        
-        "src/Windows/EditorWindow.cs",
-        "src/Windows/HierarchyWindow.cs",
-        "src/Windows/PropertiesWindow.cs",
-        "src/Windows/SceneDefsWindow.cs"
+        "./src/Properties/GameObjectPropertiesWindow.cs",
+        "./src/Properties/MaterialPropertiesWindow.cs",
+        "./src/Properties/PropertiesEditorWindow.cs",
+        "./src/Properties/SelectionObjectPropertiesWindow.cs",
+
+        "./src/Windows/EditorWindow.cs",
+        "./src/Windows/HierarchyWindow.cs",
+        "./src/Windows/PropertiesWindow.cs",
+        "./src/Windows/SceneDefsWindow.cs"
     );
 
     CUBE_CSProject_AppendReference(&project, "System.Core.dll");
@@ -68,7 +69,7 @@ static CUBE_CSProject BuildIcarianEditorCSProject(CBBOOL a_optimise)
 }
 
 #ifdef __cplusplus
-}  
+}
 #endif
 
 #endif 

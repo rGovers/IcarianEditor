@@ -23,6 +23,8 @@ private:
     static constexpr uint32_t ProfilerSessionBit = 0;
     static constexpr uint32_t CloseBit = 1;
 
+    static constexpr float TrayOffset = 55.0f;
+
     AppMain*        m_app;
     Project*        m_project;
 

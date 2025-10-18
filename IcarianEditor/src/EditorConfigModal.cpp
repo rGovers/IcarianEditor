@@ -8,6 +8,7 @@
 
 #include "Core/IcarianDefer.h"
 #include "EditorConfig.h"
+#include "FlareImGui.h"
 #include "Logger.h"
 
 static constexpr const char* EditorConfigTabNames[] =
@@ -75,23 +76,30 @@ EditorConfigModal::~EditorConfigModal()
 
 void EditorConfigModal::GeneralTab()
 {
-    ImGui::SetNextItemWidth(ItemWidth);
+    FlareImGui::Label("Editor Unfocused FPS", LabelRatio);
+    int editorUnfocusedFPS = (int)EditorConfig::GetEditorUnfocusedFPS();
+    if (ImGui::DragInt("##EditorUnfocusedFPS", &editorUnfocusedFPS, 1.0f, 0, 500))
+    {
+        EditorConfig::SetEditorUnfocusedFPS((uint32_t)editorUnfocusedFPS);
+    }
+
+    FlareImGui::Label("Use Degrees", LabelRatio);
     bool useDegrees = EditorConfig::GetUseDegrees();
-    if (ImGui::Checkbox("Use Degrees", &useDegrees))
+    if (ImGui::Checkbox("##UseDegrees", &useDegrees))
     {
         EditorConfig::SetUseDegrees(useDegrees);
     }
 
-    ImGui::SetNextItemWidth(ItemWidth);
+    FlareImGui::Label("Editor Mouse Sensitivity", LabelRatio);
     float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
-    if (ImGui::DragFloat("Editor Mouse Sensitivity", &editorMouseSensitivity, 0.01f, 0.0f, 1.0f, "%.5f"))
+    if (ImGui::DragFloat("##EditorMouseSensitivity", &editorMouseSensitivity, 0.01f, 0.0f, 1.0f, "%.5f"))
     {
         EditorConfig::SetEditorMouseSensitivity(editorMouseSensitivity);
     }
 
-    ImGui::SetNextItemWidth(ItemWidth);
+    FlareImGui::Label("Background Color", LabelRatio);
     glm::vec4 backgroundColor = EditorConfig::GetBackgroundColor();
-    if (ImGui::ColorEdit4("Background Color", (float*)&backgroundColor))
+    if (ImGui::ColorEdit4("##BackgroundColor", (float*)&backgroundColor))
     {
         EditorConfig::SetBackgroundColor(backgroundColor);
     }
@@ -109,9 +117,7 @@ void EditorConfigModal::KeyBindingsTab()
         ImGui::PushID(keyBindName);
         IDEFER(ImGui::PopID());
 
-        ImGui::Text("%s", keyBindName);
-
-        ImGui::SameLine();
+        FlareImGui::Label(keyBindName, LabelRatio);
 
         if (m_keyBindTarget == keyBindTarget)
         {
@@ -149,8 +155,8 @@ void EditorConfigModal::ExternalToolsTab()
 {
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
 
-    ImGui::SetNextItemWidth(ItemWidth);
-    if (ImGui::BeginCombo("Code Editor", CodeEditorNames[codeEditor]))
+    FlareImGui::Label("Code Editor", LabelRatio);
+    if (ImGui::BeginCombo("##CodeEditor", CodeEditorNames[codeEditor]))
     {
         IDEFER(ImGui::EndCombo());
 
@@ -178,8 +184,8 @@ void EditorConfigModal::ExternalToolsTab()
 
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
-    ImGui::SetNextItemWidth(ItemWidth);
-    if (ImGui::BeginCombo("Def Editor", DefEditorNames[defEditor]))
+    FlareImGui::Label("Def Editor", LabelRatio);
+    if (ImGui::BeginCombo("##DefEditor", DefEditorNames[defEditor]))
     {
         IDEFER(ImGui::EndCombo());
 
@@ -208,16 +214,16 @@ void EditorConfigModal::ExternalToolsTab()
 
 void EditorConfigModal::EngineTab()
 {
-    ImGui::SetNextItemWidth(ItemWidth);
+    FlareImGui::Label("Engine Shutdown Timeout", LabelRatio);
     float engineShutdownTimeout = EditorConfig::GetEngineShutdownTimeout();
-    if (ImGui::DragFloat("Engine Shutdown Timeout", &engineShutdownTimeout, 0.1f, 1.0f))
+    if (ImGui::DragFloat("##EngineShutdownTimeout", &engineShutdownTimeout, 0.1f, 1.0f))
     {
         EditorConfig::SetEngineShutdownTimeout(engineShutdownTimeout);
     }
 
-    ImGui::SetNextItemWidth(ItemWidth);
+    FlareImGui::Label("Engine Pipe Timeout", LabelRatio);
     float enginePipeTimeout = EditorConfig::GetEnginePipeTimeout();
-    if (ImGui::DragFloat("Engine Pipe Timeout", &enginePipeTimeout, 0.01f, 1.0f))
+    if (ImGui::DragFloat("##EnginePipeTimeout", &enginePipeTimeout, 0.01f, 1.0f))
     {
         EditorConfig::SetEnginePipeTimeout(enginePipeTimeout);
     }
@@ -225,7 +231,7 @@ void EditorConfigModal::EngineTab()
 
 bool EditorConfigModal::Update()
 {
-    if (ImGui::BeginChild("##Tabs", ImVec2(100.0f, 230.0f)))
+    if (ImGui::BeginChild("##Tabs", ImVec2(110.0f, 230.0f)))
     {
         IDEFER(ImGui::EndChild());
 
@@ -241,14 +247,14 @@ bool EditorConfigModal::Update()
     {
         ImGui::SameLine();
 
-        ImGui::BeginGroup();
-        IDEFER(ImGui::EndGroup());
+        ImGui::BeginChild("##Settings", ImVec2(0.0f, 230.0f));
+        IDEFER(ImGui::EndChild());
 
         switch (m_currentTab) 
         {
         case EditorConfigTab_General:
         {
-            GeneralTab();   
+            GeneralTab();
 
             break;
         }
@@ -267,6 +273,8 @@ bool EditorConfigModal::Update()
         case EditorConfigTab_Engine:
         {
             EngineTab();
+
+            break;
         }
         default:
         {

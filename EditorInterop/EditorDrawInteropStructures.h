@@ -4,35 +4,39 @@
 
 #pragma once
 
-#include <filesystem>
+#include "InteropTypes.h"
 
-#include "EditorGizmosInteropStructures.h"
+#ifdef CUBE_LANGUAGE_CSHARP
+namespace IcarianEditor.Engine {
+#endif
 
-class Workspace
+IOP_PACKED IOP_CSPUBLIC struct DrawDataHeader
 {
-private:
-    std::filesystem::path      m_currentScene;
-
-    e_ManipulationMode         m_manipulationMode;
-
-    Workspace();
-
-protected:
-
-public:
-    ~Workspace();
-
-    static void Init();
-    static void Destroy();
-
-    static std::filesystem::path GetCurrentScene();
-    static void SetCurrentScene(const std::filesystem::path& a_path);
-
-    static e_ManipulationMode GetManipulationMode();
-    static void SetManipulationMode(e_ManipulationMode a_mode);
-
-    static void OpenDef(const std::filesystem::path& a_path);
+    IOP_CSPUBLIC IOP_UINT32 Version;
+    IOP_CSPUBLIC IOP_UINT32 HeaderOffset;
+    IOP_CSPUBLIC IOP_UINT32 HeaderCount;
 };
+
+IOP_PACKED IOP_CSPUBLIC struct DrawMeshBufferHeader
+{
+    IOP_CSPUBLIC IOP_UINT32 MaterialID;
+    IOP_CSPUBLIC IOP_UINT32 MeshID;
+    IOP_CSPUBLIC IOP_UINT32 IndexCount;
+    IOP_CSPUBLIC IOP_UINT32 TransformOffset;
+    IOP_CSPUBLIC IOP_UINT32 TransformCount;
+};
+
+IOP_PACKED IOP_CSPUBLIC struct DrawModelBufferHeader
+{
+    IOP_CSPUBLIC IOP_UINT32 MaterialID;
+    IOP_CSPUBLIC IOP_UINT32 ModelID;
+    IOP_CSPUBLIC IOP_UINT32 TransformOffset;
+    IOP_CSPUBLIC IOP_UINT32 TransformCount;
+};
+
+#ifdef CUBE_LANGUAGE_CSHARP
+}
+#endif
 
 // MIT License
 // 

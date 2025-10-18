@@ -4,35 +4,36 @@
 
 #pragma once
 
-#include <filesystem>
+#include "InteropTypes.h"
 
-#include "EditorGizmosInteropStructures.h"
+#ifdef CUBE_LANGUAGE_CSHARP
+namespace IcarianEditor.Engine {
+#endif
 
-class Workspace
+IOP_PACKED IOP_CSPUBLIC struct RenderProgramHeader
 {
-private:
-    std::filesystem::path      m_currentScene;
-
-    e_ManipulationMode         m_manipulationMode;
-
-    Workspace();
-
-protected:
-
-public:
-    ~Workspace();
-
-    static void Init();
-    static void Destroy();
-
-    static std::filesystem::path GetCurrentScene();
-    static void SetCurrentScene(const std::filesystem::path& a_path);
-
-    static e_ManipulationMode GetManipulationMode();
-    static void SetManipulationMode(e_ManipulationMode a_mode);
-
-    static void OpenDef(const std::filesystem::path& a_path);
+    IOP_CSPUBLIC IOP_UINT32 ID;
+    IOP_CSPUBLIC IOP_UINT32 IsMesh;
+    IOP_CSPUBLIC IOP_UINT32 VertexShader;
+    IOP_CSPUBLIC IOP_UINT32 PixelShader;
+    IOP_CSPUBLIC IOP_UINT32 ExtraShader;
+    IOP_CSPUBLIC IOP_UINT32 ShadowShader;
+    IOP_CSPUBLIC IOP_UINT32 VertexStride;
+    IOP_CSPUBLIC IOP_UINT32 VertexAttributeCount;
+    IOP_CSPUBLIC IOP_UINT32 VertexAttributeOffset;
+    IOP_CSPUBLIC IOP_UINT32 CullMode;
+    IOP_CSPUBLIC IOP_UINT32 ColorBlendMode;
+    IOP_CSPUBLIC IOP_UINT32 RenderLayer;
+    IOP_CSPUBLIC IOP_UINT32 UBOSize;
+    IOP_CSPUBLIC IOP_UINT32 UBOOffset;
+    IOP_CSPUBLIC IOP_UINT32 UserArrayCount;
+    IOP_CSPUBLIC IOP_UINT32 UserArrayStride;
+    IOP_CSPUBLIC IOP_UINT32 UserArrayOffset;
 };
+
+#ifdef CUBE_LANGUAGE_CSHARP
+}
+#endif
 
 // MIT License
 // 

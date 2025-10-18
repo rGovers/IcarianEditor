@@ -32,7 +32,7 @@
 #include "Project.h"
 #include "RenderCommand.h"
 #include "Runtime/RuntimeManager.h"
-#include "Runtime/RuntimeStorage.h"
+#include "RuntimeAssetStore.h"
 #include "SSHPipe.h"
 #include "Windows/AssetBrowserWindow.h"
 #include "Windows/ConsoleWindow.h"
@@ -195,6 +195,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     Instance = this;
 
+    m_remotePipe = nullptr;
+
     m_flags = 0;
     m_cursorState = CursorState_Normal;
     m_windowActions = 0;
@@ -220,7 +222,8 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
 
     SetImguiStyle();
 
-    ICARIAN_ASSERT_R(ImGui_ImplGlfw_InitForOpenGL(GetWindow(), true));
+    GLFWwindow* glfwWindow = GetWindow();
+    ICARIAN_ASSERT_R(ImGui_ImplGlfw_InitForOpenGL(glfwWindow, true));
     ICARIAN_ASSERT_R(ImGui_ImplOpenGL3_Init("#version 130"));
 
     Datastore::Init();
@@ -229,25 +232,26 @@ AppMain::AppMain() : Application(1280, 720, "IcarianEditor")
     FlareImGui::Init();
     RuntimeManager::Init();
 
+    RuntimeAssetStore::Init();
+
     EditorInputManager::Init();
 
     EditorConfig::Init();
 
     AssetLibrary::Init();
-    m_rStorage = new RuntimeStorage();
 
-    m_workspace = new Workspace();
+    Workspace::Init();
 
-    m_project = new Project(this, m_workspace);
+    m_project = new Project(this);
 
-    RenderCommand::Init(m_rStorage);
+    RenderCommand::Init();
     Gizmos::Init();
     GUI::Init(this);
 
-    FileHandler::Init(m_rStorage, m_workspace);
+    FileHandler::Init();
 
     m_windows.emplace_back(new ConsoleWindow());
-    m_windows.emplace_back(new EditorWindow(m_workspace));
+    m_windows.emplace_back(new EditorWindow());
     m_windows.emplace_back(new GameWindow(this, m_project));
     m_windows.emplace_back(new AssetBrowserWindow(this, m_project));
     m_windows.emplace_back(new HierarchyWindow());
@@ -284,8 +288,11 @@ AppMain::~AppMain()
 
     AssetLibrary::Destroy();
 
+    Workspace::Destroy();
+
+    RuntimeAssetStore::Destroy();
+
     RuntimeManager::Destroy();
-    delete m_rStorage;
 
     EditorInputManager::Destroy();
 
@@ -455,7 +462,7 @@ void AppMain::Update(double a_delta, double a_time)
 
                     if (ImGui::MenuItem("Editor"))
                     {
-                        m_windows.emplace_back(new EditorWindow(m_workspace));
+                        m_windows.emplace_back(new EditorWindow());
                     }
 
                     if (ImGui::MenuItem("Game"))
@@ -617,6 +624,11 @@ void AppMain::Update(double a_delta, double a_time)
     for (auto iter = m_windows.begin(); iter != m_windows.end(); ++iter)
     {
         Window* window = *iter;
+        if (window == nullptr)
+        {
+            continue;
+        }
+
         if (window->RequiresProject() && !validProject)
         {
             continue;
@@ -757,8 +769,6 @@ void AppMain::Update(double a_delta, double a_time)
         Logger::Message("Refreshing Project");
         m_project->SetRefresh(false);
 
-        RenderCommand::Clear();
-
         const std::filesystem::path path = m_project->GetPath(); 
         const std::filesystem::path cachePath = m_project->GetCachePath();
         const std::string pathStr = path.string();
@@ -768,8 +778,6 @@ void AppMain::Update(double a_delta, double a_time)
         {
             RuntimeManager::Start(pathStr, projectName);
         }
-
-        m_rStorage->Clear();
 
         AssetLibrary::Refresh(path);
         AssetLibrary::BuildDirectory(cachePath, m_project);

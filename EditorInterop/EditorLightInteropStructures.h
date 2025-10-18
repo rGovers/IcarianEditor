@@ -4,35 +4,56 @@
 
 #pragma once
 
-#include <filesystem>
+#include "InteropTypes.h"
 
-#include "EditorGizmosInteropStructures.h"
+#ifdef CUBE_LANGUAGE_CSHARP
+namespace IcarianEditor.Engine {
+#endif
 
-class Workspace
+IOP_CSPUBLIC enum IOP_ENUM_NAME(EditorLightMode) : IOP_UINT32
 {
-private:
-    std::filesystem::path      m_currentScene;
-
-    e_ManipulationMode         m_manipulationMode;
-
-    Workspace();
-
-protected:
-
-public:
-    ~Workspace();
-
-    static void Init();
-    static void Destroy();
-
-    static std::filesystem::path GetCurrentScene();
-    static void SetCurrentScene(const std::filesystem::path& a_path);
-
-    static e_ManipulationMode GetManipulationMode();
-    static void SetManipulationMode(e_ManipulationMode a_mode);
-
-    static void OpenDef(const std::filesystem::path& a_path);
+    IOP_ENUM_VALUE(EditorLightMode, Ambient) = 0,
+    IOP_ENUM_VALUE(EditorLightMode, Viewport) = 1,
+    IOP_ENUM_VALUE(EditorLightMode, Scene) = 2,
 };
+
+IOP_PACKED IOP_CSPUBLIC struct LightHeader
+{
+    IOP_CSPUBLIC IOP_UINT32 Version;
+    IOP_CSPUBLIC IOP_UINT32 DataCount;
+    IOP_CSPUBLIC IOP_UINT32 DataOffset;
+};
+
+IOP_PACKED IOP_CSPUBLIC struct AmbientLightData
+{
+    IOP_CSPUBLIC IOP_VEC4 Color;
+    IOP_CSPUBLIC float Intensity;
+};
+
+IOP_PACKED IOP_CSPUBLIC struct DirectionalLightData
+{
+    IOP_CSPUBLIC IOP_MAT4 Transform;
+    IOP_CSPUBLIC IOP_VEC4 Color;
+    IOP_CSPUBLIC float Intensity;
+};
+
+IOP_PACKED IOP_CSPUBLIC struct PointLightData
+{
+    IOP_CSPUBLIC IOP_MAT4 Transform;
+    IOP_CSPUBLIC IOP_VEC4 Color;
+    IOP_CSPUBLIC IOP_VEC2 Data;
+};
+
+IOP_PACKED IOP_CSPUBLIC struct SpotLightData
+{
+    IOP_CSPUBLIC IOP_MAT4 Transform;
+    IOP_CSPUBLIC IOP_VEC4 Color;
+    IOP_CSPUBLIC IOP_VEC4 Data;
+};
+
+#ifdef  CUBE_LANGUAGE_CSHARP
+}
+#endif
 
 // MIT License
 // 
