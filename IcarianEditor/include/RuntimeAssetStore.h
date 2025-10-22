@@ -11,22 +11,54 @@ class EngineProcess;
 
 #include "EngineMaterialInteropStructures.h"
 
+struct AssetDataBuffer
+{
+    void* Data;
+    uint32_t DataSize;
+    uint32_t ID;
+};
+
 class RuntimeAssetStore
 {
 private:
-    // TODO: Track the asset ids and forward it to new editor windows
-    // Probably gonna have to switch to a list of engine processes rather then switching
-    // This current setup is not going to work with multiple editor windows
-    EngineProcess* m_activeProcess;
+    static constexpr const char GenerateRenderProgramString[] = "Editor:AssetStore:GenerateRenderProgram";
 
-    uint32_t       m_materialID;
+    static constexpr const char GenerateMeshShaderString[] = "Editor:AssetStore:GenerateMeshShaderFromFile";
+    static constexpr const char GenerateVertexShaderString[] = "Editor:AssetStore:GenerateVertexShaderFromFile";
+    static constexpr const char GeneratePixelShaderString[] = "Editor:AssetStore:GeneratePixelShaderFromFile";
 
-    uint32_t       m_meshShaderID;
-    uint32_t       m_vertexShaderID;
-    uint32_t       m_pixelShaderID;
+    static constexpr const char GenerateMeshString[] = "Editor:AssetStore:GenerateMeshFromFile";
 
-    uint32_t       m_meshID;
-    uint32_t       m_modelID;
+    EngineProcess**  m_activeProcesses;
+
+    AssetDataBuffer* m_materialDataBuffers;
+
+    AssetDataBuffer* m_meshShaderDataBuffers;
+    AssetDataBuffer* m_vertexShaderDataBuffers;
+    AssetDataBuffer* m_pixelShaderDataBuffers;
+
+    AssetDataBuffer* m_meshDataBuffers;
+    AssetDataBuffer* m_modelDataBuffers;
+
+    uint32_t         m_activeProcessCount;
+
+    uint32_t         m_materialDataBufferCount;
+
+    uint32_t         m_meshShaderDataBufferCount;
+    uint32_t         m_vertexShaderDataBufferCount;
+    uint32_t         m_pixelShaderDataBufferCount;
+
+    uint32_t         m_meshDataBufferCount;
+    uint32_t         m_modelDataBufferCount;
+
+    uint32_t         m_materialID;
+
+    uint32_t         m_meshShaderID;
+    uint32_t         m_vertexShaderID;
+    uint32_t         m_pixelShaderID;
+
+    uint32_t         m_meshID;
+    uint32_t         m_modelID;
 
     RuntimeAssetStore();
 
@@ -38,7 +70,9 @@ public:
     static void Init();
     static void Destroy();
 
-    static void SetActiveEngineProcess(EngineProcess* a_process);
+    static void Clear();
+
+    static void RegisterEngineProcess(EngineProcess* a_process);
 
     static uint32_t GenerateRenderProgram
     (

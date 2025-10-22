@@ -1030,7 +1030,7 @@ void AssetLibrary::Refresh(const std::filesystem::path& a_workingDir)
 }
 
 static bool ShouldWriteFile(const std::filesystem::path& a_path, const std::filesystem::file_time_type& a_modifiedTime)
-{   
+{
     if (!std::filesystem::exists(a_path))
     {
         return true;
@@ -1413,8 +1413,6 @@ void AssetLibrary::GetAsset(const std::filesystem::path& a_path, uint32_t* a_siz
 
 void AssetLibrary::Serialize(const Project* a_project)
 {
-    const std::unique_lock g = std::unique_lock(Instance->m_lock);
-
     ICLEARBIT(Instance->m_flags, ForceSerializeBit);
 
     const std::filesystem::path pPath = a_project->GetProjectPath();
@@ -1423,6 +1421,8 @@ void AssetLibrary::Serialize(const Project* a_project)
     RuntimeManager::ExecFunction("IcarianEditor", "EditorScene", ":Serialize()", nullptr);
 
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
+
+    const std::unique_lock g = std::unique_lock(Instance->m_lock);
 
     for (Asset& a : Instance->m_assets)
     {
@@ -1463,7 +1463,7 @@ void AssetLibrary::Serialize(const Project* a_project)
             }
             }
         }
-        
+
         if (p.has_parent_path())
         {
             const std::filesystem::path dir = p.parent_path();

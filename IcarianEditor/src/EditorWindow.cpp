@@ -11,6 +11,7 @@
 
 #include "Core/IcarianDefer.h"
 #include "Core/IcarianLambda.h"
+#include "Core/LoggerHeader.h"
 #include "Core/PipeMessage.h"
 #include "EditorConfig.h"
 #include "EngineProcess.h"
@@ -80,6 +81,12 @@ EditorWindow::EditorWindow() : Window("Editor", "Textures/WindowIcons/WindowIcon
     IDEFER(delete pShader);
 
     m_compositeProgram = ShaderProgram::GenerateProgram(vShader, pShader);
+
+    const std::filesystem::path path = std::filesystem::current_path();
+    const uint32_t threadCount = glm::min((uint32_t)std::thread::hardware_concurrency() / 4, uint32_t(4));
+    m_process = EngineProcess::CreateProcess(path, m_width, m_height, threadCount);
+
+    RuntimeAssetStore::RegisterEngineProcess(m_process);
 }
 EditorWindow::~EditorWindow()
 {
@@ -129,35 +136,84 @@ void EditorWindow::UpdateProcess()
         }
         case IcarianCore::PipeMessageType_Message:
         {
-            constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
+                const IcarianCore::LoggerHeader& header = *(IcarianCore::LoggerHeader*)msg.Data;
 
-            const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
+                if (header.Version != 0)
+                {
+                    Logger::Error("Engine Logger message header version mix match");
 
-            switch (*(e_LoggerMessageType*)msg.Data)
-            {
-            case LoggerMessageType_Message:
-            {
+                    break;
+                }
+
+                if (header.MessageOffset + header.MessageSize >= msg.Length)
+                {
+                    Logger::Error("Engine Logger message length out of bounds");
+
+                    break;
+                }
+                if (header.StackTraceOffset + header.StackTraceSize >= msg.Length)
+                {
+                    Logger::Error("Engine Logger message stacktrace out of bounds");
+
+                    break;
+                }
+
+                const LoggerMessageData data = 
+                {
+                    .Message = "[Editor Window] " + std::string(msg.Data + header.MessageOffset, header.MessageSize),
+                    .Stacktrace = ILAMBDA(
+                    {
+                        if (header.StackTraceSize != 0)
+                        {
+                            std::vector<std::string> vals;
+
+                            const char* stacktraceStart = msg.Data + header.StackTraceOffset;
+                            const char* stacktraceSlider = stacktraceStart;
+                            const char* stacktraceMessageBegin = stacktraceStart;
+                            while (stacktraceSlider - stacktraceStart < header.StackTraceSize)
+                            {
+                                if (*stacktraceSlider == 0)
+                                {
+                                    vals.emplace_back(std::string(stacktraceMessageBegin, stacktraceSlider - stacktraceMessageBegin));
+
+                                    stacktraceMessageBegin = stacktraceSlider + 1;
+                                }
+
+                                ++stacktraceSlider;
+                            }
+
+                            ILRETURN vals;
+                        }
+
+                        ILRETURN std::vector<std::string>();
+                    }),
+                    .IsEditor = false,
+                    .Print = false,
+                };
+
+                switch (header.Type)
+                {
+                case IcarianCore::LoggerMessageType_Message:
+                {
 #ifdef DEBUG
-                // Suppress when not in debug to reduce the console noise
-                // When we are not in debug the end user likely does not care about messages coming from the editor window
-                Logger::Message(str, true, false);
+                    Logger::Message(data);
 #endif
 
-                break;
-            }
-            case LoggerMessageType_Warning:
-            {
-                Logger::Warning(str, true, false);
+                    break;
+                }
+                case IcarianCore::LoggerMessageType_Warning:
+                {
+                    Logger::Warning(data);
 
-                break;
-            }
-            case LoggerMessageType_Error:
-            {
-                Logger::Error(str, true, false);
+                    break;
+                }
+                case IcarianCore::LoggerMessageType_Error:
+                {
+                    Logger::Error(data);
 
-                break;
-            }
-            }
+                    break;
+                }
+                }
 
             break;
         }
@@ -202,7 +258,7 @@ void EditorWindow::BuildFrame()
             const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(250));
             if (timeout)
             {
-                Logger::Warning("Editor window timeout");
+                Logger::Warning("Editor window draw timeout");
 
                 return;
             }
@@ -427,6 +483,8 @@ void EditorWindow::Refresh()
     // No need for the engine to have a lot of threads as it just needs to render the scene
     const uint32_t threadCount = glm::min((uint32_t)std::thread::hardware_concurrency() / 4, uint32_t(4));
     m_process = EngineProcess::CreateProcess(path, m_width, m_height, threadCount);
+
+    RuntimeAssetStore::RegisterEngineProcess(m_process);
 }
 void EditorWindow::Update(double a_delta)
 {
@@ -663,9 +721,6 @@ void EditorWindow::Update(double a_delta)
 
         // Want to set the workspace manipulation mode to the current manipulation mode of the editor window as each can have their own
         Workspace::SetManipulationMode(m_manipulationMode);
-
-        RuntimeAssetStore::SetActiveEngineProcess(m_process);
-        IDEFER(RuntimeAssetStore::SetActiveEngineProcess(nullptr));
 
         constexpr float FOV = glm::pi<float>() * 0.4f;
         glm::mat4 proj = glm::perspective(FOV, (float)sizeIm.x / sizeIm.y, 0.01f, 1000.0f);

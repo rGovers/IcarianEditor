@@ -27,46 +27,80 @@ void Logger::RemoveConsoleWindow(ConsoleWindow* a_window)
     }
 }
 
-void Logger::Message(const std::string_view& a_string, bool a_editor, bool a_print)
+void Logger::Message(const std::string_view& a_string)
 {
-    if (a_print)
+    const LoggerMessageData msg =
     {
-        std::cout << "ILM: " << a_string << "\n";
+        .Message = std::string(a_string),
+        .IsEditor = true,
+        .Print = true
+    };
+
+    Message(msg);
+}
+void Logger::Warning(const std::string_view& a_string)
+{
+    const LoggerMessageData msg =
+    {
+        .Message = std::string(a_string),
+        .IsEditor = true,
+        .Print = true
+    };
+
+    Warning(msg);
+}
+void Logger::Error(const std::string_view& a_string)
+{
+    const LoggerMessageData msg =
+    {
+        .Message = std::string(a_string),
+        .IsEditor = true,
+        .Print = true
+    };
+
+    Error(msg);
+}
+
+void Logger::Message(const LoggerMessageData& a_msg)
+{
+    if (a_msg.Print)
+    {
+        std::cout << "ILM: " << a_msg.Message << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, a_editor, LoggerMessageType_Message);
+        console->AddMessage(LoggerMessageType_Message, a_msg);
     }
 }
-void Logger::Warning(const std::string_view& a_string, bool a_editor, bool a_print)
+void Logger::Warning(const LoggerMessageData& a_msg)
 {
-    if (a_print)
+    if (a_msg.Print)
     {
-        std::cout << "ILW: " << a_string << "\n";
+        std::cout << "ILW: " << a_msg.Message << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, a_editor, LoggerMessageType_Warning);
+        console->AddMessage(LoggerMessageType_Warning, a_msg);
     }
 }
-void Logger::Error(const std::string_view& a_string, bool a_editor, bool a_print)
+void Logger::Error(const LoggerMessageData& a_msg)
 {
-    if (a_print)
+    if (a_msg.Print)
     {
-        std::cout << "ILE: " << a_string << "\n";
+        std::cout << "ILE: " << a_msg.Message << "\n";
     }
 
     for (ConsoleWindow* console : Windows)
     {
-        console->AddMessage(a_string, a_editor, LoggerMessageType_Error);
+        console->AddMessage(LoggerMessageType_Error, a_msg);
     }
 }
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

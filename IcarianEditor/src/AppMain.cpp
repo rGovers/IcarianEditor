@@ -779,6 +779,7 @@ void AppMain::Update(double a_delta, double a_time)
             RuntimeManager::Start(pathStr, projectName);
         }
 
+        RuntimeAssetStore::Clear();
         AssetLibrary::Refresh(path);
         AssetLibrary::BuildDirectory(cachePath, m_project);
 

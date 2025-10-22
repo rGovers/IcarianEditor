@@ -5,8 +5,9 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
+#include <string>
 #include <string_view>
+#include <vector>
 
 class ConsoleWindow;
 
@@ -17,26 +18,37 @@ enum e_LoggerMessageType : uint32_t
     LoggerMessageType_Error
 };
 
+struct LoggerMessageData
+{
+    std::string Message;
+    std::vector<std::string> Stacktrace;
+    bool IsEditor;
+    bool Print;
+};
+
 class Logger
 {
-public:
-
 private:
     static std::vector<ConsoleWindow*> Windows;
+
 protected:
 
 public:
     static void AddConsoleWindow(ConsoleWindow* a_window);
     static void RemoveConsoleWindow(ConsoleWindow* a_window);
 
-    static void Message(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
-    static void Warning(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
-    static void Error(const std::string_view& a_string, bool a_editor = true, bool a_print = true);
+    static void Message(const std::string_view& a_string);
+    static void Warning(const std::string_view& a_string);
+    static void Error(const std::string_view& a_string);
+
+    static void Message(const LoggerMessageData& a_msg);
+    static void Warning(const LoggerMessageData& a_msg);
+    static void Error(const LoggerMessageData& a_msg);
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2025 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

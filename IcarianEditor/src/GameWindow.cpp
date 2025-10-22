@@ -11,6 +11,7 @@
 #include "Core/IcarianDefer.h"
 #include "Core/IcarianLambda.h"
 #include "Core/InputBindings.h"
+#include "Core/LoggerHeader.h"
 #include "EngineProcess.h"
 #include "FlareImGui.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
@@ -219,27 +220,78 @@ void GameWindow::Update(double a_delta)
             }
             case IcarianCore::PipeMessageType_Message:
             {
-                constexpr uint32_t TypeSize = sizeof(e_LoggerMessageType);
+                const IcarianCore::LoggerHeader& header = *(IcarianCore::LoggerHeader*)msg.Data;
 
-                const std::string_view str = std::string_view(msg.Data + TypeSize, msg.Length - TypeSize);
-
-                switch (*(e_LoggerMessageType*)msg.Data)
+                if (header.Version != 0)
                 {
-                case LoggerMessageType_Message:
-                {
-                    Logger::Message(str, false, false);
+                    Logger::Error("Engine Logger message header version mix match");
 
                     break;
                 }
-                case LoggerMessageType_Warning:
+
+                if (header.MessageOffset + header.MessageSize >= msg.Length)
                 {
-                    Logger::Warning(str, false, false);
+                    Logger::Error("Engine Logger message length out of bounds");
 
                     break;
                 }
-                case LoggerMessageType_Error:
+                if (header.StackTraceOffset + header.StackTraceSize >= msg.Length)
                 {
-                    Logger::Error(str, false, false);
+                    Logger::Error("Engine Logger message stacktrace out of bounds");
+
+                    break;
+                }
+
+                const LoggerMessageData data = 
+                {
+                    .Message = "[Game Window] " + std::string(msg.Data + header.MessageOffset, header.MessageSize),
+                    .Stacktrace = ILAMBDA(
+                    {
+                        if (header.StackTraceSize != 0)
+                        {
+                            std::vector<std::string> vals;
+
+                            const char* stacktraceStart = msg.Data + header.StackTraceOffset;
+                            const char* stacktraceSlider = stacktraceStart;
+                            const char* stacktraceMessageBegin = stacktraceStart;
+                            while (stacktraceSlider - stacktraceStart < header.StackTraceSize)
+                            {
+                                if (*stacktraceSlider == 0)
+                                {
+                                    vals.emplace_back(std::string(stacktraceMessageBegin, stacktraceSlider - stacktraceMessageBegin));
+
+                                    stacktraceMessageBegin = stacktraceSlider + 1;
+                                }
+
+                                ++stacktraceSlider;
+                            }
+
+                            ILRETURN vals;
+                        }
+
+                        ILRETURN std::vector<std::string>();
+                    }),
+                    .IsEditor = false,
+                    .Print = false,
+                };
+
+                switch (header.Type)
+                {
+                case IcarianCore::LoggerMessageType_Message:
+                {
+                    Logger::Message(data);
+
+                    break;
+                }
+                case IcarianCore::LoggerMessageType_Warning:
+                {
+                    Logger::Warning(data);
+
+                    break;
+                }
+                case IcarianCore::LoggerMessageType_Error:
+                {
+                    Logger::Error(data);
 
                     break;
                 }

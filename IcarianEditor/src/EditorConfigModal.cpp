@@ -278,7 +278,7 @@ bool EditorConfigModal::Update()
         }
         default:
         {
-            Logger::Error("Invalid EditorConfigTab: %d", m_currentTab);
+            Logger::Error("Invalid EditorConfigTab: " + std::to_string(m_currentTab));
 
             break;
         }

@@ -265,6 +265,7 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "../IcarianEngine/IcarianCore/include/Core/IcarianPragma.h",
         "../IcarianEngine/IcarianCore/include/Core/InputBindings.h",
         "../IcarianEngine/IcarianCore/include/Core/IPCPipe.h",
+        "../IcarianEngine/IcarianCore/include/Core/LoggerHeader.h",
         "../IcarianEngine/IcarianCore/include/Core/MonoNativeImpl.h",
         "../IcarianEngine/IcarianCore/include/Core/Pipefile.h",
         "../IcarianEngine/IcarianCore/include/Core/PipeMessage.h",

@@ -16,6 +16,7 @@
 
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianDefer.h"
+#include "Core/IcarianLambda.h"
 #include "CUBE/CUBE.h"
 #include "EditorConfig.h"
 #include "IO.h"
@@ -29,26 +30,119 @@ RUNTIME_FUNCTION(void, Logger, PushMessage,
     char* str = mono_string_to_utf8(a_string);
     IDEFER(mono_free(str));
 
-    Logger::Message(str);
-}, MonoString* a_string)
+    const uint32_t stackTraceCount = ILAMBDA(
+    {
+        if (a_stackTrace != NULL)
+        {
+            ILRETURN (uint32_t)mono_array_length(a_stackTrace);
+        }
+
+        ILRETURN uint32_t(0);
+    });
+
+    LoggerMessageData data;
+    data.Message = std::string(str);
+    data.Stacktrace = ILAMBDA(
+    {
+        std::vector<std::string> vals;
+
+        for (uint32_t i = 0; i < stackTraceCount; ++i)
+        {
+            MonoString* stackString = mono_array_get(a_stackTrace, MonoString*, i);
+
+            char* s = mono_string_to_utf8(stackString);
+            IDEFER(mono_free(s));
+
+            vals.push_back(std::string(s));
+        }
+
+        ILRETURN vals;
+    });
+    data.IsEditor = true;
+    data.Print = true;
+
+    Logger::Message(data);
+}, MonoString* a_string, MonoArray* a_stackTrace)
 RUNTIME_FUNCTION(void, Logger, PushWarning,
 {
     char* str = mono_string_to_utf8(a_string);
     IDEFER(mono_free(str));
 
-    Logger::Warning(str);
-}, MonoString* a_string)
+    const uint32_t stackTraceCount = ILAMBDA(
+    {
+        if (a_stackTrace != NULL)
+        {
+            ILRETURN (uint32_t)mono_array_length(a_stackTrace);
+        }
+
+        ILRETURN uint32_t(0);
+    });
+
+    LoggerMessageData data;
+    data.Message = std::string(str);
+    data.Stacktrace = ILAMBDA(
+    {
+        std::vector<std::string> vals;
+
+        for (uint32_t i = 0; i < stackTraceCount; ++i)
+        {
+            MonoString* stackString = mono_array_get(a_stackTrace, MonoString*, i);
+
+            char* s = mono_string_to_utf8(stackString);
+            IDEFER(mono_free(s));
+
+            vals.push_back(std::string(s));
+        }
+
+        ILRETURN vals;
+    });
+    data.IsEditor = true;
+    data.Print = true;
+
+    Logger::Warning(data);
+}, MonoString* a_string, MonoArray* a_stackTrace)
 RUNTIME_FUNCTION(void, Logger, PushError,
 {
     char* str = mono_string_to_utf8(a_string);
     IDEFER(mono_free(str));
 
-    Logger::Error(str);
-}, MonoString* a_string)
+    const uint32_t stackTraceCount = ILAMBDA(
+    {
+        if (a_stackTrace != NULL)
+        {
+            ILRETURN (uint32_t)mono_array_length(a_stackTrace);
+        }
+
+        ILRETURN uint32_t(0);
+    });
+
+    LoggerMessageData data;
+    data.Message = std::string(str);
+    data.Stacktrace = ILAMBDA(
+    {
+        std::vector<std::string> vals;
+
+        for (uint32_t i = 0; i < stackTraceCount; ++i)
+        {
+            MonoString* stackString = mono_array_get(a_stackTrace, MonoString*, i);
+
+            char* s = mono_string_to_utf8(stackString);
+            IDEFER(mono_free(s));
+
+            vals.push_back(std::string(s));
+        }
+
+        ILRETURN vals;
+    });
+    data.IsEditor = true;
+    data.Print = true;
+
+    Logger::Error(data);
+}, MonoString* a_string, MonoArray* a_stackTrace)
 
 RUNTIME_FUNCTION(uint32_t, Application, GetEditorState,
 {
-    return 1;    
+    return 1;
 })
 
 #ifndef WIN32
@@ -217,7 +311,7 @@ void RuntimeManager::UnloadEditorDomain()
         mono_domain_set(Instance->m_editorDomain, 1);
 
         mono_runtime_invoke(Instance->m_editorUnloadMethod, NULL, NULL, NULL);
-        
+
         mono_domain_set(Instance->m_mainDomain, 1);
 
         mono_domain_unload(Instance->m_editorDomain);
@@ -283,14 +377,14 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
         const MonoProjectGenerator project = MonoProjectGenerator(projectScripts.data(), (uint32_t)projectScripts.size(), projectDependencies, sizeof(projectDependencies) / sizeof(*projectDependencies));
         project.Serialize(a_name, projectFile, assemblyPath);
     }
-    
+
     CUBE_String* lines = CBNULL;
     CBUINT32 lineCount = 0;
 
     const std::string asmPathStr = assemblyPath.string();
 
     CUBE_CSProject project = 
-    { 
+    {
         .Name = CUBE_StackString_CreateC(a_name.data()),
         .Target = CUBE_CSProjectTarget_Library,
         .OutputPath = CUBE_Path_CreateC(asmPathStr.c_str()),

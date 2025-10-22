@@ -199,6 +199,24 @@ RuntimeAssetStore::RuntimeAssetStore()
     m_meshID = 0;
     m_modelID = 0;
 
+    m_activeProcessCount = 0;
+    m_activeProcesses = NULL;
+
+    m_materialDataBufferCount = 0;
+    m_materialDataBuffers = NULL;
+
+    m_meshShaderDataBufferCount = 0;
+    m_meshShaderDataBuffers = NULL;
+    m_vertexShaderDataBufferCount = 0;
+    m_vertexShaderDataBuffers = NULL;
+    m_pixelShaderDataBufferCount = 0;
+    m_pixelShaderDataBuffers = NULL;
+
+    m_meshDataBufferCount = 0;
+    m_meshDataBuffers = NULL;
+    m_modelDataBufferCount = 0;
+    m_modelDataBuffers = NULL;
+
     RENDERCOMMAND_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_ATTACH);
 
     BIND_FUNCTION(IcarianEngine.Rendering, Material, GenerateProgram);
@@ -206,7 +224,7 @@ RuntimeAssetStore::RuntimeAssetStore()
 }
 RuntimeAssetStore::~RuntimeAssetStore()
 {
-
+    Clear();
 }
 
 void RuntimeAssetStore::Init()
@@ -225,11 +243,148 @@ void RuntimeAssetStore::Destroy()
     }
 }
 
-void RuntimeAssetStore::SetActiveEngineProcess(EngineProcess* a_process)
+void RuntimeAssetStore::Clear()
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    Instance->m_activeProcess = a_process;
+    Instance->m_materialID = 0;
+
+    Instance->m_meshShaderID = 0;
+    Instance->m_vertexShaderID = 0;
+    Instance->m_pixelShaderID = 0;
+
+    Instance->m_meshID = 0;
+    Instance->m_modelID = 0;
+
+    if (Instance->m_materialDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_materialDataBufferCount; ++i)
+        {
+            free(Instance->m_materialDataBuffers[i].Data);
+        }
+
+        free(Instance->m_materialDataBuffers);
+        Instance->m_materialDataBuffers = NULL;
+    }
+    Instance->m_materialDataBufferCount = 0;
+
+    if (Instance->m_meshShaderDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_meshShaderDataBufferCount; ++i)
+        {
+            free(Instance->m_meshShaderDataBuffers[i].Data);
+        }
+
+        free(Instance->m_meshShaderDataBuffers);
+        Instance->m_meshShaderDataBuffers = NULL;
+    }
+    Instance->m_meshShaderDataBufferCount = 0;
+
+    if (Instance->m_vertexShaderDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_vertexShaderDataBufferCount; ++i)
+        {
+            free(Instance->m_vertexShaderDataBuffers[i].Data);
+        }
+
+        free(Instance->m_vertexShaderDataBuffers);
+        Instance->m_vertexShaderDataBuffers = NULL;
+    }
+    Instance->m_vertexShaderDataBufferCount = 0;
+
+    if (Instance->m_pixelShaderDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_pixelShaderDataBufferCount; ++i)
+        {
+            free(Instance->m_pixelShaderDataBuffers[i].Data);
+        }
+
+        free(Instance->m_pixelShaderDataBuffers);
+        Instance->m_pixelShaderDataBuffers = NULL;
+    }
+    Instance->m_pixelShaderDataBufferCount = 0;
+
+    if (Instance->m_meshDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_meshDataBufferCount; ++i)
+        {
+            free(Instance->m_meshDataBuffers[i].Data);
+        }
+
+        free(Instance->m_meshDataBuffers);
+        Instance->m_meshDataBuffers = NULL;
+    }
+    Instance->m_meshDataBufferCount = 0;
+
+    if (Instance->m_modelDataBuffers != NULL)
+    {
+        for (uint32_t i = 0; i < Instance->m_modelDataBufferCount; ++i)
+        {
+            free(Instance->m_modelDataBuffers[i].Data);
+        }
+
+        free(Instance->m_modelDataBuffers);
+        Instance->m_modelDataBuffers = NULL;
+    }
+    Instance->m_modelDataBufferCount = 0;
+
+    if (Instance->m_activeProcesses != NULL)
+    {
+        free(Instance->m_activeProcesses);
+        Instance->m_activeProcesses = NULL;
+    }
+    Instance->m_activeProcessCount = 0;
+}
+
+void RuntimeAssetStore::RegisterEngineProcess(EngineProcess* a_process)
+{
+    ICARIAN_ASSERT(Instance != nullptr);
+    ICARIAN_ASSERT(a_process != nullptr);
+
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        if (Instance->m_activeProcesses[i] == a_process)
+        {
+            return;
+        }
+    }
+
+    Instance->m_activeProcesses = (EngineProcess**)realloc(Instance->m_activeProcesses, (Instance->m_activeProcessCount + 1) * sizeof(EngineProcess*));
+    Instance->m_activeProcesses[Instance->m_activeProcessCount++] = a_process;
+
+    // Is a new process that was registered so forward all the loaded assets to it so it aware of what we are referencing in draw calls
+    for (uint32_t i = 0; i < Instance->m_materialDataBufferCount; ++i)
+    {
+        const AssetDataBuffer& buffer = Instance->m_materialDataBuffers[i];
+
+        a_process->SendRuntimeMessage(GenerateRenderProgramString, buffer.Data, buffer.DataSize);
+    }
+
+    for (uint32_t i = 0; i < Instance->m_meshShaderDataBufferCount; ++i)
+    {
+        const AssetDataBuffer& buffer = Instance->m_meshShaderDataBuffers[i];
+
+        a_process->SendRuntimeMessage(GenerateMeshShaderString, buffer.Data, buffer.DataSize);
+    }
+    for (uint32_t i = 0; i < Instance->m_vertexShaderDataBufferCount; ++i)
+    {
+        const AssetDataBuffer& buffer = Instance->m_vertexShaderDataBuffers[i];
+
+        a_process->SendRuntimeMessage(GenerateVertexShaderString, buffer.Data, buffer.DataSize);
+    }
+    for (uint32_t i = 0; i < Instance->m_pixelShaderDataBufferCount; ++i)
+    {
+        const AssetDataBuffer& buffer = Instance->m_pixelShaderDataBuffers[i];
+
+        a_process->SendRuntimeMessage(GeneratePixelShaderString, buffer.Data, buffer.DataSize);
+    }
+
+    for (uint32_t i = 0; i < Instance->m_meshDataBufferCount; ++i)
+    {
+        const AssetDataBuffer& buffer = Instance->m_meshDataBuffers[i];
+
+        a_process->SendRuntimeMessage(GenerateMeshString, buffer.Data, buffer.DataSize);
+    }
 }
 
 uint32_t RuntimeAssetStore::GenerateRenderProgram
@@ -250,13 +405,6 @@ uint32_t RuntimeAssetStore::GenerateRenderProgram
 )
 {
     ICARIAN_ASSERT(Instance != nullptr);
-
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateRenderProgram no active engine process");
-
-        return uint32_t(-1);
-    }
 
     const uint32_t id = Instance->m_materialID++;
 
@@ -288,8 +436,6 @@ uint32_t RuntimeAssetStore::GenerateRenderProgram
     };
 
     uint8_t* buffer = (uint8_t*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &header, sizeof(RenderProgramHeader));
@@ -307,7 +453,33 @@ uint32_t RuntimeAssetStore::GenerateRenderProgram
         memcpy(buffer + userArrayOffset, a_userArray, userArraySize);
     }
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateRenderProgram", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GenerateRenderProgramString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t materialDataSize = (Instance->m_materialDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_materialDataBuffers = (AssetDataBuffer*)realloc(Instance->m_materialDataBuffers, materialDataSize);
+    Instance->m_materialDataBuffers[Instance->m_materialDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -327,13 +499,6 @@ uint32_t RuntimeAssetStore::GenerateMeshRenderProgram
 )
 {
     ICARIAN_ASSERT(Instance != nullptr);
-
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateMeshRenderProgram no active engine process");
-
-        return uint32_t(-1);
-    }
 
     const uint32_t id = Instance->m_materialID++;
 
@@ -361,8 +526,6 @@ uint32_t RuntimeAssetStore::GenerateMeshRenderProgram
     };
 
     uint8_t* buffer = (uint8_t*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &header, sizeof(RenderProgramHeader));
@@ -376,7 +539,33 @@ uint32_t RuntimeAssetStore::GenerateMeshRenderProgram
         memcpy(buffer + userArrayOffset, a_userArray, userArraySize);
     }
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateRenderProgram", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GenerateRenderProgramString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t materialDataSize = (Instance->m_materialDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_materialDataBuffers = (AssetDataBuffer*)realloc(Instance->m_materialDataBuffers, materialDataSize);
+    Instance->m_materialDataBuffers[Instance->m_materialDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -385,27 +574,44 @@ uint32_t RuntimeAssetStore::GenerateMeshShaderFromFile(const std::string_view& a
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateMeshShaderFromFile no active engine process");
-
-        return uint32_t(-1);
-    }
-
     const uint32_t id = Instance->m_meshShaderID++;
     const uint32_t stringLen = (uint32_t)a_path.length();
 
     const uint32_t bufferSize = sizeof(uint32_t) + stringLen + 1;
 
-    char* buffer = (char*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &id, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), a_path.data(), stringLen);
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateMeshShaderFromFile", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GenerateMeshShaderString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t meshDataSize = (Instance->m_meshShaderDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_meshShaderDataBuffers = (AssetDataBuffer*)realloc(Instance->m_meshShaderDataBuffers, meshDataSize);
+    Instance->m_meshShaderDataBuffers[Instance->m_meshShaderDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -413,27 +619,44 @@ uint32_t RuntimeAssetStore::GenerateVertexShaderFromFile(const std::string_view&
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateVertexShaderFromFile no active engine process");
-
-        return uint32_t(-1);
-    }
-
     const uint32_t id = Instance->m_vertexShaderID++;
     const uint32_t stringLen = (uint32_t)a_path.length();
 
     const uint32_t bufferSize = sizeof(uint32_t) + stringLen + 1;
 
-    char* buffer = (char*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &id, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), a_path.data(), stringLen);
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateVertexShaderFromFile", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GenerateVertexShaderString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t vertexDataSize = (Instance->m_vertexShaderDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_vertexShaderDataBuffers = (AssetDataBuffer*)realloc(Instance->m_vertexShaderDataBuffers, vertexDataSize);
+    Instance->m_vertexShaderDataBuffers[Instance->m_vertexShaderDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -441,27 +664,44 @@ uint32_t RuntimeAssetStore::GeneratePixelShaderFromFile(const std::string_view& 
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GeneratePixelShaderFromFile no active engine process");
-
-        return uint32_t(-1);
-    }
-
     const uint32_t id = Instance->m_pixelShaderID++;
     const uint32_t stringLen = (uint32_t)a_path.length();
 
     const uint32_t bufferSize = sizeof(uint32_t) + stringLen + 1;
 
-    char* buffer = (char*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &id, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), a_path.data(), stringLen);
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GeneratePixelShaderFromFile", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GeneratePixelShaderString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t pixelDataSize = (Instance->m_pixelShaderDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_pixelShaderDataBuffers = (AssetDataBuffer*)realloc(Instance->m_pixelShaderDataBuffers, pixelDataSize);
+    Instance->m_pixelShaderDataBuffers[Instance->m_pixelShaderDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -470,27 +710,44 @@ uint32_t RuntimeAssetStore::GenerateMeshFromFile(const std::string_view& a_path)
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateMeshFromFile no active engine process");
-
-        return uint32_t(-1);
-    }
-
     const uint32_t id = Instance->m_meshID++;
     const uint32_t stringLen = (uint32_t)a_path.length();
 
     const uint32_t bufferSize = sizeof(uint32_t) + stringLen + 1;
 
-    char* buffer = (char*)malloc(bufferSize);
-    IDEFER(free(buffer));
-
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     memset(buffer, 0, bufferSize);
 
     memcpy(buffer, &id, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), a_path.data(), stringLen);
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateMeshFromFile", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage(GenerateMeshString, buffer, bufferSize);
+    }
+
+    const AssetDataBuffer dataBuffer = 
+    {
+        .Data = buffer,
+        .DataSize = bufferSize,
+        .ID = id,
+    };
+
+    const uint32_t meshDataSize = (Instance->m_meshDataBufferCount + 1) * sizeof(AssetDataBuffer);
+    Instance->m_meshDataBuffers = (AssetDataBuffer*)realloc(Instance->m_meshDataBuffers, meshDataSize);
+    Instance->m_meshDataBuffers[Instance->m_meshDataBufferCount++] = dataBuffer;
 
     return id;
 }
@@ -499,19 +756,12 @@ uint32_t RuntimeAssetStore::GenerateModelFromFile(const std::string_view& a_path
 {
     ICARIAN_ASSERT(Instance != nullptr);
 
-    if (Instance->m_activeProcess == nullptr)
-    {
-        Logger::Warning("GenerateModelFromFile no active engine process");
-
-        return uint32_t(-1);
-    }
-
     const uint32_t id = Instance->m_modelID++;
     const uint32_t stringLen = (uint32_t)a_path.length();
 
     const uint32_t bufferSize = sizeof(uint32_t) + stringLen + 1;
 
-    char* buffer = (char*)malloc(bufferSize);
+    uint8_t* buffer = (uint8_t*)malloc(bufferSize);
     IDEFER(free(buffer));
 
     memset(buffer, 0, bufferSize);
@@ -519,7 +769,22 @@ uint32_t RuntimeAssetStore::GenerateModelFromFile(const std::string_view& a_path
     memcpy(buffer, &id, sizeof(uint32_t));
     memcpy(buffer + sizeof(uint32_t), a_path.data(), stringLen);
 
-    Instance->m_activeProcess->SendRuntimeMessage("Editor:AssetStore:GenerateModelFromFile", buffer, bufferSize);
+    for (uint32_t i = 0; i < Instance->m_activeProcessCount; ++i)
+    {
+        EngineProcess* process = Instance->m_activeProcesses[i];
+
+        if (process == nullptr)
+        {
+            continue;
+        }
+
+        if (!process->IsAlive())
+        {
+            continue;
+        }
+
+        process->SendRuntimeMessage("Editor:AssetStore:GenerateModelFromFile", buffer, bufferSize);
+    }
 
     return id;
 }
