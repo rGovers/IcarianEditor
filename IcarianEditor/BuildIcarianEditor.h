@@ -97,8 +97,10 @@ static CBBOOL WriteTemplateToHeader(const char* a_workingPath)
     return ret;
 }
 
-static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform, e_BuildConfiguration a_configuration)
+static CUBE_CProject BuildIcarianEditorProject(const char* a_path, e_TargetPlatform a_targetPlatform, e_BuildConfiguration a_configuration)
 {
+    CUBE_Path path = CUBE_Path_CreateC(a_path);
+
     CUBE_CProject project = { 0 };
 
     project.Name = CUBE_StackString_CreateC("IcarianEditor");
@@ -173,267 +175,64 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         "../IcarianEngine/deps/glad/src/glad.c",
         "./lib/flare-ImGuizmo/ImGuizmo.cpp",
         "./lib/implot/implot.cpp",
-        "./lib/implot/implot_items.cpp",
-
-        "./src/Application.cpp",
-        "./src/AppMain.cpp",
-        "./src/AssetBrowserWindow.cpp",
-        "./src/AssetLibrary.cpp",
-        "./src/BuildLoadingTask.cpp",
-        "./src/BuildProjectModal.cpp",
-        "./src/ConfirmModal.cpp",
-        "./src/ConsoleWindow.cpp",
-        "./src/CopyBuildLibraryLoadingTask.cpp",
-        "./src/CreateAssemblyControlModal.cpp",
-        "./src/CreateComponentModal.cpp",
-        "./src/CreateDefTableModal.cpp",
-        "./src/CreateEmptyScriptModal.cpp",
-        "./src/CreateFileModal.cpp",
-        "./src/CreateProjectModal.cpp",
-        "./src/CreateScriptableModal.cpp",
-        "./src/Datastore.cpp",
-        "./src/EditorData.cpp",
-        "./src/EditorConfig.cpp",
-        "./src/EditorConfigModal.cpp",
-        "./src/EditorInputManager.cpp",
-        "./src/EditorWindow.cpp",
-        "./src/EngineProcess.cpp",
-        "./src/ErrorModal.cpp",
-        "./src/FileDialog.cpp",
-        "./src/FileDialogBlock.cpp",
-        "./src/FileHandler.cpp",
-        "./src/FlareImGui.cpp",
-        "./src/GameWindow.cpp",
-        "./src/GenerateConfigLoadingTask.cpp",
-        "./src/GetAssetModal.cpp",
-        "./src/Gizmos.cpp",
-        "./src/GUI.cpp",
-        "./src/HierarchyWindow.cpp",
-        "./src/IO.cpp",
-        "./src/LoadingModal.cpp",
-        "./src/Logger.cpp",
-        "./src/main.cpp",
-        "./src/Modal.cpp",
-        "./src/Model.cpp",
-        "./src/MonoProjectGenerator.cpp",
-        "./src/OpenProjectModal.cpp",
-        "./src/PixelShader.cpp",
-        "./src/ProjectConfigModal.cpp",
-        "./src/ProfilerData.cpp",
-        "./src/ProfilerWindow.cpp",
-        "./src/Project.cpp",
-        "./src/PropertiesWindow.cpp",
-        "./src/RemoteBuildLoadingTask.cpp",
-        "./src/RenamePathModal.cpp",
-        "./src/RenderCommand.cpp",
-        "./src/RunRemoteLoadingTask.cpp",
-        "./src/RuntimeAssetStore.cpp",
-        "./src/RuntimeManager.cpp",
-        "./src/RuntimeModal.cpp",
-        "./src/SceneDefsWindow.cpp",
-        "./src/SCPPipe.cpp",
-        "./src/SerializeAssetsLoadingTask.cpp",
-        "./src/Shader.cpp",
-        "./src/ShaderProgram.cpp",
-        "./src/ShaderStorageObject.cpp",
-        "./src/SSHConnectedModal.cpp",
-        "./src/SSHConnectModal.cpp",
-        "./src/SSHPipe.cpp",
-        "./src/SyncRemoteBuildLoadingTask.cpp",
-        "./src/TemplateBuilder.cpp",
-        "./src/Texture.cpp",
-        "./src/TextureSampler.cpp",
-        "./src/TimelineWindow.cpp",
-        "./src/UniformBuffer.cpp",
-        "./src/VertexShader.cpp",
-        "./src/WelcomeWindow.cpp",
-        "./src/Window.cpp",
-        "./src/Workspace.cpp"
+        "./lib/implot/implot_items.cpp"
     );
 
-    CUBE_CProject_AppendRebuildSources(&project,
-        "../IcarianEngine/IcarianCore/include/Core/Bitfield.h",
-        "../IcarianEngine/IcarianCore/include/Core/CommunicationPipe.h",
-        "../IcarianEngine/IcarianCore/include/Core/CRC.h",
-        "../IcarianEngine/IcarianCore/include/Core/DMASwapBuffer.h",
-        "../IcarianEngine/IcarianCore/include/Core/Endian.h",
-        "../IcarianEngine/IcarianCore/include/Core/FlareShader.h",
-        "../IcarianEngine/IcarianCore/include/Core/IcarianAssert.h",
-        "../IcarianEngine/IcarianCore/include/Core/IcarianDefer.h",
-        "../IcarianEngine/IcarianCore/include/Core/IcarianError.h",
-        "../IcarianEngine/IcarianCore/include/Core/IcarianLambda.h",
-        "../IcarianEngine/IcarianCore/include/Core/IcarianPragma.h",
-        "../IcarianEngine/IcarianCore/include/Core/InputBindings.h",
-        "../IcarianEngine/IcarianCore/include/Core/IPCPipe.h",
-        "../IcarianEngine/IcarianCore/include/Core/LoggerHeader.h",
-        "../IcarianEngine/IcarianCore/include/Core/MonoNativeImpl.h",
-        "../IcarianEngine/IcarianCore/include/Core/Pipefile.h",
-        "../IcarianEngine/IcarianCore/include/Core/PipeMessage.h",
-        "../IcarianEngine/IcarianCore/include/Core/ShaderBuffers.h",
-        "../IcarianEngine/IcarianCore/include/Core/SharedMemoryBuffer.h",
-        "../IcarianEngine/IcarianCore/include/Core/SocketPipe.h",
-        "../IcarianEngine/IcarianCore/include/Core/StringUtils.h",
-        "../IcarianEngine/IcarianCore/include/Core/WindowsHeaders.h",
+    CUBE_Path srcPrefix = CUBE_Path_CreateC("src");
+    CUBE_Path srcPath = CUBE_Path_CombineP(&path, &srcPrefix);
 
-        "../IcarianEngine/EngineInterop/EngineAmbientLightInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineAnimationClipInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineApplicationInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineAudioClipInterop.h",
-        "../IcarianEngine/EngineInterop/EngineAudioListenerInterop.h",
-        "../IcarianEngine/EngineInterop/EngineAudioMixerInterop.h",
-        "../IcarianEngine/EngineInterop/EngineAudioSourceInterop.h",
-        "../IcarianEngine/EngineInterop/EngineAudioSourceInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineBoxCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineCanvasInterop.h",
-        "../IcarianEngine/EngineInterop/EngineCanvasInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineCapsuleCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineCharacterControllerInterop.h",
-        "../IcarianEngine/EngineInterop/EngineCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineCylinderCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineDirectionalLightInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineFontInterop.h",
-        "../IcarianEngine/EngineInterop/EngineIcarianAssemblyInterop.h",
-        "../IcarianEngine/EngineInterop/EngineImageUIElementInterop.h",
-        "../IcarianEngine/EngineInterop/EngineInputInterop.h",
-        "../IcarianEngine/EngineInterop/EngineInputInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineLightInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineMaterialInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineModelCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineNavigationMeshInterop.h",
-        "../IcarianEngine/EngineInterop/EngineNetworkClientInterop.h",
-        "../IcarianEngine/EngineInterop/EngineNetworkInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineNetworkServerInterop.h",
-        "../IcarianEngine/EngineInterop/EngineParticleSystemInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EnginePhysicsBodyInterop.h",
-        "../IcarianEngine/EngineInterop/EnginePhysicsBodyInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EnginePhysicsInterop.h",
-        "../IcarianEngine/EngineInterop/EnginePhysicsInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EnginePointLightInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineRenderCommandInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineRigidBodyInterop.h",
-        "../IcarianEngine/EngineInterop/EngineRigidBodyInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineSkeletonInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineSphereCollisionShapeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineSpotLightInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineTextUIElementInterop.h",
-        "../IcarianEngine/EngineInterop/EngineTextureSamplerInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineTimeInterop.h",
-        "../IcarianEngine/EngineInterop/EngineTransformInterop.h",
-        "../IcarianEngine/EngineInterop/EngineTransformInteropStructures.h",
-        "../IcarianEngine/EngineInterop/EngineTriggerBodyInterop.h",
-        "../IcarianEngine/EngineInterop/EngineUIElementInterop.h",
-        "../IcarianEngine/EngineInterop/EngineUIElementInteropStuctures.h",
-        "../IcarianEngine/EngineInterop/EngineVideoClipInterop.h",
-        "../IcarianEngine/EngineInterop/InteropBinding.h",
-        "../IcarianEngine/EngineInterop/InteropTypes.h",
+    CUBE_CProject_AppendSourceDirectoryP(&project, &srcPath, &srcPrefix, CBFALSE);
 
-        "../EditorInterop/EditorCreateDefModalInterop.h",
-        "../EditorInterop/EditorDefLibraryInterop.h",
-        "../EditorInterop/EditorDrawInteropStructures.h",
-        "../EditorInterop/EditorGizmosInteropStructures.h",
-        "../EditorInterop/EditorLightInteropStructures.h",
-        "../EditorInterop/EditorRenderCommandInterop.h",
-        "../EditorInterop/EditorRenderProgramHeaderInteropStructures.h",
-        "../EditorInterop/EditorSceneInterop.h",
-        "../EditorInterop/EditorWorkspaceInterop.h",
+    CUBE_Path_Destroy(&srcPath);
+    CUBE_Path_Destroy(&srcPrefix);
 
-        "./include/LoadingTasks/BuildLoadingTask.h",
-        "./include/LoadingTasks/CopyBuildLibraryLoadingTask.h",
-        "./include/LoadingTasks/GenerateConfigLoadingTask.h",
-        "./include/LoadingTasks/LoadingTask.h",
-        "./include/LoadingTasks/RemoteBuildLoadingTask.h",
-        "./include/LoadingTasks/RunRemoteLoadingTask.h",
-        "./include/LoadingTasks/SerializeAssetsLoadingTask.h",
-        "./include/LoadingTasks/SyncRemoteBuildLoadingTask.h",
+    CUBE_Path coreIncludePrefix = CUBE_Path_CreateC("../IcarianEngine/IcarianCore/include/Core");
+    CUBE_Path coreIncludePath = CUBE_Path_CombineP(&path, &coreIncludePrefix);
 
-        "./include/Modals/BuildProjectModal.h",
-        "./include/Modals/ConfirmModal.h",
-        "./include/Modals/CreateAssemblyControlModal.h",
-        "./include/Modals/CreateComponentModal.h",
-        "./include/Modals/CreateDefTableModal.h",
-        "./include/Modals/CreateEmptyScriptModal.h",
-        "./include/Modals/CreateFileModal.h",
-        "./include/Modals/CreateProjectModal.h",
-        "./include/Modals/CreateScriptableModal.h",
-        "./include/Modals/EditorConfigModal.h",
-        "./include/Modals/ErrorModal.h",
-        "./include/Modals/GetAssetModal.h",
-        "./include/Modals/LoadingModal.h",
-        "./include/Modals/Modal.h",
-        "./include/Modals/OpenProjectModal.h",
-        "./include/Modals/ProjectConfigModal.h",
-        "./include/Modals/RenamePathModal.h",
-        "./include/Modals/RuntimeModal.h",
-        "./include/Modals/SSHConnectedModal.h",
-        "./include/Modals/SSHConnectModal.h",
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &coreIncludePath, &coreIncludePrefix, CBFALSE);
 
-        "./include/Runtime/RuntimeManager.h",
+    CUBE_Path_Destroy(&coreIncludePath);
+    CUBE_Path_Destroy(&coreIncludePrefix);
 
-        "./include/Windows/AssetBrowserWindow.h",
-        "./include/Windows/ConsoleWindow.h",
-        "./include/Windows/EditorWindow.h",
-        "./include/Windows/GameWindow.h",
-        "./include/Windows/HierarchyWindow.h",
-        "./include/Windows/ProfilerWindow.h",
-        "./include/Windows/PropertiesWindow.h",
-        "./include/Windows/SceneDefsWindow.h",
-        "./include/Windows/TimelineWindow.h",
-        "./include/Windows/Window.h",
+    CUBE_Path engineInteropIncludePrefix = CUBE_Path_CreateC("../IcarianEngine/EngineInterop");
+    CUBE_Path engineInteropIncludePath = CUBE_Path_CombineP(&path, &engineInteropIncludePrefix);
 
-        "./include/Application.h",
-        "./include/AppMain.h",
-        "./include/AssetLibrary.h",
-        "./include/Datastore.h",
-        "./include/EditorConfig.h",
-        "./include/EditorData.h",
-        "./include/EditorInputManager.h",
-        "./include/EngineProcess.h",
-        "./include/FileDialog.h",
-        "./include/FileDialogBlock.h",
-        "./include/FileHandler.h",
-        "./include/FlareImGui.h",
-        "./include/Gizmos.h",
-        "./include/GUI.h",
-        "./include/IO.h",
-        "./include/KtxHelpers.h",
-        "./include/Logger.h",
-        "./include/Model.h",
-        "./include/MonoProjectGenerator.h",
-        "./include/PixelShader.h",
-        "./include/ProfilerData.h",
-        "./include/Project.h",
-        "./include/RenderCommand.h",
-        "./include/RuntimeAssetStore.h",
-        "./include/SCPPipe.h",
-        "./include/Shader.h",
-        "./include/ShaderProgram.h",
-        "./include/ShaderStorageObject.h",
-        "./include/SSHPipe.h",
-        "./include/TemplateBuilder.h",
-        "./include/Texture.h",
-        "./include/TextureSampler.h",
-        "./include/UniformBuffer.h",
-        "./include/VertexShader.h",
-        "./include/Workspace.h",
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &engineInteropIncludePath, &engineInteropIncludePrefix, CBFALSE);
 
-        "./shaders/Gizmo.frag",
-        "./shaders/Gizmo.vert",
-        "./shaders/Grid.frag",
-        "./shaders/Grid.vert",
+    CUBE_Path_Destroy(&engineInteropIncludePath);
+    CUBE_Path_Destroy(&engineInteropIncludePrefix);
 
-        "./templates/About.xml",
-        "./templates/AssemblyControl.cs",
-        "./templates/Canvas.ui",
-        "./templates/Component.cs",
-        "./templates/DefTable.cs",
-        "./templates/EmptyScript.cs",
-        "./templates/PixelShader.fpix",
-        "./templates/Scene.iscene",
-        "./templates/Scriptable.cs",
-        "./templates/ShadowVertexShader.fvert",
-        "./templates/SkinnedVertexShader.fvert",
-        "./templates/VertexShader.fvert"
-    );
+    CUBE_Path editorInteropIncludePrefix = CUBE_Path_CreateC("../EditorInterop");
+    CUBE_Path editorInteropIncludePath = CUBE_Path_CombineP(&path, &editorInteropIncludePrefix);
+
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &editorInteropIncludePath, &editorInteropIncludePrefix, CBFALSE);
+
+    CUBE_Path_Destroy(&editorInteropIncludePath);
+    CUBE_Path_Destroy(&editorInteropIncludePrefix);
+
+    CUBE_Path includePrefix = CUBE_Path_CreateC("include");
+    CUBE_Path includePath = CUBE_Path_CombineP(&path, &includePrefix);
+
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &includePath, &includePrefix, CBTRUE);
+
+    CUBE_Path_Destroy(&includePath);
+    CUBE_Path_Destroy(&includePrefix);
+
+    CUBE_Path shadersPrefix = CUBE_Path_CreateC("shaders");
+    CUBE_Path shadersPath = CUBE_Path_CombineP(&path, &shadersPrefix);
+
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &shadersPath, &shadersPrefix, CBFALSE);
+
+    CUBE_Path_Destroy(&shadersPath);
+    CUBE_Path_Destroy(&shadersPrefix);
+
+    CUBE_Path templatesPrefix = CUBE_Path_CreateC("templates");
+    CUBE_Path templatesPath = CUBE_Path_CombineP(&path, &templatesPrefix);
+
+    CUBE_CProject_AppendRebuildSourceDirectoryP(&project, &templatesPath, &templatesPrefix, CBFALSE);
+
+    CUBE_Path_Destroy(&templatesPath);
+    CUBE_Path_Destroy(&templatesPrefix);
 
     // Used for style editor window
     // CUBE_CProject_AppendSource(&project, "../IcarianEngine/deps/imgui/imgui_demo.cpp");
@@ -565,6 +364,8 @@ static CUBE_CProject BuildIcarianEditorProject(e_TargetPlatform a_targetPlatform
         break;
     }
     }
+
+    CUBE_Path_Destroy(&path);
 
     return project;
 }

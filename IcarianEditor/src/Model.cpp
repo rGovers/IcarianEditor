@@ -24,67 +24,9 @@ Model::~Model()
     glDeleteBuffers(1, &m_ibo);
 }
 
-Model* Model::CreateCube()
-{
-    constexpr Vertex Vertices[] = 
-    {
-        // 0
-        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 3
-        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 6
-        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 9
-        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 12
-        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 15
-        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 18
-        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-
-        // 21
-        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-        Vertex(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f), glm::vec2(0.0f)),
-    };
-
-    constexpr GLuint Indices[] = 
-    {
-        0,  6,  18, 0,  18, 12,
-        1,  4,  10, 1,  10, 7,
-        2,  17, 5,  2,  14, 17,
-        3,  21, 9,  3,  15, 21,
-        8,  11, 23, 8,  23, 20,
-        13, 22, 16, 13, 19, 22
-    };
-
-    return new Model(Vertices, sizeof(Vertices) / sizeof(*Vertices), Indices, sizeof(Indices) / sizeof(*Indices), sizeof(Vertex));
-}
-
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

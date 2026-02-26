@@ -185,7 +185,7 @@ int main(int a_argc, char** a_argv)
 
             free(dependencyProjects);
 
-            icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+            icarianCoreProject = BuildIcarianCoreProject("./IcarianEngine/IcarianCore", CBTRUE, targetPlatform, buildConfiguration);
             CUBE_CProject_PrependPaths(&icarianCoreProject, "./IcarianEngine/IcarianCore/", CBTRUE);
             projects[offset++] = icarianCoreProject;
 
@@ -206,7 +206,7 @@ int main(int a_argc, char** a_argv)
                 .EnableMarkers = CBTRUE,
                 .EnablePipeFile = CBTRUE
             };
-            icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, nativeFlags);
+            icarianNativeProject = BuildIcarianNativeProject("./IcarianEngine/IcarianNative", targetPlatform, buildConfiguration, nativeFlags);
             CUBE_CProject_PrependPaths(&icarianNativeProject, "./IcarianEngine/IcarianNative/", CBTRUE);
             projects[offset++] = icarianNativeProject;
 
@@ -214,7 +214,7 @@ int main(int a_argc, char** a_argv)
             CUBE_CProject_PrependPaths(&icarianModManagerProject, "./IcarianEngine/IcarianModManager", CBTRUE);
             projects[offset++] = icarianModManagerProject;
 
-            icarianEditorProject = BuildIcarianEditorProject(targetPlatform, buildConfiguration);
+            icarianEditorProject = BuildIcarianEditorProject("./IcarianEditor", targetPlatform, buildConfiguration);
             CUBE_CProject_PrependPaths(&icarianEditorProject, "./IcarianEditor", CBTRUE);
             projects[offset++] = icarianEditorProject;
 
@@ -371,9 +371,9 @@ int main(int a_argc, char** a_argv)
 
     free(dependencyProjects);
 
-    icarianCoreProject = BuildIcarianCoreProject(CBTRUE, targetPlatform, buildConfiguration);
+    icarianCoreProject = BuildIcarianCoreProject("./IcarianEngine/IcarianCore", CBTRUE, targetPlatform, buildConfiguration);
 
-    ret = CUBE_CProject_MultiCompile(&icarianCoreProject, compiler, "IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount, rebuild);
+    ret = CUBE_CProject_MultiCompile(&icarianCoreProject, compiler, "./IcarianEngine/IcarianCore", CBNULL, jobThreads, &lines, &lineCount, rebuild);
 
     FlushLines(&lines, &lineCount);
 
@@ -450,9 +450,9 @@ int main(int a_argc, char** a_argv)
         .EnableMarkers = CBTRUE,
         .EnablePipeFile = CBTRUE
     };
-    icarianNativeProject = BuildIcarianNativeProject(targetPlatform, buildConfiguration, nativeFlags);
+    icarianNativeProject = BuildIcarianNativeProject("./IcarianEngine/IcarianNative", targetPlatform, buildConfiguration, nativeFlags);
 
-    ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount, rebuild);
+    ret = CUBE_CProject_MultiCompile(&icarianNativeProject, compiler, "./IcarianEngine/IcarianNative", CBNULL, jobThreads, &lines, &lineCount, rebuild);
 
     FlushLines(&lines, &lineCount);
 
@@ -486,6 +486,8 @@ int main(int a_argc, char** a_argv)
 
     FlushLines(&lines, &lineCount);
 
+    CUBE_CSProject_Destroy(&icarianEditorEngineCSProject);
+
     if (!ret)
     {
         printf("Failed to compile IcarianEditorEngineCS\n");
@@ -509,9 +511,9 @@ int main(int a_argc, char** a_argv)
         return 1;
     }
 
-    icarianEditorProject = BuildIcarianEditorProject(targetPlatform, buildConfiguration);
+    icarianEditorProject = BuildIcarianEditorProject("./IcarianEditor", targetPlatform, buildConfiguration);
 
-    ret = CUBE_CProject_MultiCompile(&icarianEditorProject, compiler, "IcarianEditor", CBNULL, jobThreads, &lines, &lineCount, rebuild);
+    ret = CUBE_CProject_MultiCompile(&icarianEditorProject, compiler, "./IcarianEditor", CBNULL, jobThreads, &lines, &lineCount, rebuild);
 
     FlushLines(&lines, &lineCount);
 

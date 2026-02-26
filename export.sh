@@ -33,7 +33,7 @@ else
         -it \
         -w /IcarianEngine \
         registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest \
-        /bin/bash /IcarianEngine/build.sh "$@" --platform=linuxsteam -R --rebuild
+        /bin/bash /IcarianEngine/build.sh "$@" --platform=linuxsteam -R --rebuild --noprint
 
     if [ $? -ne 0 ]; then
         echo "Linux Steam export failed"
@@ -51,7 +51,7 @@ if [ -d "build" ]; then
     rm -rf build
 fi
 
-source "build.sh" "$@" --platform=windows -R --rebuild
+source "build.sh" "$@" --platform=windows -R --rebuild --noprint
 if [ $? -ne 0 ]; then
     echo "Windows export failed"
     exit 1
@@ -67,7 +67,7 @@ if [ -d "build" ]; then
     rm -rf build
 fi
 
-source "build.sh" "$@" --platform=linux -R --rebuild
+source "build.sh" "$@" --platform=linux -R --rebuild --noprint
 if [ $? -ne 0 ]; then
     echo "Linux export failed"
     exit 1
@@ -79,8 +79,11 @@ mkdir -p ../build/BuildFiles/Linux/lib
 cp -r build/. ../build/BuildFiles/Linux/bin
 cp build/IcarianCS.dll ../build/BuildFiles/Linux/lib/IcarianCS.dll
 
+echo 
+echo "-------------------------------------------"
 echo "-------------------------------------------"
 echo
 echo "Export Complete"
 echo
+echo "-------------------------------------------"
 echo "-------------------------------------------"
