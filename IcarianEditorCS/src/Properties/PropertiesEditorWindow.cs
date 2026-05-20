@@ -75,7 +75,7 @@ namespace IcarianEditor.Properties
         }
 
         static bool ConditionalField(string a_name, EditorFieldConditionalAttribute a_conditional, object a_parentObject)
-        {   
+        {
             if (a_parentObject == null)
             {
                 Logger.Error($"ShowFields {a_name} EditorFieldConditional null parentObject");
@@ -162,6 +162,30 @@ namespace IcarianEditor.Properties
             {
                 switch (objectValue)
                 {
+                case bool val:
+                {
+                    bool fieldInterVal = (bool)fieldValue;
+
+                    switch (a_conditional.FieldConditionalType)
+                    {
+                    case FieldConditionalType.Equals:
+                    {
+                        return val == fieldInterVal;
+                    }
+                    case FieldConditionalType.NotEquals:
+                    {
+                        return val != fieldInterVal;
+                    }
+                    default:
+                    {
+                        Logger.Error($"ShowFields {a_name} invalid FieldConditionalType for bool: {a_conditional.FieldConditionalType}");
+
+                        break;
+                    }
+                    }
+
+                    break;
+                }
                 case byte val:
                 {
                     CONDITIONALFIELD_MATHSCOMP(byte);

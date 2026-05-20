@@ -25,6 +25,7 @@
 #include "Core/IPCPipe.h"
 #include "Core/SocketPipe.h"
 #include "EditorConfig.h"
+#include "LockFile.h"
 #include "Logger.h"
 #include "SSHPipe.h"
 
@@ -154,10 +155,12 @@ EngineProcess::EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::Communicat
 
     m_fps = 0.0;
     m_frameTime = 0.0;
+    m_frameTimeout = 0.0;
     m_frames = 0;
 
     m_ups = 0.0;
     m_updateTime = 0.0;
+    m_updateTimeout = 0.0;
     m_updates = 0;
 
     m_process = a_proc;
@@ -261,7 +264,11 @@ EngineProcess::~EngineProcess()
 
     if (m_ipcPipe != nullptr)
     {
-        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Close }))
+        const IcarianCore::PipeMessage msg =
+        {
+            .Type = IcarianCore::PipeMessageType_Close
+        };
+        if (m_ipcPipe->Send(msg) != IcarianCore::CommunicationPipe::SendError_Success)
         {
             return;
         }
@@ -282,7 +289,7 @@ EngineProcess::~EngineProcess()
             }
 
             std::queue<IcarianCore::PipeMessage> msgs;
-            Update(&msgs);
+            Update(0.0, &msgs);
 
             while (!msgs.empty())
             {
@@ -295,7 +302,8 @@ EngineProcess::~EngineProcess()
                 }
             }
 
-            DMAUpdate();
+            SignalImage();
+            WaitImage();
         }
     }
 }
@@ -339,6 +347,9 @@ static std::filesystem::path GetAddr(const std::string_view& a_addr)
 }
 #endif
 
+// TODO: May want to create a watchdog process and give a copy of the process handle to it so it can kill it if we die without killing it
+// Unsure if we would be the parent or the watchdog would be the parent and spawn us need to decide
+// Mostly a measure to clean up orphaned processes rarely happens in a live environment but gets annoying when debugging as it kills the editor and not the engine
 EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height, uint32_t a_threadCount)
 {
     IERRBLOCK;
@@ -383,6 +394,10 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
     }
     else if (process == 0)
     {
+        // The editor has a lockfile to stop other instances spawning
+        // We want the engine to let go of said lock file
+        LockFile::Close();
+
         // Starting the engine
         // In a weird state cause in a forked process so doing stuff C style
         // Once execution is started state is normal again
@@ -410,7 +425,14 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
         IERRDEFER(delete ipcPipe);
 
         const glm::ivec2 data = glm::ivec2((int)a_width, (int)a_height);
-        IERRCHECKRET(ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }), nullptr);
+
+        const IcarianCore::PipeMessage msg = 
+        {
+            .Type = IcarianCore::PipeMessageType_Resize,
+            .Length = sizeof(glm::ivec2),
+            .Data = (uint8_t*)&data
+        };
+        IERRCHECKRET(ipcPipe->Send(msg) == IcarianCore::CommunicationPipe::SendError_Success, nullptr);
 
         // Need to file descriptor for the process for later
         const int processFd = sys_pidfd_open(process, 0);
@@ -449,7 +471,7 @@ EngineProcess* EngineProcess::CreateRemoteProcess(SSHPipe* a_sshPipe, uint16_t a
         " --remote-port=" + std::to_string(a_clientPort);
 
     const e_SSHHostOS hostOS = a_sshPipe->GetHostOS();
-    switch (hostOS) 
+    switch (hostOS)
     {
     case SSHHostOS_WindowsPowerCMD:
     case SSHHostOS_WindowsPowershell:
@@ -483,7 +505,14 @@ EngineProcess* EngineProcess::CreateRemoteProcess(SSHPipe* a_sshPipe, uint16_t a
     IERRDEFER(delete ipcPipe);
 
     const glm::ivec2 data = glm::ivec2((int)a_width, (int)a_height);
-    IERRCHECKRET(ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&data }), nullptr);
+
+    const IcarianCore::PipeMessage msg =
+    {
+        .Type = IcarianCore::PipeMessageType_Resize,
+        .Length = sizeof(glm::ivec2),
+        .Data = (uint8_t*)&data
+    };
+    IERRCHECKRET(ipcPipe->Send(msg) == IcarianCore::CommunicationPipe::SendError_Success, nullptr);
 
     return new EngineProcess(ipcPipe, a_width, a_height);
 #endif
@@ -520,7 +549,7 @@ void EngineProcess::SetSize(uint32_t a_width, uint32_t a_height)
     }
 }
 
-bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
+bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>* a_msgs)
 {
     ICARIAN_ASSERT(a_msgs != nullptr);
 
@@ -535,7 +564,14 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
 
         const glm::ivec2 size = glm::ivec2((int)m_width, (int)m_height);
 
-        if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_Resize, sizeof(glm::ivec2), (char*)&size}))
+        const IcarianCore::PipeMessage msg =
+        {
+            .Type = IcarianCore::PipeMessageType_Resize,
+            .Length = sizeof(glm::ivec2),
+            .Data = (uint8_t*)&size
+        };
+
+        if (m_ipcPipe->Send(msg) != IcarianCore::CommunicationPipe::SendError_Success)
         {
             FlushDMAImages();
 
@@ -544,6 +580,9 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
             return false;
         }
     }
+
+    bool updateTimeoutTick = true;
+    bool frameTimeoutTick = true;
 
     std::queue<IcarianCore::PipeMessage> msgs;
     if (!m_ipcPipe->Receive(&msgs))
@@ -556,7 +595,7 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
         const IcarianCore::PipeMessage msg = msgs.front();
         msgs.pop();
 
-        switch (msg.Type) 
+        switch (msg.Type)
         {
         case IcarianCore::PipeMessageType_Null:
         {
@@ -591,6 +630,9 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
         case IcarianCore::PipeMessageType_FrameData:
         {
             IDEFER(delete[] msg.Data);
+
+            frameTimeoutTick = false;
+            m_frameTimeout = 0.0;
 
             const double delta = *(double*)(msg.Data + 0);
 
@@ -633,6 +675,7 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
             // Sigh.... fuck OpenGL drivers have to pick between undefined behaviour and leaking the file descriptor
             // I love non spec compliant drivers
             // OpenGL spec states that import hands ownership of the fd to OpenGL and all operations after are undefined behaviour
+            // UPDATE: The driver in question was fixed keeping comment as this can be a thing that happens
             const int imageFD = sys_pidfd_getfd(m_processFD, swapBuffer.ImageFD, 0);
             const int startSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.StartSemaphore, 0);
             const int endSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.EndSemaphore, 0);
@@ -659,20 +702,22 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
 
                 ILRETURN val;
             });
-            const GLuint startSemaphoreHandle = ILAMBDA(
-            {
-                GLuint val;
-                glGenSemaphoresEXT(1, &val);
-                glImportSemaphoreFdEXT(val, GL_HANDLE_TYPE_OPAQUE_FD_EXT, startSemaphore);
 
-                ILRETURN val;
-            });
-
-            const DMASwapchainImage image = 
+            const DMASwapchainImage image =
             {
                 .MemoryObject = memoryObject,
                 .Texture = textureHandle,
-                .StartSemaphore = startSemaphoreHandle,
+                .StartSemaphore = ILAMBDA(
+                {
+                    GLuint val;
+                    glGenSemaphoresEXT(1, &val);
+                    glImportSemaphoreFdEXT(val, GL_HANDLE_TYPE_OPAQUE_FD_EXT, startSemaphore);
+
+                    // constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+                    // glSignalSemaphoreEXT(val, 0, NULL, 1, &textureHandle, &Layout);
+
+                    ILRETURN val;
+                }),
                 .EndSemaphore = ILAMBDA(
                 {
                     GLuint val;
@@ -685,9 +730,6 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
                 .Height = swapBuffer.Height,
                 .Offset = swapBuffer.Offset,
             };
-
-            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-            glSignalSemaphoreEXT(startSemaphoreHandle, 0, NULL, 1, &textureHandle, &Layout);
 
             m_dmaImages.emplace_back(image);
 #endif
@@ -796,6 +838,9 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
         {
             IDEFER(delete[] msg.Data);
 
+            updateTimeoutTick = false;
+            m_updateTimeout = 0.0;
+
             const double delta = *(double*)(msg.Data + 0);
 
             ++m_updates;
@@ -849,12 +894,45 @@ bool EngineProcess::Update(std::queue<IcarianCore::PipeMessage>* a_msgs)
         }
     }
 
+    if (updateTimeoutTick)
+    {
+        if (m_updateTimeout >= 1 / UPSUpdateRate)
+        {
+            m_ups = 0.0f;
+            m_updateTime = 0.0;
+            m_updates = 0;
+        }
+        else
+        {
+            m_updateTimeout += a_delta;
+        }
+    }
+
+    if (frameTimeoutTick)
+    {
+        if (m_frameTimeout >= 1 / FPSUpdateRate)
+        {
+            m_fps = 0.0;
+            m_frameTime = 0.0;
+            m_frames = 0;
+        }
+        else
+        {
+            m_frameTimeout += a_delta;
+        }
+    }
+
     return true;
 }
 
-void EngineProcess::DMAUpdate()
+void EngineProcess::SignalImage()
 {
     if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return;
+    }
+
+    if (IISBITSET(m_flags, SignaledBit))
     {
         return;
     }
@@ -865,16 +943,51 @@ void EngineProcess::DMAUpdate()
         return;
     }
 
+    ISETBIT(m_flags, SignaledBit);
+
+    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+    glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+}
+e_EngineFrameWaitStatus EngineProcess::WaitImage()
+{
+    if (!IISBITSET(m_flags, DMAModeBit))
+    {
+        return EngineFrameWaitStatus_InvalidMode;
+    }
+
+    if (!IISBITSET(m_flags, SignaledBit))
+    {
+        return EngineFrameWaitStatus_NotSignaled;
+    }
+
+    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
+    if (m_curFrame >= imageCount)
+    {
+        return EngineFrameWaitStatus_Reset;
+    }
+
+    if (m_dmaSwaps <= 0)
+    {
+        // // TODO: Investigate this weirdness
+        // // Why can I signal but the signal does not update sometimes
+        // const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+        // constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
+        // glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+
+        return EngineFrameWaitStatus_Wait;
+    }
+
+    ICLEARBIT(m_flags, SignaledBit);
     while (m_dmaSwaps > 0)
     {
-        IDEFER(--m_dmaSwaps);
-
+        --m_dmaSwaps;
         const DMASwapchainImage& img = m_dmaImages[m_curFrame];
 
         constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
         glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
 
-        if (m_dmaSwaps == 1 && img.Width == m_width && img.Height == m_height)
+        if (img.Width == m_width && img.Height == m_height)
         {
             glCopyImageSubData
             (
@@ -889,75 +1002,16 @@ void EngineProcess::DMAUpdate()
                 (GLsizei)img.Width, (GLsizei)img.Height, 1
             );
         }
-
-        m_curFrame = (m_curFrame + 1) % imageCount;
-
-        const DMASwapchainImage& nextImage = m_dmaImages[m_curFrame];
-        glSignalSemaphoreEXT(nextImage.StartSemaphore, 0, NULL, 1, &nextImage.Texture, &Layout);
-    }
-}
-
-void EngineProcess::SignalImage()
-{
-    if (!IISBITSET(m_flags, DMAModeBit))
-    {
-        return;
-    }
-
-    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
-    if (m_curFrame >= imageCount)
-    {
-        return;
-    }
-
-    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
-
-    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-    glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
-}
-e_EngineFrameWaitStatus EngineProcess::WaitImage()
-{
-    if (!IISBITSET(m_flags, DMAModeBit))
-    {
-        return EngineFrameWaitStatus_InvalidMode;
-    }
-
-    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
-    if (m_curFrame >= imageCount)
-    {
-        return EngineFrameWaitStatus_Reset;
-    }
-
-    if (m_dmaSwaps <= 0)
-    {
-        return EngineFrameWaitStatus_Wait;
-    }
-
-    --m_dmaSwaps;
-    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
-
-    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-    glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
-
-    if (img.Width == m_width && img.Height == m_height)
-    {
-        glCopyImageSubData
-        (
-            img.Texture,
-            GL_TEXTURE_2D,
-            0,
-            0, 0, 0,
-            m_dmaTexture,
-            GL_TEXTURE_2D,
-            0,
-            0, 0, 0,
-            (GLsizei)img.Width, (GLsizei)img.Height, 1
-        );
     }
 
     m_curFrame = (m_curFrame + 1) % imageCount;
 
-    return EngineFrameWaitStatus_Sucess;
+    return EngineFrameWaitStatus_Success;
+}
+void EngineProcess::AdvanceImage()
+{
+    m_curFrame = (m_curFrame + 1) % m_dmaImages.size();
+    ICLEARBIT(m_flags, SignaledBit);
 }
 
 void EngineProcess::FlushDMAImages()
@@ -984,9 +1038,19 @@ void EngineProcess::PushCursorPos(const glm::vec2& a_cPos)
         return;
     }
 
-    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_CursorPos, sizeof(glm::vec2), (char*)&a_cPos}))
+    const IcarianCore::PipeMessage msg =
     {
-        Logger::Error("Failed to send cursor position message to IcarianEngine");
+        .Type = IcarianCore::PipeMessageType_CursorPos,
+        .Length = sizeof(glm::vec2),
+        .Data = (uint8_t*)&a_cPos,
+    };
+
+    const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+    if (error != IcarianCore::CommunicationPipe::SendError_Success)
+    {
+        const std::string str = std::string("Failed to send cursor position message to IcarianEngine: ") +
+            IcarianCore::CommunicationPipe::SendErrorString(error);
+        Logger::Error(str);
 
         return;
     }
@@ -998,9 +1062,19 @@ void EngineProcess::PushMouseState(uint8_t a_state)
         return;
     }
 
-    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_MouseState, sizeof(uint8_t), (char*)&a_state }))
+    const IcarianCore::PipeMessage msg =
     {
-        Logger::Error("Failed to send mouse state message to IcarianEngine");
+        .Type = IcarianCore::PipeMessageType_MouseState,
+        .Length = sizeof(uint8_t),
+        .Data = (uint8_t*)&a_state
+    };
+
+    const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+    if (error != IcarianCore::CommunicationPipe::SendError_Success)
+    {
+        const std::string str = std::string("Failed to send mouse state message to IcarianEngine: ") +
+            IcarianCore::CommunicationPipe::SendErrorString(error);
+        Logger::Error(str);
 
         return;
     }
@@ -1012,9 +1086,22 @@ void EngineProcess::PushKeyboardState(const IcarianCore::KeyboardState& a_state)
         return;
     }
 
-    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_KeyboardState, IcarianCore::KeyboardState::ElementCount, (char*)a_state.ToData() }))
+    const IcarianCore::PipeMessage msg =
     {
-        Logger::Error("Failed to send keyboard state message to IcarianEngine");
+        .Type = IcarianCore::PipeMessageType_KeyboardState,
+        .Length = IcarianCore::KeyboardState::ElementCount,
+        // Yes, this is a dangerous cast as const it disappering
+        // Yes, this can blow up in my face as this is undefined
+        // No, I do not care I will fix it when it blows up not before
+        .Data = (uint8_t*)a_state.ToData()
+    };
+
+    const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+    if (error != IcarianCore::CommunicationPipe::SendError_Success)
+    {
+        const std::string str = std::string("Failed to send keyboard state message to IcarianEngine: ") +
+            IcarianCore::CommunicationPipe::SendErrorString(error);
+        Logger::Error(str);
 
         return;
     }
@@ -1027,9 +1114,17 @@ void EngineProcess::CaptureFrame()
         return;
     }
 
-    if (!m_ipcPipe->Send({ IcarianCore::PipeMessageType_CaptureFrame }))
+    const IcarianCore::PipeMessage msg =
     {
-        Logger::Error("Failed to send capture frame message to IcarianEngine");
+        .Type = IcarianCore::PipeMessageType_CaptureFrame
+    };
+
+    const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+    if (error != IcarianCore::CommunicationPipe::SendError_Success)
+    {
+        const std::string str = std::string("Failed to send capture frame message to IcarianEngine: ") +
+            IcarianCore::CommunicationPipe::SendErrorString(error);
+        Logger::Error(str);
 
         return;
     }
@@ -1048,33 +1143,68 @@ void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const v
     {
         const uint32_t bufferSize = strLen + 1;
 
-        char* dat = (char*)malloc(strLen + 1);
-        IDEFER(free(dat));
+        const IcarianCore::PipeMessage msg =
+        {
+            .Type = IcarianCore::PipeMessageType_RuntimeMessage,
+            .Length = bufferSize,
+            .Data = ILAMBDA(
+            {
+                uint8_t* dat = (uint8_t*)malloc(strLen + 1);
+                memcpy(dat, a_string.data(), strLen);
+                dat[strLen] = 0;
 
-        memcpy(dat, a_string.data(), strLen);
-        dat[strLen] = 0;
+                ILRETURN dat;
+            })
+        };
+        IDEFER(free(msg.Data));
 
-        m_ipcPipe->Send({ IcarianCore::PipeMessageType_RuntimeMessage, bufferSize, dat });
+        const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+        if (error != IcarianCore::CommunicationPipe::SendError_Success)
+        {
+            const std::string str = std::string("Failed to send runtime message to IcarianEngine: ") +
+                IcarianCore::CommunicationPipe::SendErrorString(error);
+            Logger::Error(str);
+
+            return;
+        }
 
         return;
     }
 
     const uint32_t bufferSize = strLen + 1 + a_dataLength;
 
-    char* dat = (char*)malloc(bufferSize);
-    IDEFER(free(dat));
+    const IcarianCore::PipeMessage msg =
+    {
+        .Type = IcarianCore::PipeMessageType_RuntimeMessage,
+        .Length = bufferSize,
+        .Data = ILAMBDA(
+        {
+            uint8_t* dat = (uint8_t*)malloc(bufferSize);
 
-    memset(dat, 0, bufferSize);
+            memset(dat, 0, bufferSize);
 
-    memcpy(dat, a_string.data(), strLen);
-    memcpy(dat + strLen + 1, a_data, a_dataLength);
+            memcpy(dat, a_string.data(), strLen);
+            memcpy(dat + strLen + 1, a_data, a_dataLength);
 
-    m_ipcPipe->Send({ IcarianCore::PipeMessageType_RuntimeMessage, bufferSize, dat });
+            ILRETURN dat;
+        })
+    };
+    IDEFER(free(msg.Data));
+
+    const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
+    if (error != IcarianCore::CommunicationPipe::SendError_Success)
+    {
+        const std::string str = std::string("Failed to send runtime message to IcarianEngine: ") +
+            IcarianCore::CommunicationPipe::SendErrorString(error);
+        Logger::Error(str);
+
+        return;
+    }
 }
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

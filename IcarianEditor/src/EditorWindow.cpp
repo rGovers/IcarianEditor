@@ -4,6 +4,7 @@
 
 #include "Windows/EditorWindow.h"
 
+#include <charconv>
 #include <imgui.h>
 #include <ImGuizmo.h>
 #include <thread>
@@ -13,6 +14,7 @@
 #include "Core/IcarianLambda.h"
 #include "Core/LoggerHeader.h"
 #include "Core/PipeMessage.h"
+#include "Core/TotalMemoryUsageFrame.h"
 #include "EditorConfig.h"
 #include "EngineProcess.h"
 #include "FlareImGui.h"
@@ -105,23 +107,30 @@ EditorWindow::~EditorWindow()
     delete m_compositeProgram;
 }
 
-void EditorWindow::UpdateProcess()
+void EditorWindow::UpdateProcess(double a_delta)
 {
     if (m_process == nullptr)
     {
         return;
     }
 
+    if (!m_process->IsAlive())
+    {
+        return;
+    }
+
     std::queue<IcarianCore::PipeMessage> messages;
-    m_process->Update(&messages);
+    m_process->Update(a_delta, &messages);
 
     while (!messages.empty())
     {
         const IcarianCore::PipeMessage msg = messages.front();
         IDEFER(
-        if (msg.Data != nullptr)
         {
-            delete[] msg.Data;
+            if (msg.Data != nullptr)
+            {
+                delete[] msg.Data;
+            }
         });
         messages.pop();
 
@@ -129,6 +138,7 @@ void EditorWindow::UpdateProcess()
         {
         case IcarianCore::PipeMessageType_SetCursorState:
         case IcarianCore::PipeMessageType_ProfileScope:
+        case IcarianCore::PipeMessageType_MemoryFrame:
         {
             // Ignore as we are the editor window
 
@@ -160,14 +170,14 @@ void EditorWindow::UpdateProcess()
 
                 const LoggerMessageData data = 
                 {
-                    .Message = "[Editor Window] " + std::string(msg.Data + header.MessageOffset, header.MessageSize),
+                    .Message = "[Editor Window] " + std::string((char*)msg.Data + header.MessageOffset, header.MessageSize),
                     .Stacktrace = ILAMBDA(
                     {
                         if (header.StackTraceSize != 0)
                         {
                             std::vector<std::string> vals;
 
-                            const char* stacktraceStart = msg.Data + header.StackTraceOffset;
+                            const char* stacktraceStart = (char*)msg.Data + header.StackTraceOffset;
                             const char* stacktraceSlider = stacktraceStart;
                             const char* stacktraceMessageBegin = stacktraceStart;
                             while (stacktraceSlider - stacktraceStart < header.StackTraceSize)
@@ -217,6 +227,14 @@ void EditorWindow::UpdateProcess()
 
             break;
         }
+        case IcarianCore::PipeMessageType_TotalMemoryUsage:
+        {
+            const IcarianCore::TotalMemoryUsageFrame* frame = (IcarianCore::TotalMemoryUsageFrame*)msg.Data;
+
+            m_memoryUsage = frame->MallocUsage + frame->OSUsage;
+
+            break;
+        }
         case IcarianCore::PipeMessageType_RuntimeMessage:
         {
             // TODO: Implement me!~
@@ -239,26 +257,29 @@ void EditorWindow::BuildFrame()
     while (true)
     {
         const e_EngineFrameWaitStatus imageWait = m_process->WaitImage();
-        switch (imageWait) 
+        switch (imageWait)
         {
-        case EngineFrameWaitStatus_Sucess:
+        case EngineFrameWaitStatus_Success:
         {
             break;
         }
         case EngineFrameWaitStatus_Reset:
+        case EngineFrameWaitStatus_NotSignaled:
         {
             return;
         }
         case EngineFrameWaitStatus_Wait:
         {
-            UpdateProcess();
+            UpdateProcess(0.0);
 
             const std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(250));
+            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(100));
             if (timeout)
             {
                 Logger::Warning("Editor window draw timeout");
+
+                m_process->AdvanceImage();
 
                 return;
             }
@@ -431,7 +452,14 @@ void EditorWindow::LightModeToolbar()
     ImGui::SetCursorPos(ImVec2(size.x - WinSize.x - BorderOffset + offset, TrayOffset + 5.0f));
 
     const bool showViewportBackground = m_lightMode == EditorLightMode_Viewport;
-    if (FlareImGui::ImageButton("Viewport Light", "Textures/Icons/Icon_Viewport.png", glm::vec2(25.0f), showViewportBackground))
+    if (FlareImGui::ImageButton
+        (
+            "Viewport Light",
+            "Textures/Icons/Icon_Viewport.png",
+            glm::vec2(25.0f),
+            showViewportBackground
+        )
+    )
     {
         m_lightMode = EditorLightMode_Viewport;
     }
@@ -486,7 +514,8 @@ void EditorWindow::Refresh()
 
     RuntimeAssetStore::RegisterEngineProcess(m_process);
 }
-void EditorWindow::Update(double a_delta)
+
+void EditorWindow::InternalUpdate(double a_delta)
 {
     if (m_process != nullptr && !m_process->IsAlive())
     {
@@ -494,6 +523,21 @@ void EditorWindow::Update(double a_delta)
 
         delete m_process;
         m_process = nullptr;
+    }
+
+    UpdateProcess(a_delta);
+}
+// TODO: At somepoint I will have to drop ImGuizmo and write my own transform Gizmo
+void EditorWindow::DisplayUpdate(double a_delta)
+{
+    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
+    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
+    const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
+
+    // The window is too small so do not bother updating
+    if (sizeIm.x < 4 || sizeIm.y < 4)
+    {
+        return;
     }
 
     if (ImGui::BeginMenuBar())
@@ -504,28 +548,29 @@ void EditorWindow::Update(double a_delta)
         {
             const float width = ImGui::GetWindowWidth();
 
+            const double memoryUsageGiB = m_memoryUsage / (double)(1ULL << 30ULL);
+
             const uint32_t ups = (uint32_t)m_process->GetUPS();
+
+            char buffer[256];
+            memset(buffer, 0, sizeof(buffer));
+            std::to_chars(buffer, buffer + (sizeof(buffer) - 1), memoryUsageGiB, std::chars_format::fixed, 2);
+
+            const std::string memoryUsageText = std::string("Engine Memory Usage: ") + buffer + "GiB";
             const std::string upsText = "UPS: " + std::to_string(ups);
 
+            const ImVec2 memoryUsageSize = ImGui::CalcTextSize(memoryUsageText.c_str());
             const ImVec2 upsSize = ImGui::CalcTextSize(upsText.c_str());
 
             const float upsOffset = upsSize.x + 20.0f;
+            const float memoryUsageOffset = upsOffset + memoryUsageSize.x + 20.0f;
 
             ImGui::SetCursorPosX(width - upsOffset);
             ImGui::Text("%s", upsText.c_str());
+
+            ImGui::SetCursorPosX(width - memoryUsageOffset);
+            ImGui::Text("%s", memoryUsageText.c_str());
         }
-    }
-
-    UpdateProcess();
-
-    const ImVec2 vMinIm = ImGui::GetWindowContentRegionMin();
-    const ImVec2 vMaxIm = ImGui::GetWindowContentRegionMax();
-    const ImVec2 sizeIm = { vMaxIm.x - vMinIm.x, vMaxIm.y - vMinIm.y };
-
-    // The window is too small so do not bother updating
-    if (sizeIm.x < 4 || sizeIm.y < 4)
-    {
-        return;
     }
 
     const uint32_t unfocusedFPS = EditorConfig::GetEditorUnfocusedFPS();
@@ -546,10 +591,31 @@ void EditorWindow::Update(double a_delta)
             m_process->SetSize(newWidth, newHeight);
 
             glBindTexture(GL_TEXTURE_2D, m_gizmosRenderTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)newWidth, (GLsizei)newHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D
+            (
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA,
+                (GLsizei)newWidth,
+                (GLsizei)newHeight,
+                0, GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                NULL
+            );
 
             glBindTexture(GL_TEXTURE_2D, m_renderTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)newWidth, (GLsizei)newHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D
+            (
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA,
+                (GLsizei)newWidth,
+                (GLsizei)newHeight,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                NULL
+            );
         }
 
         if (shouldUpdate)
@@ -565,6 +631,11 @@ void EditorWindow::Update(double a_delta)
 
     if (isFocused)
     {
+        const ImVec2 winPos = ImGui::GetWindowPos();
+
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(winPos.x + vMinIm.x, winPos.y + vMinIm.y, m_width, m_height);
+
         const ImVec2 imPos = ImGui::GetMousePos();
         const glm::vec2 mPos = glm::vec2(imPos.x, imPos.y);
         IDEFER(m_prevMousePos = mPos);
@@ -647,7 +718,12 @@ void EditorWindow::Update(double a_delta)
             {
                 const float editorMouseSensitivity = EditorConfig::GetEditorMouseSensitivity();
 
-                const glm::quat rot = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::angleAxis(-mMov.y * editorMouseSensitivity, m_rotation * glm::vec3(1.0f, 0.0f, 0.0f));
+                const glm::vec3 rightAxis = m_rotation * glm::vec3(1.0f, 0.0f, 0.0f);
+
+                const glm::quat horRot = glm::angleAxis(mMov.x * editorMouseSensitivity, glm::vec3(0.0f, 1.0f, 0.0f));
+                const glm::quat verRot = glm::angleAxis(-mMov.y * editorMouseSensitivity, rightAxis);
+
+                const glm::quat rot = horRot * verRot;
                 const glm::quat invRot = glm::inverse(rot);
 
                 const glm::vec3 forward = m_rotation * glm::vec3(0.0f, 0.0f, -1.0f);
@@ -715,58 +791,53 @@ void EditorWindow::Update(double a_delta)
         }
     }
 
-    if (m_process != nullptr && shouldUpdate)
-    {
-        const ImVec2 winPos = ImGui::GetWindowPos();
-
-        // Want to set the workspace manipulation mode to the current manipulation mode of the editor window as each can have their own
-        Workspace::SetManipulationMode(m_manipulationMode);
-
-        constexpr float FOV = glm::pi<float>() * 0.4f;
-        glm::mat4 proj = glm::perspective(FOV, (float)sizeIm.x / sizeIm.y, 0.01f, 1000.0f);
-
-        const glm::mat4 rotMat = glm::toMat4(m_rotation);
-        const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
-
-        const glm::mat4 trans = transMat * rotMat;
-        glm::mat4 view = glm::inverse(trans);
-
-        Gizmos::SetMatrices(view, proj);
-
-        m_process->SendRuntimeMessage("Editor:CameraTransform", &trans, sizeof(glm::mat4));
-        m_process->SendRuntimeMessage("Editor:SceneView:LightMode", &m_lightMode, sizeof(e_EditorLightMode));
-
-        void* args[] =
-        {
-            &view,
-            &proj,
-            &m_width,
-            &m_height
-        };
-
-        RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI(Matrix4,Matrix4,uint,uint)", args);
-
-        RenderCommand::Flush(m_process);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, m_gizmosFramebuffer);
-
-        glViewport(0, 0, (GLsizei)m_width, (GLsizei)m_height);
-        glScissor(0, 0, (GLsizei)m_width, (GLsizei)m_height);
-
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        Gizmos::Render();
-
-        ImGuizmo::SetDrawlist();
-        ImGuizmo::SetRect(winPos.x + vMinIm.x, winPos.y + vMinIm.y, m_width, m_height);
-
-        m_process->SignalImage();
-    }
-
     if (shouldUpdate)
     {
-        m_lastUpdate = 0;
+        IDEFER(m_lastUpdate = 0);
+
+        if (m_process != nullptr)
+        {
+            // Want to set the workspace manipulation mode to the current manipulation mode of the editor window as each can have their own
+            Workspace::SetManipulationMode(m_manipulationMode);
+
+            constexpr float FOV = glm::pi<float>() * 0.4f;
+            glm::mat4 proj = glm::perspective(FOV, (float)sizeIm.x / sizeIm.y, 0.01f, 1000.0f);
+
+            const glm::mat4 rotMat = glm::toMat4(m_rotation);
+            const glm::mat4 transMat = glm::translate(glm::identity<glm::mat4>(), m_translation);
+
+            const glm::mat4 trans = transMat * rotMat;
+            glm::mat4 view = glm::inverse(trans);
+
+            Gizmos::SetMatrices(view, proj);
+
+            m_process->SendRuntimeMessage("Editor:CameraTransform", &trans, sizeof(glm::mat4));
+            m_process->SendRuntimeMessage("Editor:SceneView:LightMode", &m_lightMode, sizeof(e_EditorLightMode));
+
+            void* args[] =
+            {
+                &view,
+                &proj,
+                &m_width,
+                &m_height
+            };
+
+            RuntimeManager::ExecFunction("IcarianEditor.Windows", "EditorWindow", ":OnGUI(Matrix4,Matrix4,uint,uint)", args);
+
+            RenderCommand::Flush(m_process);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, m_gizmosFramebuffer);
+
+            glViewport(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+            glScissor(0, 0, (GLsizei)m_width, (GLsizei)m_height);
+
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            Gizmos::Render();
+
+            m_process->SignalImage();
+        }
     }
     else
     {
@@ -776,7 +847,7 @@ void EditorWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

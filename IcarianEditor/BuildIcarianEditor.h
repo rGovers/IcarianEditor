@@ -108,7 +108,7 @@ static CUBE_CProject BuildIcarianEditorProject(const char* a_path, e_TargetPlatf
     project.Language = CUBE_CProjectLanguage_CPP;
     project.OutputPath = CUBE_Path_CreateC("./build");
 
-    if (a_configuration == BuildConfiguration_Debug)
+    if (a_configuration == BuildConfiguration_Debug || a_configuration == BuildConfiguration_DebugFast)
     {
         CUBE_CProject_AppendDefine(&project, "DEBUG");
     }
@@ -251,6 +251,28 @@ static CUBE_CProject BuildIcarianEditorProject(const char* a_path, e_TargetPlatf
     case BuildConfiguration_Debug:
     {
         CUBE_CProject_AppendCFlag(&project, "-g");
+
+        if (a_targetPlatform != TargetPlatform_Windows)
+        {
+            CUBE_CProject_AppendCFlag(&project, "-fsanitize=address");
+            CUBE_CProject_AppendCFlag(&project, "-rdynamic");
+        }
+
+        if (a_targetPlatform == TargetPlatform_LinuxZig)
+        {
+            CUBE_CProject_AppendReference(&project, "asan");
+        }
+
+        break;
+    }
+    case BuildConfiguration_DebugFast:
+    {
+        CUBE_CProject_AppendCFlag(&project, "-g");
+
+        if (a_targetPlatform == TargetPlatform_Linux)
+        {
+            CUBE_CProject_AppendCFlag(&project, "-Og");
+        }
 
         break;
     }

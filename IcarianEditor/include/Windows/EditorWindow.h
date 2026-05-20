@@ -23,6 +23,8 @@ private:
 
     ShaderProgram*     m_compositeProgram;
 
+    uint64_t           m_memoryUsage;
+
     glm::quat          m_rotation;
     glm::vec3          m_translation;
     glm::vec2          m_prevMousePos;
@@ -43,7 +45,7 @@ private:
     e_EditorLightMode  m_lightMode;
     e_ManipulationMode m_manipulationMode;
 
-    void UpdateProcess();
+    void UpdateProcess(double a_delta);
     void BuildFrame();
 
     void TransformToolbar();
@@ -56,12 +58,13 @@ public:
     virtual ~EditorWindow();
 
     virtual void Refresh();
-    virtual void Update(double a_delta);
+    virtual void InternalUpdate(double a_delta);
+    virtual void DisplayUpdate(double a_delta);
 };
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

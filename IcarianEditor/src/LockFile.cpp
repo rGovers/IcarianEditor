@@ -2,31 +2,72 @@
 // 
 // License at end of file.
 
-#pragma once
+#include "LockFile.h"
 
-#include "Windows/Window.h"
+#ifndef WIN32
+#include <sys/file.h>
+#include <unistd.h>
+#endif
 
-class RuntimeManager;
+#include "IO.h"
+#include "Logger.h"
 
-class TimelineWindow : public Window
+#ifndef WIN32
+static int LockFD;
+#endif
+
+bool LockFile::Lock()
 {
-private:
-    static constexpr float TimelineOffset = 240.0f;
+#ifndef WIN32
+    const std::filesystem::path tempPath = IO::GetTempPath();
+    if (tempPath.empty())
+    {
+        Logger::Error("Editor failed to find temp path");
 
-    RuntimeManager* m_runtime;
+        return false;
+    }
 
-protected:
+    const std::filesystem::path lockfilePath = tempPath / "IcarianEditor.lock";
+    const std::string lockfilePathStr = lockfilePath.string();
 
-public:
-    TimelineWindow(RuntimeManager* a_runtime);
-    ~TimelineWindow();
+    LockFD = open(lockfilePathStr.c_str(), O_CREAT, 0655);
+    if (LockFD < 0)
+    {
+        Logger::Error("Editor failed to open lockfile");
 
-    virtual void Update(double a_delta);
-};
+        return false;
+    }
+
+    if (flock(LockFD, LOCK_EX | LOCK_NB) < 0)
+    {
+        Logger::Error("Multiple editor processes exist closing");
+
+        return false;
+    }
+
+    return true;
+#endif
+
+    return false;
+}
+void LockFile::Close()
+{
+#ifndef WIN32
+    close(LockFD);
+#endif
+}
+void LockFile::Unlock()
+{
+#ifndef WIN32
+    flock(LockFD, LOCK_UN);
+#endif
+
+    Close();
+}
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

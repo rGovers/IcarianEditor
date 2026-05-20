@@ -2,6 +2,7 @@
 // 
 // License at end of file.
 
+using IcarianEngine;
 using IcarianEngine.Mod;
 
 namespace IcarianEditor.Engine
@@ -12,8 +13,12 @@ namespace IcarianEditor.Engine
     {
         public override void Init()
         {
+            Logger.Message("Editor Engine Environment Starting");
+
             AssetStore.Init();
             SceneView.Init();
+
+            Logger.Message("Editor Engine Environment Started");
         }
 
         public override void Update()
@@ -35,7 +40,7 @@ namespace IcarianEditor.Engine
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

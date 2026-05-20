@@ -57,12 +57,13 @@ public:
     void AddMessage(e_LoggerMessageType a_type, const LoggerMessageData& a_msg);
 
     virtual void Refresh();
-    virtual void Update(double a_delta);
+    virtual void InternalUpdate(double a_delta) { }
+    virtual void DisplayUpdate(double a_delta);
 };
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

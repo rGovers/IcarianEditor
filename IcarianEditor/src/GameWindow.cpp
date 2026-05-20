@@ -4,6 +4,7 @@
 
 #include "Windows/GameWindow.h"
 
+#include <charconv>
 #include <imgui.h>
 #include <thread>
 
@@ -12,6 +13,7 @@
 #include "Core/IcarianLambda.h"
 #include "Core/InputBindings.h"
 #include "Core/LoggerHeader.h"
+#include "Core/TotalMemoryUsageFrame.h"
 #include "EngineProcess.h"
 #include "FlareImGui.h"
 #include "LoadingTasks/GenerateConfigLoadingTask.h"
@@ -29,8 +31,8 @@
 
 GameWindow::GameWindow(AppMain* a_app, Project* a_project) : Window
 (
-    "Game", 
-    "Textures/WindowIcons/WindowIcon_Game.png", 
+    "Game",
+    "Textures/WindowIcons/WindowIcon_Game.png",
     true
 )
 {
@@ -58,13 +60,221 @@ void GameWindow::StartRemote(SSHPipe* a_sshPipe, uint16_t a_clientPort)
     m_process = EngineProcess::CreateRemoteProcess(a_sshPipe, a_clientPort, m_width, m_height);
 }
 
-void GameWindow::Update(double a_delta)
+void GameWindow::UpdateProcess(double a_delta)
+{
+    if (m_process == nullptr)
+    {
+        return;
+    }
+
+    if (!m_process->IsAlive())
+    {
+        return;
+    }
+
+    std::queue<IcarianCore::PipeMessage> messages;
+    m_process->Update(a_delta, &messages);
+
+    while (!messages.empty())
+    {
+        const IcarianCore::PipeMessage msg = messages.front();
+        IDEFER(
+        {
+            if (msg.Data != nullptr)
+            {
+                delete[] msg.Data;
+            }
+        });
+        messages.pop();
+
+        switch (msg.Type)
+        {
+        case IcarianCore::PipeMessageType_SetCursorState:
+        {
+            // Not sure the best way to handle this as there can be multiple windows but the cursor can only be in 1 state at a time in the desktop environment
+            // Currently I just use the last set cursor state but not sure the best way to handle it need to think for a bit
+            m_app->SetGameCursorState(*(e_CursorState*)msg.Data);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_Message:
+        {
+            const IcarianCore::LoggerHeader& header = *(IcarianCore::LoggerHeader*)msg.Data;
+
+            if (header.Version != 0)
+            {
+                Logger::Error("Engine Logger message header version mix match");
+
+                break;
+            }
+
+            if (header.MessageOffset + header.MessageSize >= msg.Length)
+            {
+                Logger::Error("Engine Logger message length out of bounds");
+
+                break;
+            }
+            if (header.StackTraceOffset + header.StackTraceSize >= msg.Length)
+            {
+                Logger::Error("Engine Logger message stacktrace out of bounds");
+
+                break;
+            }
+
+            const LoggerMessageData data =
+            {
+                .Message = "[Game Window] " + std::string((char*)msg.Data + header.MessageOffset, header.MessageSize),
+                .Stacktrace = ILAMBDA(
+                {
+                    if (header.StackTraceSize != 0)
+                    {
+                        std::vector<std::string> vals;
+
+                        const char* stacktraceStart = (char*)msg.Data + header.StackTraceOffset;
+                        const char* stacktraceSlider = stacktraceStart;
+                        const char* stacktraceMessageBegin = stacktraceStart;
+                        while (stacktraceSlider - stacktraceStart < header.StackTraceSize)
+                        {
+                            if (*stacktraceSlider == 0)
+                            {
+                                const std::string str = std::string(stacktraceMessageBegin, stacktraceSlider - stacktraceMessageBegin);
+                                vals.emplace_back(str);
+
+                                stacktraceMessageBegin = stacktraceSlider + 1;
+                            }
+
+                            ++stacktraceSlider;
+                        }
+
+                        ILRETURN vals;
+                    }
+
+                    ILRETURN std::vector<std::string>();
+                }),
+                .IsEditor = false,
+                .Print = false,
+            };
+
+            switch (header.Type)
+            {
+            case IcarianCore::LoggerMessageType_Message:
+            {
+                Logger::Message(data);
+
+                break;
+            }
+            case IcarianCore::LoggerMessageType_Warning:
+            {
+                Logger::Warning(data);
+
+                break;
+            }
+            case IcarianCore::LoggerMessageType_Error:
+            {
+                Logger::Error(data);
+
+                break;
+            }
+            }
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileScope:
+        {
+            if (IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                ProfilerData::PushData(*(ProfileScope*)msg.Data);
+            }
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_MemoryFrame:
+        {
+            const IcarianCore::MemoryUsageFrame* frame = (IcarianCore::MemoryUsageFrame*)msg.Data;
+
+            ProfilerData::PushMemoryFrame(*frame);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_TotalMemoryUsage:
+        {
+            const IcarianCore::TotalMemoryUsageFrame* frame = (IcarianCore::TotalMemoryUsageFrame*)msg.Data;
+
+            m_osMemoryUsage = frame->OSUsage;
+            m_mallocMemoryUsage = frame->MallocUsage;
+
+            ProfilerData::PushTotalMemoryFrame(frame->OSUsage, frame->MallocUsage);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_RuntimeMessage:
+        {
+            // Ignore for now as the engine should not need to send runtime messages back and forth to the editor in the game window at this current stage
+
+            break;
+        }
+        default:
+        {
+            Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
+
+            break;
+        }
+        }
+    }
+}
+void GameWindow::BuildFrame()
+{
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+
+    while (true)
+    {
+        const e_EngineFrameWaitStatus imageWait = m_process->WaitImage();
+        switch (imageWait)
+        {
+        case EngineFrameWaitStatus_Success:
+        {
+            break;
+        }
+        case EngineFrameWaitStatus_Reset:
+        case EngineFrameWaitStatus_NotSignaled:
+        {
+            return;
+        }
+        case EngineFrameWaitStatus_Wait:
+        {
+            UpdateProcess(0.0);
+
+            const std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(100));
+            if (timeout)
+            {
+                Logger::Warning("Game window draw timeout");
+
+                m_process->AdvanceImage();
+
+                return;
+            }
+
+            // Yield in case it is a resource contention issue
+            std::this_thread::yield();
+
+            continue;
+        }
+        case EngineFrameWaitStatus_InvalidMode:
+        {
+            return;
+        }
+        }
+
+        break;
+    }
+}
+
+void GameWindow::InternalUpdate(double a_delta)
 {
     if (m_process != nullptr && !m_process->IsAlive())
     {
-        delete m_process;
-        m_process = nullptr;
-
         ICLEARBIT(m_flags, CloseBit);
     }
 
@@ -89,6 +299,12 @@ void GameWindow::Update(double a_delta)
         }
     }
 
+    UpdateProcess(a_delta);
+}
+void GameWindow::DisplayUpdate(double a_delta)
+{
+    const bool captureInput = m_app->CapturesInput();
+
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     if (ImGui::BeginMenuBar())
@@ -97,25 +313,35 @@ void GameWindow::Update(double a_delta)
 
         if (m_process != nullptr)
         {
+            if (!captureInput)
+            {
+                ImGui::Text("%s", "Editor Blocking Input");
+            }
+
             const float width = ImGui::GetWindowWidth();
 
-            const uint32_t fps = (uint32_t)m_process->GetFPS();
+            const uint64_t memoryUsage = m_mallocMemoryUsage + m_osMemoryUsage;
+            const double memoryUsageGiB = memoryUsage / (double)(1ULL << 30ULL);
+
             const uint32_t ups = (uint32_t)m_process->GetUPS();
 
-            const std::string fpsText = "FPS: " + std::to_string(fps);
+            char buffer[256] { };
+            std::to_chars(buffer, buffer + (sizeof(buffer) - 1), memoryUsageGiB, std::chars_format::fixed, 2);
+
+            const std::string memoryUsageText = std::string("Engine Memory Usage: ") + buffer + "GiB";
             const std::string upsText = "UPS: " + std::to_string(ups);
 
-            const ImVec2 fpsSize = ImGui::CalcTextSize(fpsText.c_str());
+            const ImVec2 memoryUsageSize = ImGui::CalcTextSize(memoryUsageText.c_str());
             const ImVec2 upsSize = ImGui::CalcTextSize(upsText.c_str());
 
-            const float fpsOffset = fpsSize.x + 20.0f;
-            const float upsOffset = fpsOffset + upsSize.x + 20.0f;
-
-            ImGui::SetCursorPosX(width - fpsOffset);
-            ImGui::Text("%s", fpsText.c_str());
+            const float upsOffset = upsSize.x + 20.0f;
+            const float memoryUsageOffset = upsOffset + memoryUsageSize.x + 20.0f;
 
             ImGui::SetCursorPosX(width - upsOffset);
             ImGui::Text("%s", upsText.c_str());
+
+            ImGui::SetCursorPosX(width - memoryUsageOffset);
+            ImGui::Text("%s", memoryUsageText.c_str());
         }
     }
 
@@ -136,8 +362,6 @@ void GameWindow::Update(double a_delta)
     if (isRunning)
     {
         m_process->SetSize(m_width, m_height);
-
-        const bool captureInput = m_app->CapturesInput();
 
         if (captureInput && (focused || locked))
         {
@@ -163,173 +387,58 @@ void GameWindow::Update(double a_delta)
                 m_process->PushCursorPos(cPos);
             }
 
-            uint8_t mouseState = 0;
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            const uint8_t mouseState = ILAMBDA(
             {
-                mouseState |= 0b1 << MouseButton_Left;
-            }
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
-            {
-                mouseState |= 0b1 << MouseButton_Middle;
-            }
-            if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
-            {
-                mouseState |= 0b1 << MouseButton_Right;
-            }
+                uint8_t val = 0;
+
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                {
+                    ISETBIT(val, MouseButton_Left);
+                }
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+                {
+                    ISETBIT(val, MouseButton_Middle);
+                }
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+                {
+                    ISETBIT(val, MouseButton_Right);
+                }
+
+                ILRETURN val;
+            });
 
             m_process->PushMouseState(mouseState);
 
-            IcarianCore::KeyboardState state;
-            for (uint32_t i = 0; i < KeyCode_Last; ++i)
+            const IcarianCore::KeyboardState keyState = ILAMBDA(
             {
-                const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
-                if (key != ImGuiKey_None)
+                IcarianCore::KeyboardState val;
+                for (uint32_t i = 0; i < KeyCode_Last; ++i)
                 {
-                    if (ImGui::IsKeyDown(key))
+                    const ImGuiKey key = FlareImGui::ImGuiKeyTable[i];
+                    if (key != ImGuiKey_None)
                     {
-                        state.SetKey((e_KeyCode)i, true);
+                        if (ImGui::IsKeyDown(key))
+                        {
+                            val.SetKey((e_KeyCode)i, true);
+                        }
                     }
                 }
-            }
 
-            m_process->PushKeyboardState(state);
-        }
-
-        std::queue<IcarianCore::PipeMessage> messages;
-        m_process->Update(&messages);
-
-        while (!messages.empty())
-        {
-            const IcarianCore::PipeMessage msg = messages.front();
-            IDEFER(
-            if (msg.Data != nullptr)
-            {
-                delete[] msg.Data;
+                ILRETURN val;
             });
-            messages.pop();
 
-            switch (msg.Type)
-            {
-            case IcarianCore::PipeMessageType_SetCursorState:
-            {
-                // Not sure the best way to handle this as there can be multiple windows but the cursor can only be in 1 state at a time in the desktop environment
-                // Currently I just use the last set cursor state but not sure the best way to handle it need to think for a bit
-                m_app->SetGameCursorState(*(e_CursorState*)msg.Data);
-
-                break;
-            }
-            case IcarianCore::PipeMessageType_Message:
-            {
-                const IcarianCore::LoggerHeader& header = *(IcarianCore::LoggerHeader*)msg.Data;
-
-                if (header.Version != 0)
-                {
-                    Logger::Error("Engine Logger message header version mix match");
-
-                    break;
-                }
-
-                if (header.MessageOffset + header.MessageSize >= msg.Length)
-                {
-                    Logger::Error("Engine Logger message length out of bounds");
-
-                    break;
-                }
-                if (header.StackTraceOffset + header.StackTraceSize >= msg.Length)
-                {
-                    Logger::Error("Engine Logger message stacktrace out of bounds");
-
-                    break;
-                }
-
-                const LoggerMessageData data = 
-                {
-                    .Message = "[Game Window] " + std::string(msg.Data + header.MessageOffset, header.MessageSize),
-                    .Stacktrace = ILAMBDA(
-                    {
-                        if (header.StackTraceSize != 0)
-                        {
-                            std::vector<std::string> vals;
-
-                            const char* stacktraceStart = msg.Data + header.StackTraceOffset;
-                            const char* stacktraceSlider = stacktraceStart;
-                            const char* stacktraceMessageBegin = stacktraceStart;
-                            while (stacktraceSlider - stacktraceStart < header.StackTraceSize)
-                            {
-                                if (*stacktraceSlider == 0)
-                                {
-                                    vals.emplace_back(std::string(stacktraceMessageBegin, stacktraceSlider - stacktraceMessageBegin));
-
-                                    stacktraceMessageBegin = stacktraceSlider + 1;
-                                }
-
-                                ++stacktraceSlider;
-                            }
-
-                            ILRETURN vals;
-                        }
-
-                        ILRETURN std::vector<std::string>();
-                    }),
-                    .IsEditor = false,
-                    .Print = false,
-                };
-
-                switch (header.Type)
-                {
-                case IcarianCore::LoggerMessageType_Message:
-                {
-                    Logger::Message(data);
-
-                    break;
-                }
-                case IcarianCore::LoggerMessageType_Warning:
-                {
-                    Logger::Warning(data);
-
-                    break;
-                }
-                case IcarianCore::LoggerMessageType_Error:
-                {
-                    Logger::Error(data);
-
-                    break;
-                }
-                }
-
-                break;
-            }
-            case IcarianCore::PipeMessageType_ProfileScope:
-            {
-                if (IISBITSET(m_flags, ProfilerSessionBit))
-                {
-                    ProfilerData::PushData(*(ProfileScope*)msg.Data);
-                }
-
-                break;
-            }
-            case IcarianCore::PipeMessageType_RuntimeMessage:
-            {
-                // Ignore for now as the engine should not need to send runtime messages back and forth to the editor in the game window at this current stage
-
-                break;
-            }
-            default:
-            {
-                Logger::Error("Editor: Invalid Pipe Message: " + std::to_string(msg.Type) + " " + std::to_string(msg.Length));
-
-                break;
-            }
-            }
+            m_process->PushKeyboardState(keyState);
         }
 
-        if (m_process->IsAlive())
-        {
-            m_process->DMAUpdate();
-        }
+        BuildFrame();
 
         const GLuint imageHandle = m_process->GetImage();
         ImGui::Image((ImTextureID)(uintptr_t)imageHandle, sizeIm);
+
+        if (focused)
+        {
+            m_process->SignalImage();
+        }
     }
 
     const bool isRemote = m_app->GetSSHPipe() != nullptr;
@@ -445,7 +554,7 @@ void GameWindow::Update(double a_delta)
 
                 const uint16_t clientPort = m_app->GetClientPort();
 
-                LoadingTask* tasks[] = 
+                LoadingTask* tasks[] =
                 {
                     new RemoteBuildLoadingTask(hostOS, hostArch, m_project),
                     new GenerateConfigLoadingTask(remotePath, name, "Vulkan"),
@@ -470,7 +579,7 @@ void GameWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

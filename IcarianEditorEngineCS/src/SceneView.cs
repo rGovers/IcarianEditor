@@ -896,7 +896,7 @@ NextMesh:;
                 return;
             }
 
-            List<DrawModelData> modelData = new List<DrawModelData>();
+            List<DrawModelData> modelData = GetModelData(a_data);
             if (modelData == null)
             {
                 return;
@@ -1217,7 +1217,7 @@ NextModel:;
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

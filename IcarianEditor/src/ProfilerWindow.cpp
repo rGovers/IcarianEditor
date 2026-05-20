@@ -28,7 +28,7 @@ static uint32_t GetParent(uint32_t a_index, const ProfileSnapshot& a_snapshot)
             }
         }
     }
-    
+
     return 0;
 }
 static std::vector<uint32_t> GetChildren(uint32_t a_index, const ProfileSnapshot& a_snapshot)
@@ -57,7 +57,7 @@ static std::vector<uint32_t> GetChildren(uint32_t a_index, const ProfileSnapshot
 
 ProfilerWindow::ProfilerWindow() : Window("Profiler", "Textures/WindowIcons/WindowIcon_Profiler.png")
 {
-    
+
 }
 ProfilerWindow::~ProfilerWindow()
 {
@@ -103,8 +103,138 @@ void ProfilerWindow::SetFrameIndex(const std::string_view& a_snapshotName, const
     m_selections.emplace_back(selection);
 }
 
-void ProfilerWindow::Update(double a_delta)
+static void ShowRAMFrames(const IcarianCore::MemoryUsageFrame* a_frames, uint32_t a_startIndex, uint32_t a_count, uint32_t a_offset, const char* a_name)
 {
+    float data[ProfileMaxScopes];
+    for (uint32_t i = 0; i < a_count; ++i)
+    {
+        const uint32_t index = (a_startIndex + i) % ProfileMaxScopes;
+
+        const IcarianCore::MemoryUsageFrame* frame = a_frames + index;
+        const uint64_t* d = (uint64_t*)((uint8_t*)frame + a_offset);
+
+        data[i] = (float)(*d / (double)(1 << 20));
+    }
+
+    ImPlot::PlotLine(a_name, data, a_count);
+}
+
+void ProfilerWindow::DisplayRAM()
+{
+    if (!ImGui::CollapsingHeader("RAM Usage"))
+    {
+        return;
+    }
+
+    ImGui::Indent();
+    IDEFER(ImGui::Unindent());
+
+    ImPlot::SetNextAxesToFit();
+    if (ImPlot::BeginPlot("Total RAM Usage"))
+    {
+        IDEFER(ImPlot::EndPlot());
+
+        const uint32_t startIndex = ProfilerData::GetTotalMemoryStartIndex();
+        const uint32_t count = ProfilerData::GetTotalMemoryCount();
+
+        const uint64_t* osMemoryData = ProfilerData::GetOSMemoryData();
+        const uint64_t* mallocMemoryData = ProfilerData::GetMallocMemoryData();
+
+        float data[ProfileMaxScopes];
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const uint32_t index = (startIndex + i) % ProfileMaxScopes;
+
+            const uint64_t osData = osMemoryData[index];
+            const uint64_t mallocData = mallocMemoryData[index];
+
+            const uint64_t totalSize = osData + mallocData;
+
+            data[i] = (float)(totalSize / (double)(1 << 30));
+        }
+
+        ImPlot::PlotBars("Total RAM Usage(GiB)", data, count);
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const uint32_t index = (startIndex + i) % ProfileMaxScopes;
+
+            const uint64_t osData = osMemoryData[index];
+
+            data[i] = (float)(osData / (double)(1 << 30));
+        }
+
+        ImPlot::PlotLine("OS RAM Usage(GiB)", data, count);
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            const uint32_t index = (startIndex + i) % ProfileMaxScopes;
+
+            const uint64_t mallocData = mallocMemoryData[index];
+
+            data[i] = (float)(mallocData / (double)(1 << 30));
+        }
+
+        ImPlot::PlotLine("Malloc RAM Usage(GiB)", data, count);
+    }
+
+    ImPlot::SetNextAxesToFit();
+    if (ImPlot::BeginPlot("System RAM Usage"))
+    {
+        IDEFER(ImPlot::EndPlot());
+
+        const uint32_t startIndex = ProfilerData::GetMemoryFrameStartIndex();
+        const uint32_t count = ProfilerData::GetMemoryFrameCount();
+
+        const IcarianCore::MemoryUsageFrame* frames = ProfilerData::GetMemoryUsageFrames();
+
+        ShowRAMFrames
+        (
+            frames,
+            startIndex,
+            count,
+            (uint32_t)offsetof(IcarianCore::MemoryUsageFrame, CSharpUsage),
+            "C# Native RAM Usage(MiB)"
+        );
+
+        ShowRAMFrames
+        (
+            frames,
+            startIndex,
+            count,
+            (uint32_t)offsetof(IcarianCore::MemoryUsageFrame, AudioUsage),
+            "Audio RAM Usage(MiB)"
+        );
+
+        ShowRAMFrames
+        (
+            frames,
+            startIndex,
+            count,
+            (uint32_t)offsetof(IcarianCore::MemoryUsageFrame, RenderingUsage),
+            "Rendering RAM Usage(MiB)"
+        );
+
+        ShowRAMFrames
+        (
+            frames,
+            startIndex,
+            count,
+            (uint32_t)offsetof(IcarianCore::MemoryUsageFrame, PhysicsUsage),
+            "Physics RAM Usage(MiB)"
+        );
+    }
+}
+void ProfilerWindow::DisplayCPU()
+{
+    if (!ImGui::CollapsingHeader("CPU Time"))
+    {
+        return;
+    }
+
+    ImGui::Indent();
+    IDEFER(ImGui::Unindent());
+
     const std::vector<ProfileSnapshot> snapshots = ProfilerData::GetSnapshots();
 
     constexpr int TimeOffset = offsetof(ProfileFrame, Time);
@@ -126,44 +256,57 @@ void ProfilerWindow::Update(double a_delta)
 
         const uint32_t timeOff = FramesOffset + (index * FrameSize) + TimeOffset;
 
-        ImGui::BeginGroup();
-
-        if (index != 0)
         {
-            const std::string backName = "Back[" + std::to_string(index) + "]";
-            ImGui::PushID(backName.c_str());
-            IDEFER(ImGui::PopID());
+            ImGui::BeginGroup();
+            IDEFER(ImGui::EndGroup());
 
-            if (ImGui::Button("<"))
+            if (index != 0)
             {
-                const uint32_t parentIndex = GetParent(index, snapshot);
-                const ProfileFrame& pFrame = snapshot.Scopes[0].Frames[parentIndex];
+                const std::string backName = "Back[" + std::to_string(index) + "]";
+                ImGui::PushID(backName.c_str());
+                IDEFER(ImGui::PopID());
 
-                SetFrameIndex(snapshot.Name, pFrame.Name);
+                if (ImGui::Button("<"))
+                {
+                    const uint32_t parentIndex = GetParent(index, snapshot);
+                    const ProfileFrame& pFrame = snapshot.Scopes[0].Frames[parentIndex];
+
+                    SetFrameIndex(snapshot.Name, pFrame.Name);
+                }
+            }
+
+            for (uint32_t cIndex : childIndices)
+            {
+                const std::string cName = "Child[" + std::to_string(cIndex) + "][" + std::to_string(index) + "]";
+                ImGui::PushID(cName.c_str());
+                IDEFER(ImGui::PopID());
+
+                const ProfileFrame& cFrame = snapshot.Scopes[0].Frames[cIndex];
+                if (ImGui::Button(cFrame.Name))
+                {
+                    SetFrameIndex(snapshot.Name, cFrame.Name);
+                }
             }
         }
 
-        for (uint32_t cIndex : childIndices)
-        {
-            const std::string cName = "Child[" + std::to_string(cIndex) + "][" + std::to_string(index) + "]";
-            ImGui::PushID(cName.c_str());
-            IDEFER(ImGui::PopID());
-
-            const ProfileFrame& cFrame = snapshot.Scopes[0].Frames[cIndex];
-            if (ImGui::Button(cFrame.Name))
-            {
-                SetFrameIndex(snapshot.Name, cFrame.Name);
-            }
-        }
-
-        ImGui::EndGroup();
-        
         ImGui::SameLine();
 
         ImPlot::SetNextAxesToFit();
         if (ImPlot::BeginPlot(snapshot.Name.c_str()))
         {
-            ImPlot::PlotBars(frame.Name, (float*)((char*)&snapshot.Scopes + timeOff), (int)snapshot.Count, 1.0f, 0.0f, 0, snapshot.StartIndex, ScopeSize);
+            IDEFER(ImPlot::EndPlot());
+
+            ImPlot::PlotBars
+            (
+                frame.Name,
+                (float*)((char*)&snapshot.Scopes + timeOff),
+                (int)snapshot.Count,
+                1.0f,
+                0.0f,
+                0,
+                snapshot.StartIndex,
+                ScopeSize
+            );
 
             for (uint32_t cIndex : childIndices)
             {
@@ -171,17 +314,33 @@ void ProfilerWindow::Update(double a_delta)
 
                 const uint32_t cTimeOff = FramesOffset + (cIndex * FrameSize) + TimeOffset;
 
-                ImPlot::PlotLine(cFrame.Name, (float*)((char*)&snapshot.Scopes + cTimeOff), (int)snapshot.Count, 1.0f, 0.0f, 0, snapshot.StartIndex, ScopeSize);
+                ImPlot::PlotLine
+                (
+                    cFrame.Name,
+                    (float*)((char*)&snapshot.Scopes + cTimeOff),
+                    (int)snapshot.Count,
+                    1.0f,
+                    0.0f,
+                    0,
+                    snapshot.StartIndex,
+                    ScopeSize
+                );
             }
-
-            ImPlot::EndPlot();
         }
     }
 }
 
+// TODO: Rewrite this with a new profiler
+void ProfilerWindow::DisplayUpdate(double a_delta)
+{
+    DisplayRAM();
+
+    DisplayCPU();
+}
+
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

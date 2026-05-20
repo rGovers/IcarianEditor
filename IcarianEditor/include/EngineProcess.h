@@ -31,9 +31,10 @@ struct DMASwapchainImage
 
 enum e_EngineFrameWaitStatus
 {
-    EngineFrameWaitStatus_Sucess,
+    EngineFrameWaitStatus_Success,
     EngineFrameWaitStatus_Wait,
     EngineFrameWaitStatus_InvalidMode,
+    EngineFrameWaitStatus_NotSignaled,
     EngineFrameWaitStatus_Reset,
 };
 
@@ -45,6 +46,7 @@ private:
     static constexpr uint32_t DMAModeBit = 0;
     static constexpr uint32_t RemoteModeBit = 1;
     static constexpr uint32_t ResizeBit = 2;
+    static constexpr uint32_t SignaledBit = 3;
 
     static constexpr float UPSUpdateRate = 4.0f;
     static constexpr float FPSUpdateRate = 4.0f;
@@ -67,6 +69,9 @@ private:
 
     double                          m_updateTime;
     double                          m_frameTime;
+
+    double                          m_updateTimeout;
+    double                          m_frameTimeout;
 
     float                           m_ups;
     float                           m_fps;
@@ -132,16 +137,16 @@ public:
     static EngineProcess* CreateProcess(const std::filesystem::path& a_workingDir, uint32_t a_width, uint32_t a_height, uint32_t a_threadCount);
     static EngineProcess* CreateRemoteProcess(SSHPipe* a_sshPipe, uint16_t a_clientPort, uint32_t a_width, uint32_t a_height);
 
-    bool Update(std::queue<IcarianCore::PipeMessage>* a_msgs);
-    void DMAUpdate();
+    bool Update(double a_delta, std::queue<IcarianCore::PipeMessage>* a_msgs);
 
     void SignalImage();
     e_EngineFrameWaitStatus WaitImage();
+    void AdvanceImage();
 };
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

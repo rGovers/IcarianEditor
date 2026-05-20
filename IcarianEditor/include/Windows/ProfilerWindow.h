@@ -26,18 +26,22 @@ private:
     uint32_t GetFrameIndex(const ProfileSnapshot& a_snapshot) const;
     void SetFrameIndex(const std::string_view& a_snapshotName, const std::string_view& a_frameName);
 
+    void DisplayRAM();
+    void DisplayCPU();
+
 protected:
 
 public:
     ProfilerWindow();
     ~ProfilerWindow();
 
-    virtual void Update(double a_delta);
+    virtual void InternalUpdate(double a_delta) { }
+    virtual void DisplayUpdate(double a_delta);
 };
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

@@ -21,6 +21,7 @@ class AppMain : public Application
 private:
     static constexpr uint32_t FocusedBit = 0;
     static constexpr uint32_t CaptureInputBit = 1;
+    static constexpr uint32_t RefreshCursorBit = 2;
 
     static constexpr uint32_t MoveBit = 0;
     static constexpr uint32_t TopResizeBit = 1;
@@ -70,10 +71,7 @@ public:
 
     bool CapturesInput() const;
 
-    inline void SetGameCursorState(e_CursorState a_state)
-    {
-        m_cursorState = a_state;
-    }
+    void SetGameCursorState(e_CursorState a_state);
     inline e_CursorState GetGameCursorState() const
     {
         return m_cursorState;
@@ -96,7 +94,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

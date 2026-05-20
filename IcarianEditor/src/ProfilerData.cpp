@@ -12,6 +12,14 @@ static ProfilerData* Instance = nullptr;
 ProfilerData::ProfilerData()
 {
     m_active = false;
+
+    m_totalMemoryIndex = 0;
+    m_totalMemoryStartIndex = 0;
+    m_totalMemoryCount = 0;
+
+    m_memoryFrameIndex = 0;
+    m_memoryFrameStartIndex = 0;
+    m_memoryFrameCount = 0;
 }
 ProfilerData::~ProfilerData()
 {
@@ -41,6 +49,14 @@ bool ProfilerData::StartSession()
         return false;
     }
 
+    Instance->m_totalMemoryIndex = 0;
+    Instance->m_totalMemoryStartIndex = 0;
+    Instance->m_totalMemoryCount = 0;
+
+    Instance->m_memoryFrameIndex = 0;
+    Instance->m_memoryFrameStartIndex = 0;
+    Instance->m_memoryFrameCount = 0;
+
     Instance->m_snapshots.clear();
 
     Instance->m_active = true;
@@ -51,6 +67,68 @@ bool ProfilerData::StartSession()
 void ProfilerData::EndSession()
 {
     Instance->m_active = false;
+}
+
+void ProfilerData::PushTotalMemoryFrame(uint64_t a_osMemoryUsage, uint64_t a_mallocMemoryUsage)
+{
+    Instance->m_osMemoryUsage[Instance->m_totalMemoryIndex] = a_osMemoryUsage;
+    Instance->m_mallocMemoryUsage[Instance->m_totalMemoryIndex] = a_mallocMemoryUsage;
+
+    Instance->m_totalMemoryIndex = (Instance->m_totalMemoryIndex + 1) % ProfileMaxScopes;
+
+    if (Instance->m_totalMemoryCount < ProfileMaxScopes)
+    {
+        ++Instance->m_totalMemoryCount;
+    }
+    else
+    {
+        Instance->m_totalMemoryStartIndex = (Instance->m_totalMemoryStartIndex + 1) % ProfileMaxScopes;
+    }
+}
+
+uint32_t ProfilerData::GetTotalMemoryCount()
+{
+    return Instance->m_totalMemoryCount;
+}
+uint32_t ProfilerData::GetTotalMemoryStartIndex()
+{
+    return Instance->m_totalMemoryStartIndex;
+}
+const uint64_t* ProfilerData::GetOSMemoryData()
+{
+    return Instance->m_osMemoryUsage;
+}
+const uint64_t* ProfilerData::GetMallocMemoryData()
+{
+    return Instance->m_mallocMemoryUsage;
+}
+
+void ProfilerData::PushMemoryFrame(const IcarianCore::MemoryUsageFrame& a_frame)
+{
+    Instance->m_frames[Instance->m_memoryFrameIndex] = a_frame;
+
+    Instance->m_memoryFrameIndex = (Instance->m_memoryFrameIndex + 1) % ProfileMaxScopes;
+
+    if (Instance->m_memoryFrameCount < ProfileMaxScopes)
+    {
+        ++Instance->m_memoryFrameCount;
+    }
+    else 
+    {
+        Instance->m_memoryFrameStartIndex = (Instance->m_memoryFrameStartIndex + 1) % ProfileMaxScopes;
+    }
+}
+uint32_t ProfilerData::GetMemoryFrameCount()
+{
+    return Instance->m_memoryFrameCount;
+}
+uint32_t ProfilerData::GetMemoryFrameStartIndex()
+{
+    return Instance->m_memoryFrameStartIndex;
+}
+const IcarianCore::MemoryUsageFrame* ProfilerData::GetMemoryUsageFrames()
+{
+    return Instance->m_frames;
 }
 
 void ProfilerData::PushData(const ProfileScope& a_scope)
@@ -94,7 +172,7 @@ std::vector<ProfileSnapshot> ProfilerData::GetSnapshots()
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

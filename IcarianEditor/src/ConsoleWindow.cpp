@@ -416,7 +416,7 @@ void ConsoleWindow::Refresh()
     Clear();
 }
 
-void ConsoleWindow::Update(double a_delta)
+void ConsoleWindow::DisplayUpdate(double a_delta)
 {
     if (ImGui::Button("Clear"))
     {
@@ -490,7 +490,7 @@ void ConsoleWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

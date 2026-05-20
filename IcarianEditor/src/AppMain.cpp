@@ -2,7 +2,6 @@
 // 
 // License at end of file.
 
-
 #include "AppMain.h"
 
 #include <imgui.h>
@@ -42,7 +41,6 @@
 #include "Windows/ProfilerWindow.h"
 #include "Windows/PropertiesWindow.h"
 #include "Windows/SceneDefsWindow.h"
-#include "Windows/TimelineWindow.h"
 #include "Windows/WelcomeWindow.h"
 #include "Workspace.h"
 
@@ -352,9 +350,16 @@ void AppMain::Update(double a_delta, double a_time)
     // The oh fuck the app has taken input away button stop giving control
     if (ImGui::IsKeyPressed(ImGuiKey_GraveAccent))
     {
-        const bool captureInput = !IISBITSET(m_flags, CaptureInputBit);
-        ITOGGLEBIT(captureInput, m_flags, CaptureInputBit);
+        IINVERTBIT(m_flags, CaptureInputBit);
 
+        ISETBIT(m_flags, RefreshCursorBit);
+    }
+
+    if (IISBITSET(m_flags, RefreshCursorBit))
+    {
+        ICLEARBIT(m_flags, RefreshCursorBit);
+
+        const bool captureInput = IISBITSET(m_flags, CaptureInputBit);
         const bool locked = m_cursorState == CursorState_Locked;
 
         if (captureInput && locked)
@@ -494,13 +499,6 @@ void AppMain::Update(double a_delta, double a_time)
                     {
                         m_windows.emplace_back(new SceneDefsWindow());
                     }
-
-                    // ImGui::Separator();
-
-                    // if (ImGui::MenuItem("Timeline"))
-                    // {
-                    //     m_windows.emplace_back(new TimelineWindow(m_runtime));
-                    // }
 
                     ImGui::Separator();
 
@@ -868,6 +866,13 @@ bool AppMain::CapturesInput() const
     return IISBITSET(m_flags, CaptureInputBit);
 }
 
+void AppMain::SetGameCursorState(e_CursorState a_state)
+{
+    m_cursorState = a_state;
+
+    ISETBIT(m_flags, RefreshCursorBit);
+}
+
 void AppMain::PushModal(Modal* a_modal)
 {
     m_modals.emplace_back(a_modal);
@@ -882,7 +887,7 @@ void AppMain::DispatchRuntimeModal(const std::string_view& a_title, const glm::v
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

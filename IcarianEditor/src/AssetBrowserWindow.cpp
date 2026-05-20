@@ -139,7 +139,7 @@ void AssetBrowserWindow::Refresh()
     if (m_curIndex != uint32_t(-1))
     {
         ICARIAN_ASSERT(m_curIndex < m_fileTree.size());
-        
+
         curPath = m_fileTree[m_curIndex].Path;
     }
 
@@ -169,7 +169,7 @@ class DeleteAssetData : public ConfirmModalData
 {
 private:
     Project*              m_project;
-    
+
     std::filesystem::path m_path;
 
 protected:
@@ -357,7 +357,7 @@ void AssetBrowserWindow::AssetMenu(const std::filesystem::path& a_path, const st
         {
             m_app->PushModal(new ConfirmModal("Are you sure you want to delete this folder?", new DeleteAssetData(m_project, a_path)));   
         }
-        else 
+        else
         {
             m_app->PushModal(new ConfirmModal("Are you sure you want to delete this asset?", new DeleteAssetData(m_project, a_assetPath)));
         }
@@ -469,7 +469,7 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
                 (*openCallback)(a_path, rPath, size, data);
             }
         }
-                
+
         if (dragCallback != nullptr)
         {
             if (ImGui::BeginDragDropSource())
@@ -495,14 +495,14 @@ bool AssetBrowserWindow::ShowAsset(bool a_context, const std::filesystem::path& 
             ret = true;
         }
     }
-            
+
     ImGui::Text("%s", filename.c_str());
 
     if (type != AssetType_Null)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.75f, 0.75f, 0.75f));
         IDEFER(ImGui::PopStyleColor());
-        
+
         ImGui::Text("%s", AssetTypeStrings[type]);
     }
 
@@ -658,7 +658,7 @@ bool AssetBrowserWindow::ShowSearchAssetList(const DirectoryNode& a_node, const 
     return contextCaptured;
 }
 
-void AssetBrowserWindow::Update(double a_delta)
+void AssetBrowserWindow::DisplayUpdate(double a_delta)
 {
     if (m_curIndex == uint32_t(-1))
     {
@@ -695,7 +695,7 @@ void AssetBrowserWindow::Update(double a_delta)
     if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
     {
         IDEFER(ImGui::EndTooltip());
-        
+
         ImGui::Text("Reload Project");
     }
 
@@ -765,7 +765,7 @@ void AssetBrowserWindow::Update(double a_delta)
         else 
         {
             contextCaptured = ShowSearchAssetList(node, m_searchBuffer);
-        }     
+        }
 
         ImGui::Columns();
     }
@@ -784,7 +784,7 @@ void AssetBrowserWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

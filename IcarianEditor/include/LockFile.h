@@ -4,20 +4,16 @@
 
 #pragma once
 
-#include "Windows/Window.h"
-
-class PropertiesWindow : public Window
+class LockFile
 {
 private:
 
 protected:
 
 public:
-    PropertiesWindow();
-    ~PropertiesWindow();
-
-    virtual void InternalUpdate(double a_delta) { }
-    virtual void DisplayUpdate(double a_delta);
+    static bool Lock();
+    static void Close();
+    static void Unlock();
 };
 
 // MIT License

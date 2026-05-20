@@ -15,10 +15,6 @@
 #define STBI_NO_PNM
 #include <stb_image.h>
 
-#ifndef WIN32
-#include <sys/file.h>
-#endif
-
 #define CUBE_IMPLEMENTATION
 #ifndef NDEBUG
 #define CUBE_PRINT_COMMANDS
@@ -27,7 +23,7 @@
 
 #include "AppMain.h"
 #include "Core/IcarianDefer.h"
-#include "IO.h"
+#include "LockFile.h"
 #include "Logger.h"
 
 #define ICARIANEDITOR_VERSION_STRX(x) #x
@@ -44,38 +40,11 @@ int main(int a_argc, char* a_argv[])
 {
     PrintVersion();
 
-    // TODO: Need to implement single process lock for Windows
-#ifndef WIN32
-    const std::filesystem::path tempPath = IO::GetTempPath();
-    if (tempPath.empty())
+    if (!LockFile::Lock())
     {
-        Logger::Error("Editor failed to find temp path");
-
         return 1;
     }
-    const std::filesystem::path lockfilePath = tempPath / "IcarianEditor.lock";
-    const std::string lockfilePathStr = lockfilePath.string();
-
-    // This is not foolproof should probably write the pid to the file and query if it still even exists on startup
-    // Wait so I can create a file and read and write that I do not have permission for but I cannot open a file? What????
-    // Anyway was just me being an idiot
-    const int lockFd = open(lockfilePathStr.c_str(), O_CREAT, 0655);
-    if (lockFd < 0)
-    {
-        Logger::Error("Editor failed to open lockfile");
-
-        return 1;
-    }
-    IDEFER(close(lockFd));
-
-    if (flock(lockFd, LOCK_EX | LOCK_NB) < 0)
-    {
-        Logger::Error("Multiple editor processes exist closing");
-
-        return 1;
-    }
-    IDEFER(flock(lockFd, LOCK_UN));
-#endif
+    IDEFER(LockFile::Unlock());
 
 #ifdef WIN32
     // Whatever enet needs we will do ourselves
@@ -93,7 +62,7 @@ int main(int a_argc, char* a_argv[])
         WSACleanup();
     });
 #endif
-    
+
     srand(time(NULL));
 
     AppMain app;
@@ -108,7 +77,7 @@ int main(int a_argc, char* a_argv[])
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

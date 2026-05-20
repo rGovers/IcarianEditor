@@ -18,16 +18,17 @@ SceneDefsWindow::~SceneDefsWindow()
 
 }
 
-void SceneDefsWindow::Update(double a_delta)
+void SceneDefsWindow::DisplayUpdate(double a_delta)
 {
-    GUI::SetWidth(ImGui::GetWindowSize().x);
+    const ImVec2 winSize = ImGui::GetWindowSize();
+    GUI::SetWidth(winSize.x);
 
     RuntimeManager::ExecFunction("IcarianEditor.Windows", "SceneDefsWindow", ":OnGUI()", nullptr);
 }
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

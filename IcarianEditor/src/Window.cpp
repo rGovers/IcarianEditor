@@ -33,7 +33,7 @@ Window::Window(const std::string_view& a_displayName, const std::string_view& a_
     m_texturePath = std::string(a_texturePath);
     // The spaces are required to make the window title bar look nice.
     // Trying other methods was breaking stuff in ImGui.
-    m_idStr = "   " + m_displayName + "##[" + std::to_string(ID++) + "]";
+    m_idStr = WindowPadding + m_displayName + "##[" + std::to_string(ID++) + "]";
 }
 Window::~Window()
 {
@@ -52,6 +52,8 @@ bool Window::Display(double a_delta)
     {
         return false;
     }
+
+    InternalUpdate(a_delta);
 
     const ImGuiWindowFlags flags = ILAMBDA(
     {
@@ -111,7 +113,7 @@ bool Window::Display(double a_delta)
             }
         }
 
-        Update(a_delta);
+        DisplayUpdate(a_delta);
     }
 
     ImGui::End();
@@ -126,7 +128,7 @@ bool Window::Display(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

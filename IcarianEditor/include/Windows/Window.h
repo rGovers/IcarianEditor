@@ -13,6 +13,8 @@ private:
     static constexpr uint32_t CloseBit = 0;
     static constexpr uint32_t MenuBarBit = 1;
 
+    static constexpr const char* WindowPadding = "   ";
+
     std::string m_texturePath;
     std::string m_idStr;
     std::string m_displayName;
@@ -35,12 +37,13 @@ public:
     bool Display(double a_delta);
 
     virtual void Refresh() { }
-    virtual void Update(double a_delta) = 0;
+    virtual void InternalUpdate(double a_delta) = 0;
+    virtual void DisplayUpdate(double a_delta) = 0;
 };
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

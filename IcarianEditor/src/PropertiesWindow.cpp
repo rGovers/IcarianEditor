@@ -18,7 +18,7 @@ PropertiesWindow::~PropertiesWindow()
 
 }
 
-void PropertiesWindow::Update(double a_delta)
+void PropertiesWindow::DisplayUpdate(double a_delta)
 {
     GUI::SetWidth(ImGui::GetWindowSize().x);
 
@@ -27,7 +27,7 @@ void PropertiesWindow::Update(double a_delta)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

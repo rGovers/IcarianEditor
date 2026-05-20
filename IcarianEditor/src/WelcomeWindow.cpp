@@ -60,12 +60,27 @@ static void Header()
             // For non dev versions that are not release include the verion tag
             if constexpr (TagHash != StringHash("DEV"))
             {
-                ImGui::Text("v%d.%d.%d %s", ICARIANEDITOR_VERSION_MAJOR, ICARIANEDITOR_VERSION_MINOR, ICARIANEDITOR_VERSION_PATCH, ICARIANEDITOR_VERSION_TAGSTR);
+                ImGui::Text
+                (
+                    "v%d.%d.%d %s",
+                    ICARIANEDITOR_VERSION_MAJOR,
+                    ICARIANEDITOR_VERSION_MINOR,
+                    ICARIANEDITOR_VERSION_PATCH,
+                    ICARIANEDITOR_VERSION_TAGSTR
+                );
             }
             // Include everything for dev versions of the editor/engine
             else
             {
-                ImGui::Text("v%d.%d.%d:%s %s", ICARIANEDITOR_VERSION_MAJOR, ICARIANEDITOR_VERSION_MINOR, ICARIANEDITOR_VERSION_PATCH, ICARIANEDITOR_COMMIT_HASHSTR, ICARIANEDITOR_VERSION_TAGSTR);
+                ImGui::Text
+                (
+                    "v%d.%d.%d:%s %s",
+                    ICARIANEDITOR_VERSION_MAJOR,
+                    ICARIANEDITOR_VERSION_MINOR,
+                    ICARIANEDITOR_VERSION_PATCH,
+                    ICARIANEDITOR_COMMIT_HASHSTR,
+                    ICARIANEDITOR_VERSION_TAGSTR
+                );
             }
         }
 
@@ -128,7 +143,7 @@ void WelcomeWindow::RecentProjects()
     }
 }
 
-void WelcomeWindow::Update(double a_delta)
+void WelcomeWindow::DisplayUpdate(double a_delta)
 {
     Header();
 
@@ -141,7 +156,7 @@ void WelcomeWindow::Update(double a_delta)
 
 // MIT License
 //
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

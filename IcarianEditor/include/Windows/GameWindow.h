@@ -33,9 +33,15 @@ private:
     uint32_t        m_width;
     uint32_t        m_height;
 
+    uint64_t        m_osMemoryUsage;
+    uint64_t        m_mallocMemoryUsage;
+
     glm::vec2       m_lastCursorPos;
 
     uint8_t         m_flags;
+
+    void UpdateProcess(double a_delta);
+    void BuildFrame();
 
 protected:
 
@@ -45,12 +51,13 @@ public:
 
     void StartRemote(SSHPipe* a_sshPipe, uint16_t a_clientPort);
 
-    virtual void Update(double a_delta);
+    virtual void InternalUpdate(double a_delta);
+    virtual void DisplayUpdate(double a_delta);
 };
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
