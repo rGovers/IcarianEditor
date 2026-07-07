@@ -17,36 +17,17 @@ static EditorConfig* Instance = nullptr;
 
 EDITORCONFIG_BINDING_FUNCTION_TABLE(RUNTIME_FUNCTION_DEFINITION);
 
-static constexpr const char* KeyBindNames[] =
-{
-    "Null",
+#define I_INTER_KEYBINDTARGET_SETDEFAULT(val, def) m_keyBinds[KeyBindTarget_##val] = def;
 
-    "Translate",
-    "Rotate",
-    "Scale",
+#define I_INTER_CODEEDITOR_LOAD(val) case StringHash(#val): { Instance->m_codeEditor = CodeEditor_##val; break; }
+#define I_INTER_CODEEDITOR_SAVE(val) case CodeEditor_##val: { codeEditor->SetText(#val); break; }
 
-    "AmbientLightMode",
-    "ViewportLightMode",
-    "SceneLightMode",
-
-    "MoveUp",
-    "MoveDown",
-    "CameraModifier"
-};
+#define I_INTER_DEFEDITOR_LOAD(val) case StringHash(#val): { Instance->m_defEditor = DefEditor_##val; break; }
+#define I_INTER_DEFEDITOR_SAVE(val) case DefEditor_##val: { defEditor->SetText(#val); break; }
 
 EditorConfig::EditorConfig()
 {
-    m_keyBinds[KeyBindTarget_Translate] = ImGuiKey_Q;
-    m_keyBinds[KeyBindTarget_Rotate] = ImGuiKey_W;
-    m_keyBinds[KeyBindTarget_Scale] = ImGuiKey_E;
-
-    m_keyBinds[KeyBindTarget_AmbientLightMode] = ImGuiKey_I;
-    m_keyBinds[KeyBindTarget_ViewportLightMode] = ImGuiKey_O;
-    m_keyBinds[KeyBindTarget_SceneLightMode] = ImGuiKey_P;
-
-    m_keyBinds[KeyBindTarget_MoveUp] = ImGuiKey_Space;
-    m_keyBinds[KeyBindTarget_MoveDown] = ImGuiKey_LeftShift;
-    m_keyBinds[KeyBindTarget_CameraModifier] = ImGuiKey_LeftCtrl;
+    I_INTER_KEYBINDTARGETTABLE(I_INTER_KEYBINDTARGET_SETDEFAULT);
 }
 EditorConfig::~EditorConfig()
 {
@@ -151,30 +132,7 @@ void EditorConfig::Deserialize()
 
             switch (StringHash(codeEditor))
             {
-            case StringHash("Default"):
-            {
-                Instance->m_codeEditor = CodeEditor_Default;
-
-                break;
-            }
-            case StringHash("VisualStudioCode"):
-            {
-                Instance->m_codeEditor = CodeEditor_VisualStudioCode;
-
-                break;
-            }
-            case StringHash("VisualStudio"):
-            {
-                Instance->m_codeEditor = CodeEditor_VisualStudio;
-
-                break;
-            }
-            case StringHash("Kate"):
-            {
-                Instance->m_codeEditor = CodeEditor_Kate;
-
-                break;
-            }
+            I_INTER_CODEEDITORTABLE(I_INTER_CODEEDITOR_LOAD)
             }
 
             break;
@@ -185,18 +143,7 @@ void EditorConfig::Deserialize()
 
             switch (StringHash(defEditor))
             {
-            case StringHash("Editor"):
-            {
-                Instance->m_defEditor = DefEditor_Editor;
-
-                break;
-            }
-            case StringHash("VisualStudioCode"):
-            {
-                Instance->m_defEditor = DefEditor_VisualStudioCode;
-
-                break;
-            }
+            I_INTER_DEFEDITORTABLE(I_INTER_DEFEDITOR_LOAD)
             }
 
             break;
@@ -205,8 +152,9 @@ void EditorConfig::Deserialize()
         {
             for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
             {
-                const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
+                const char* keyBindStr = GetKeyBindName((e_KeyBindTarget)i);
 
+                const std::string keyBindName = std::string(keyBindStr) + "Key";
                 if (keyBindName == name)
                 {
                     Instance->m_keyBinds[i] = (ImGuiKey)element->IntText();
@@ -272,18 +220,7 @@ void EditorConfig::Serialize()
     tinyxml2::XMLElement* codeEditor = doc.NewElement("CodeEditor");
     switch (Instance->m_codeEditor)
     {
-    case CodeEditor_VisualStudio:
-    {
-        codeEditor->SetText("VisualStudio");
-
-        break;
-    }
-    case CodeEditor_VisualStudioCode:
-    {
-        codeEditor->SetText("VisualStudioCode");
-
-        break;
-    }
+    I_INTER_CODEEDITORTABLE(I_INTER_CODEEDITOR_SAVE)
     default:
     {
         codeEditor->SetText("Default");
@@ -296,12 +233,7 @@ void EditorConfig::Serialize()
     tinyxml2::XMLElement* defEditor = doc.NewElement("DefEditor");
     switch (Instance->m_defEditor)
     {
-    case DefEditor_VisualStudioCode:
-    {
-        defEditor->SetText("VisualStudioCode");
-
-        break;
-    }
+    I_INTER_DEFEDITORTABLE(I_INTER_DEFEDITOR_SAVE)
     default:
     {
         defEditor->SetText("Editor");
@@ -313,7 +245,9 @@ void EditorConfig::Serialize()
 
     for (uint32_t i = KeyBindTarget_Start; i < KeyBindTarget_End; ++i)
     {
-        const std::string keyBindName = std::string(KeyBindNames[i]) + "Key";
+        const char* keyBindStr = GetKeyBindName((e_KeyBindTarget)i);
+
+        const std::string keyBindName = std::string(keyBindStr) + "Key";
 
         tinyxml2::XMLElement* keyBind = doc.NewElement(keyBindName.c_str());
         keyBind->SetText((int)Instance->m_keyBinds[i]);
@@ -400,10 +334,6 @@ ImGuiKey EditorConfig::GetKeyBind(e_KeyBindTarget a_keyBind)
 {
     return Instance->m_keyBinds[a_keyBind];
 }
-const char* EditorConfig::GetKeyBindName(e_KeyBindTarget a_keyBind)
-{
-    return KeyBindNames[a_keyBind];
-}
 void EditorConfig::SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key)
 {
     Instance->m_keyBinds[a_keyBind] = a_key;
@@ -429,7 +359,7 @@ void EditorConfig::SetEnginePipeTimeout(float a_timeout)
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

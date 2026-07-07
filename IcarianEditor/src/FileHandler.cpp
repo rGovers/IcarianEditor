@@ -34,6 +34,12 @@ static void OpenCSScript(const std::filesystem::path& a_path, const std::filesys
 
         break;
     }
+    case CodeEditor_VSCodium:
+    {
+        IO::OpenFile("codium", a_path);
+
+        break;
+    }
     case CodeEditor_Kate:
     {
         IO::OpenFile("kate", a_path);
@@ -57,6 +63,12 @@ static void OpenShader(const std::filesystem::path& a_path, const std::filesyste
     case CodeEditor_VisualStudioCode:
     {
         IO::OpenFile("code", a_path);
+
+        break;
+    }
+    case CodeEditor_VSCodium:
+    {
+        IO::OpenFile("codium", a_path);
 
         break;
     }
@@ -87,6 +99,12 @@ static void OpenDef(const std::filesystem::path& a_path, const std::filesystem::
 
         break;
     }
+    case DefEditor_VSCodium:
+    {
+        IO::OpenFile("codium", a_path);
+
+        break;
+    }
     case DefEditor_Kate:
     {
         IO::OpenFile("kate", a_path);
@@ -108,7 +126,7 @@ static void SetScene(const std::filesystem::path& a_path, const std::filesystem:
 
 static void PushDef(const std::filesystem::path& a_path, const std::filesystem::path& a_relativePath, uint32_t a_size, const uint8_t* a_data)
 {
-    const std::string str = a_relativePath.string();
+    const std::string str = a_relativePath.generic_string();
     ImGui::SetDragDropPayload("DefPath", str.c_str(), str.size(), ImGuiCond_Once);
 }
 
@@ -129,6 +147,8 @@ FileHandler::FileHandler()
     m_extOpenCallback.emplace(".iscene", FileCallback(std::bind(SetScene, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".cs", FileCallback(std::bind(OpenCSScript, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".fvert", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".fmesh", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_extOpenCallback.emplace(".ftask", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".fpix", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
     m_extOpenCallback.emplace(".ffrag", FileCallback(std::bind(OpenShader, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
@@ -168,10 +188,11 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
         return;
     }
 
-    const std::string ext = a_path.extension().string();
+    const std::filesystem::path ext = a_path.extension();
+    const std::string extStr = ext.generic_string();
 
     const e_AssetType type = AssetLibrary::GetAssetType(a_path);
-    switch (type) 
+    switch (type)
     {
     case AssetType_Texture:
     {
@@ -185,7 +206,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
     }
     }
 
-    const auto tIter = Instance->m_extTex.find(ext);
+    const auto tIter = Instance->m_extTex.find(extStr);
     if (tIter != Instance->m_extTex.end())
     {
         if (tIter->second != nullptr)
@@ -196,13 +217,13 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
         }
     }
 
-    const auto oIter = Instance->m_extOpenCallback.find(ext);
+    const auto oIter = Instance->m_extOpenCallback.find(extStr);
     if (oIter != Instance->m_extOpenCallback.end())
     {
         *a_openCallback = &oIter->second;
     }
 
-    const auto dIter = Instance->m_extDragCallback.find(ext);
+    const auto dIter = Instance->m_extDragCallback.find(extStr);
     if (dIter != Instance->m_extDragCallback.end())
     {
         *a_dragCallback = &dIter->second;
@@ -211,7 +232,7 @@ void FileHandler::GetFileData(const std::filesystem::path& a_path, FileCallback*
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

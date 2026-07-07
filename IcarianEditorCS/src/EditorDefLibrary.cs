@@ -330,7 +330,7 @@ namespace IcarianEditor
                     def = s_createDef(s_defs[index], s_defs);
                 }
             }
-            
+
             if (def != null && a_recursive)
             {
                 FindDefs(def);
@@ -361,13 +361,25 @@ namespace IcarianEditor
         static void SetData(ref DefDataObject a_dataObject, object a_value, object a_default, Type a_type)
         {
             a_dataObject.Text = string.Empty;
-            
+
             if (object.Equals(a_value, a_default))
             {
-                return;    
+                return;
             }
 
-            if (a_type == typeof(Def) || a_type.IsSubclassOf(typeof(Def)))
+            if (a_type == typeof(Type))
+            {
+                a_dataObject.Text = "Null";
+
+                Type val = a_value as Type;
+                if (val != null)
+                {
+                    a_dataObject.Text = $"{val.Namespace}.{val.Name}";
+                }
+
+                return;
+            }
+            else if (a_type == typeof(Def) || a_type.IsSubclassOf(typeof(Def)))
             {
                 Def def = a_value as Def;
                 a_dataObject.Text = def.DefName;
@@ -668,7 +680,7 @@ namespace IcarianEditor
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

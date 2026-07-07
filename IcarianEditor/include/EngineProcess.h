@@ -22,8 +22,6 @@ struct DMASwapchainImage
 {
     GLuint MemoryObject;
     GLuint Texture;
-    GLuint StartSemaphore;
-    GLuint EndSemaphore;
     uint32_t Width;
     uint32_t Height;
     uint64_t Offset;

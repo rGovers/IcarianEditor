@@ -40,7 +40,7 @@ struct IDStack
 #define STACK_ID(str) const IDStack idStackTVal = IDStack(str)
 #define STACK_G_ID(str) STACK_ID(Instance->GetID() + (str))
 
-RUNTIME_FUNCTION(uint32_t, GUI, GetButton, 
+RUNTIME_FUNCTION(uint32_t, GUI, GetButton,
 {
     char* str = mono_string_to_utf8(a_str);
     IDEFER(mono_free(str));
@@ -48,7 +48,7 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetButton,
     STACK_G_ID(str);
     return (uint32_t)ImGui::Button(str);
 }, MonoString* a_str)
-RUNTIME_FUNCTION(uint32_t, GUI, GetToggleButton, 
+RUNTIME_FUNCTION(uint32_t, GUI, GetToggleButton,
 {
     char* str = mono_string_to_utf8(a_str);
     IDEFER(mono_free(str));
@@ -79,7 +79,6 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetToggleButton,
     }
 
     return false;
-    
 }, MonoString* a_str, MonoString* a_enabledPath, MonoString* a_disabledPath, uint32_t* a_state, glm::vec2 a_size, uint32_t a_background)
 
 RUNTIME_FUNCTION(uint32_t, GUI, GetCheckbox, 
@@ -148,7 +147,7 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetInt,
     char* mStr = mono_string_to_utf8(a_str);
     IDEFER(mono_free(mStr));
     const std::string str = mStr;
-    
+
     STACK_G_ID(str);
     FlareImGui::Label(str);
 
@@ -300,7 +299,7 @@ RUNTIME_FUNCTION(uint32_t, GUI, GetColor,
     char* mStr = mono_string_to_utf8(a_str);
     IDEFER(mono_free(mStr));
     const std::string str = mStr;
-    
+
     STACK_G_ID(str);
     FlareImGui::Label(str);
 
@@ -400,8 +399,7 @@ RUNTIME_FUNCTION(MonoString*, GUI, GetPathString,
     return NULL;
 }, MonoString* a_str, MonoString* a_value, MonoArray* a_extensions)
 
-// MSVC workaround
-static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
+RUNTIME_FUNCTION(uint32_t, GUI, GetStringList,
 {
     char* mStr = mono_string_to_utf8(a_str);
     IDEFER(mono_free(mStr));
@@ -414,51 +412,61 @@ static uint32_t M_GUI_GetStringList(MonoString* a_str, MonoArray* a_list, int32_
         *a_selected = 0;
     }
 
-    char* selectedStr = mono_string_to_utf8(mono_array_get(a_list, MonoString*, *a_selected));
+    MonoString* monoStr = mono_array_get(a_list, MonoString*, *a_selected);
+    char* selectedStr = mono_string_to_utf8(monoStr);
     IDEFER(mono_free(selectedStr));
 
     STACK_G_ID(str);
     FlareImGui::Label(str);
 
-    if (ImGui::BeginCombo(("##V_" + str).c_str(), selectedStr))
+    bool updated = false;
+
+    const std::string labelStr = "##V_" + str;
+    if (ImGui::BeginCombo(labelStr.c_str(), selectedStr))
     {
         IDEFER(ImGui::EndCombo());
-        
+
         static char Buffer[4096] = { 0 };
-        ImGui::InputText(("Search##VS_" + str).c_str(), Buffer, sizeof(Buffer) - 1);
 
-        for (uint32_t i = 0; i < size; ++i)
+        const std::string labelStr = "Search##VS_" + str;
+        ImGui::InputText(labelStr.c_str(), Buffer, sizeof(Buffer) - 1);
+
+        const std::string childStr = "##C_" + str;
+        if (ImGui::BeginChild(childStr.c_str(), ImVec2(300.0f, 100.0f)))
         {
-            char* selectableStr = mono_string_to_utf8(mono_array_get(a_list, MonoString*, i));
-            IDEFER(mono_free(selectableStr));
+            IDEFER(ImGui::EndChild());
 
-            if (Buffer[0] != 0 && strstr(selectableStr, Buffer) == NULL)
+            for (uint32_t i = 0; i < size; ++i)
             {
-                continue;
-            }
+                MonoString* monoStr = mono_array_get(a_list, MonoString*, i);
 
-            const bool selected = (int32_t)i == *a_selected;
+                char* selectableStr = mono_string_to_utf8(monoStr);
+                IDEFER(mono_free(selectableStr));
 
-            STACK_G_ID(std::string(str) + "[" + std::to_string(i) + "]");
-            if (ImGui::Selectable(selectableStr, selected))
-            {
-                *a_selected = i;
+                if (Buffer[0] != 0 && strstr(selectableStr, Buffer) == NULL)
+                {
+                    continue;
+                }
 
-                return 1;
-            }
+                const bool selected = (int32_t)i == *a_selected;
 
-            if (selected)
-            {
-                ImGui::SetItemDefaultFocus();
+                STACK_G_ID(std::string(str) + "[" + std::to_string(i) + "]");
+                if (ImGui::Selectable(selectableStr, selected))
+                {
+                    *a_selected = i;
+
+                    updated = true;
+                }
+
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
             }
         }
     }
 
-    return 0;
-}
-RUNTIME_FUNCTION(uint32_t, GUI, GetStringList,
-{
-    return M_GUI_GetStringList(a_str, a_list, a_selected);
+    return (uint32_t)updated;
 }, MonoString* a_str, MonoArray* a_list, int32_t* a_selected)
 
 // MSVC workaround
@@ -542,9 +550,9 @@ RUNTIME_FUNCTION(uint32_t, GUI, ShowArrayView,
         STACK_G_ID(std::string(str) + "_Add");
         *a_addValue = (uint32_t)ImGui::Button("+");
     }
-    
+
     ImGui::SameLine();
-    
+
     STACK_G_ID(str);
     return (uint32_t)ImGui::CollapsingHeader(str);
 }, MonoString* a_str, uint32_t* a_addValue)
@@ -644,11 +652,11 @@ RUNTIME_FUNCTION(void, GUI, PopNode,
     ImGui::TreePop();
 })
 
-RUNTIME_FUNCTION(void, GUI, SameLine, 
+RUNTIME_FUNCTION(void, GUI, SameLine,
 {
     ImGui::SameLine();
 })
-RUNTIME_FUNCTION(void, GUI, Separator, 
+RUNTIME_FUNCTION(void, GUI, Separator,
 {
     ImGui::Separator();
 })
@@ -838,7 +846,7 @@ std::string GUI::GetID() const
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

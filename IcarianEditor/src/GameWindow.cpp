@@ -525,6 +525,9 @@ void GameWindow::DisplayUpdate(double a_delta)
 
             m_app->SetGameCursorState(CursorState_Normal);
 
+            m_osMemoryUsage = 0;
+            m_mallocMemoryUsage = 0;
+
             // We are in a multi process enviroment so use less CPU threads because we end up overallocating otherwise and tank performance due to context switching
             // Yes it is counter intuitive that we give less threads to improve performance but a context switch is very expensive and pulls us under 30 FPS even on a very strong CPU
             // Engine defaults to 1/2 of the process so use a 1/4 when in the editor environment
@@ -553,6 +556,9 @@ void GameWindow::DisplayUpdate(double a_delta)
                 const e_SSHHostArchitecture hostArch = sshPipe->GetHostArchitecture();
 
                 const uint16_t clientPort = m_app->GetClientPort();
+
+                m_osMemoryUsage = 0;
+                m_mallocMemoryUsage = 0;
 
                 LoadingTask* tasks[] =
                 {

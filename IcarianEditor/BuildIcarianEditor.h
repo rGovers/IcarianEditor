@@ -123,7 +123,7 @@ static CUBE_CProject BuildIcarianEditorProject(const char* a_path, e_TargetPlatf
     CUBE_String_AppendSS(&commitDefine, &commitHash);
 
     CUBE_CProject_AppendDefines(&project,
-        "ICARIANEDITOR_VERSION_MAJOR=2025",
+        "ICARIANEDITOR_VERSION_MAJOR=2026",
         "ICARIANEDITOR_VERSION_MINOR=0",
         "ICARIANEDITOR_VERSION_PATCH=0",
         commitDefine.Data,

@@ -294,7 +294,7 @@ EngineProcess::~EngineProcess()
             while (!msgs.empty())
             {
                 const IcarianCore::PipeMessage& msg = msgs.front();
-                msgs.pop();
+                IDEFER(msgs.pop());
 
                 if (msg.Data != nullptr)
                 {
@@ -376,7 +376,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
     const std::filesystem::path pipeAddr = GetAddr(PipeName + ipcIDStr);
     const std::string pipeAddrStr = pipeAddr.generic_string();
 
-    const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(pipeAddrStr);
+    const IcarianCore::IPCPipe* serverPipe = IcarianCore::IPCPipe::Create(pipeAddrStr.c_str());
     IERRCHECKRET(serverPipe != nullptr, nullptr);
     IDEFER(delete serverPipe);
 
@@ -401,7 +401,14 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
         // Starting the engine
         // In a weird state cause in a forked process so doing stuff C style
         // Once execution is started state is normal again
-        if (execl("./IcarianNative", "--headless", workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), threadArg.c_str(), NULL) < 0)
+
+#ifdef WIN32
+        constexpr char HeadlessArg[] = "--headless";
+#else
+        constexpr char HeadlessArg[] = "--dma-headless";
+#endif
+
+        if (execl("./IcarianNative", HeadlessArg, workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), threadArg.c_str(), NULL) < 0)
         {
             printf("Failed to start process \n");
             perror("execl");
@@ -677,8 +684,6 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
             // OpenGL spec states that import hands ownership of the fd to OpenGL and all operations after are undefined behaviour
             // UPDATE: The driver in question was fixed keeping comment as this can be a thing that happens
             const int imageFD = sys_pidfd_getfd(m_processFD, swapBuffer.ImageFD, 0);
-            const int startSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.StartSemaphore, 0);
-            const int endSemaphore = sys_pidfd_getfd(m_processFD, swapBuffer.EndSemaphore, 0);
 
             const GLuint memoryObject = ILAMBDA(
             {
@@ -707,25 +712,6 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
             {
                 .MemoryObject = memoryObject,
                 .Texture = textureHandle,
-                .StartSemaphore = ILAMBDA(
-                {
-                    GLuint val;
-                    glGenSemaphoresEXT(1, &val);
-                    glImportSemaphoreFdEXT(val, GL_HANDLE_TYPE_OPAQUE_FD_EXT, startSemaphore);
-
-                    // constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-                    // glSignalSemaphoreEXT(val, 0, NULL, 1, &textureHandle, &Layout);
-
-                    ILRETURN val;
-                }),
-                .EndSemaphore = ILAMBDA(
-                {
-                    GLuint val;
-                    glGenSemaphoresEXT(1, &val);
-                    glImportSemaphoreFdEXT(val, GL_HANDLE_TYPE_OPAQUE_FD_EXT, endSemaphore);
-
-                    ILRETURN val;
-                }),
                 .Width = swapBuffer.Width,
                 .Height = swapBuffer.Height,
                 .Offset = swapBuffer.Offset,
@@ -756,11 +742,7 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
             // meanwhile Linux was just do they have a Unix domain socket open and sent and recieved data cool they have access
             // Windows documentation is good until you read other documentation
             HANDLE imageHandle;
-            HANDLE startSemaphore;
-            HANDLE endSemaphore;
             DuplicateHandle(m_processHandle, swapBuffer.ImageHandle, processHandle, &imageHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
-            DuplicateHandle(m_processHandle, swapBuffer.StartSemaphore, processHandle, &startSemaphore, 0, FALSE, DUPLICATE_SAME_ACCESS);
-            DuplicateHandle(m_processHandle, swapBuffer.EndSemaphore, processHandle, &endSemaphore, 0, FALSE, DUPLICATE_SAME_ACCESS);
 
             const GLuint memoryObject = ILAMBDA(
             {
@@ -784,33 +766,14 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
                 ILRETURN val;
             });
 
-            const GLuint startSemaphoreHandle = ILAMBDA(
-            {
-                GLuint val;
-                glGenSemaphoresEXT(1, &val);
-                glImportSemaphoreWin32HandleEXT(val, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, startSemaphore);
-            });
-
             const DMASwapchainImage image = 
             {
                 .MemoryObject = memoryObject,
                 .Texture = textureHandle,
-                .StartSemaphore = startSemaphoreHandle,
-                .EndSemaphore = ILAMBDA(
-                {
-                    GLuint val;
-                    glGenSemaphoresEXT(1, &val);
-                    glImportSemaphoreWin32HandleEXT(val, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, endSemaphore);
-
-                    ILRETURN val;
-                }),
                 .Width = swapBuffer.Width,
                 .Height = swapBuffer.Height,
                 .Offset = swapBuffer.Offset,
             };
-
-            constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-            glSignalSemaphoreEXT(startSemaphoreHandle, 0, NULL, 1, &textureHandle, &Layout);
 
             m_dmaImage.emplace_back(image);
 #endif
@@ -945,9 +908,11 @@ void EngineProcess::SignalImage()
 
     ISETBIT(m_flags, SignaledBit);
 
-    const DMASwapchainImage& img = m_dmaImages[m_curFrame];
-    constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-    glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+    const IcarianCore::PipeMessage msg =
+    {
+        .Type = IcarianCore::PipeMessageType_DMASignal
+    };
+    m_ipcPipe->Send(msg);
 }
 e_EngineFrameWaitStatus EngineProcess::WaitImage()
 {
@@ -969,23 +934,15 @@ e_EngineFrameWaitStatus EngineProcess::WaitImage()
 
     if (m_dmaSwaps <= 0)
     {
-        // // TODO: Investigate this weirdness
-        // // Why can I signal but the signal does not update sometimes
-        // const DMASwapchainImage& img = m_dmaImages[m_curFrame];
-        // constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-        // glSignalSemaphoreEXT(img.StartSemaphore, 0, NULL, 1, &img.Texture, &Layout);
-
         return EngineFrameWaitStatus_Wait;
     }
 
     ICLEARBIT(m_flags, SignaledBit);
-    while (m_dmaSwaps > 0)
+    if (m_dmaSwaps > 0)
     {
-        --m_dmaSwaps;
-        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+        m_curFrame = (m_curFrame + m_dmaSwaps) % imageCount;
 
-        constexpr GLenum Layout = GL_LAYOUT_COLOR_ATTACHMENT_EXT;
-        glWaitSemaphoreEXT(img.EndSemaphore, 0, NULL, 1, &img.Texture, &Layout);
+        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
 
         if (img.Width == m_width && img.Height == m_height)
         {
@@ -1004,8 +961,6 @@ e_EngineFrameWaitStatus EngineProcess::WaitImage()
         }
     }
 
-    m_curFrame = (m_curFrame + 1) % imageCount;
-
     return EngineFrameWaitStatus_Success;
 }
 void EngineProcess::AdvanceImage()
@@ -1023,9 +978,6 @@ void EngineProcess::FlushDMAImages()
     {
         glDeleteTextures(1, &image.Texture);
         glDeleteMemoryObjectsEXT(1, &image.MemoryObject);
-
-        glDeleteSemaphoresEXT(1, &image.StartSemaphore);
-        glDeleteSemaphoresEXT(1, &image.EndSemaphore);
     }
 
     m_dmaImages.clear();
@@ -1149,14 +1101,14 @@ void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const v
             .Length = bufferSize,
             .Data = ILAMBDA(
             {
-                uint8_t* dat = (uint8_t*)malloc(strLen + 1);
+                uint8_t* dat = new uint8_t[strLen + 1];
                 memcpy(dat, a_string.data(), strLen);
                 dat[strLen] = 0;
 
                 ILRETURN dat;
             })
         };
-        IDEFER(free(msg.Data));
+        IDEFER(delete[] msg.Data);
 
         const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
         if (error != IcarianCore::CommunicationPipe::SendError_Success)
@@ -1179,7 +1131,7 @@ void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const v
         .Length = bufferSize,
         .Data = ILAMBDA(
         {
-            uint8_t* dat = (uint8_t*)malloc(bufferSize);
+            uint8_t* dat = new uint8_t[bufferSize];
 
             memset(dat, 0, bufferSize);
 
@@ -1189,7 +1141,7 @@ void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const v
             ILRETURN dat;
         })
     };
-    IDEFER(free(msg.Data));
+    IDEFER(delete[] msg.Data);
 
     const IcarianCore::CommunicationPipe::e_SendError error = m_ipcPipe->Send(msg);
     if (error != IcarianCore::CommunicationPipe::SendError_Success)

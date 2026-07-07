@@ -2,6 +2,7 @@
 // 
 // License at end of file.
 
+using IcarianEditor.Properties;
 using IcarianEditor.Windows;
 using IcarianEngine;
 using IcarianEngine.Definitions;
@@ -28,6 +29,7 @@ namespace IcarianEditor
             ClipBoard.Init();
             PropertiesWindow.Init();
             EditorWindow.Init();
+            PropertiesEditorWindow.Init();
         }
 
         static void Update(double a_delta)
@@ -53,7 +55,7 @@ namespace IcarianEditor
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

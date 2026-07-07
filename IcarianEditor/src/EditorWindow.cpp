@@ -39,6 +39,8 @@ EditorWindow::EditorWindow() : Window("Editor", "Textures/WindowIcons/WindowIcon
     m_translation = glm::vec3(0.0f, -1.0f, 10.0f);
     m_rotation = glm::identity<glm::quat>();
 
+    m_memoryUsage = 0;
+
     m_moveSpeed = 10.0f;
     m_zoom = 10.0f;
 
@@ -648,19 +650,24 @@ void EditorWindow::DisplayUpdate(double a_delta)
         {
             glm::vec3 mov = glm::vec3(0.0f);
 
-            if (ImGui::IsKeyDown(ImGuiKey_W))
+            const ImGuiKey moveForwardKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveForward);
+            const ImGuiKey moveBackwardKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveBackward);
+            const ImGuiKey moveLeftKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveLeft);
+            const ImGuiKey moveRightKey = EditorConfig::GetKeyBind(KeyBindTarget_MoveRight);
+
+            if (ImGui::IsKeyDown(moveForwardKey))
             {
                 mov += m_rotation * glm::vec3(0.0f, 0.0f, -1.0f);
             }
-            if (ImGui::IsKeyDown(ImGuiKey_S))
+            if (ImGui::IsKeyDown(moveBackwardKey))
             {
                 mov += m_rotation * glm::vec3(0.0f, 0.0f, 1.0f);
             }
-            if (ImGui::IsKeyDown(ImGuiKey_A))
+            if (ImGui::IsKeyDown(moveLeftKey))
             {
                 mov += m_rotation * glm::vec3(-1.0f, 0.0f, 0.0f);
             }
-            if (ImGui::IsKeyDown(ImGuiKey_D))
+            if (ImGui::IsKeyDown(moveRightKey))
             {
                 mov += m_rotation * glm::vec3(1.0f, 0.0f, 0.0f);
             }
@@ -677,9 +684,10 @@ void EditorWindow::DisplayUpdate(double a_delta)
                 mov += m_rotation * glm::vec3(0.0f, 1.0f, 0.0f);
             }
 
+            const bool modifierDown = ImGui::IsKeyDown(cameraModifierKey);
             const float modifier = ILAMBDA(
             {
-                if (ImGui::IsKeyDown(cameraModifierKey))
+                if (modifierDown)
                 {
                     ILRETURN 0.1f;
                 }

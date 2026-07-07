@@ -12,37 +12,61 @@
 
 class RuntimeManager;
 
+#define I_INTER_CODEEDITORTABLE(F) \
+    F(Default) \
+    F(VisualStudio) \
+    F(VisualStudioCode) \
+    F(VSCodium) \
+    F(Kate) \
+
+#define I_INTER_CODEEDITOR_ENUM(val) CodeEditor_##val,
+#define I_INTER_CODEEDITOR_STR(val) case CodeEditor_##val: { return #val; }
+
 enum e_CodeEditor : uint32_t
 {
-    CodeEditor_Default,
-    CodeEditor_VisualStudio,
-    CodeEditor_VisualStudioCode,
-    CodeEditor_Kate,
+    I_INTER_CODEEDITORTABLE(I_INTER_CODEEDITOR_ENUM)
+
     CodeEditor_End
 };
 
+#define I_INTER_DEFEDITORTABLE(F) \
+    F(Editor) \
+    F(VisualStudioCode) \
+    F(VSCodium) \
+    F(Kate) \
+
+#define I_INTER_DEFEDITOR_ENUM(val) DefEditor_##val,
+#define I_INTER_DEFEDITOR_STR(val) case DefEditor_##val: { return #val; }
+
 enum e_DefEditor : uint32_t
 {
-    DefEditor_Editor,
-    DefEditor_VisualStudioCode,
-    DefEditor_Kate,
+    I_INTER_DEFEDITORTABLE(I_INTER_DEFEDITOR_ENUM)
+
     DefEditor_End
 };
 
+#define I_INTER_KEYBINDTARGETTABLE(F) \
+    F(Null, ImGuiKey_None) \
+    F(Translate, ImGuiKey_Q) \
+    F(Rotate, ImGuiKey_W) \
+    F(Scale, ImGuiKey_E) \
+    F(AmbientLightMode, ImGuiKey_I) \
+    F(ViewportLightMode, ImGuiKey_O) \
+    F(SceneLightMode, ImGuiKey_P) \
+    F(MoveForward, ImGuiKey_W) \
+    F(MoveBackward, ImGuiKey_S) \
+    F(MoveLeft, ImGuiKey_A) \
+    F(MoveRight, ImGuiKey_D) \
+    F(MoveUp, ImGuiKey_Space) \
+    F(MoveDown, ImGuiKey_LeftShift) \
+    F(CameraModifier, ImGuiKey_LeftCtrl) \
+
+#define I_INTER_KEYBINDTARGET_ENUM(val, def) KeyBindTarget_##val,
+#define I_INTER_KEYBINDTARGET_STR(val, def) case KeyBindTarget_##val: { return #val; }
+
 enum e_KeyBindTarget : uint32_t
 {
-    KeyBindTarget_Null,
-    KeyBindTarget_Translate,
-    KeyBindTarget_Rotate,
-    KeyBindTarget_Scale,
-
-    KeyBindTarget_AmbientLightMode,
-    KeyBindTarget_ViewportLightMode,
-    KeyBindTarget_SceneLightMode,
-
-    KeyBindTarget_MoveUp,
-    KeyBindTarget_MoveDown,
-    KeyBindTarget_CameraModifier,
+    I_INTER_KEYBINDTARGETTABLE(I_INTER_KEYBINDTARGET_ENUM)
 
     KeyBindTarget_End,
     KeyBindTarget_Start = KeyBindTarget_Translate
@@ -91,13 +115,51 @@ public:
     static void SetEditorMouseSensitivity(float a_editorMouseSensitivity);
 
     static e_CodeEditor GetCodeEditor();
+    constexpr static const char* GetCodeEditorName(e_CodeEditor a_codeEditor)
+    {
+        switch (a_codeEditor)
+        {
+        I_INTER_CODEEDITORTABLE(I_INTER_CODEEDITOR_STR)
+        default:
+        {
+            break;
+        }
+        }
+
+        return "Unknown";
+    }
     static void SetCodeEditor(e_CodeEditor a_codeEditor);
 
     static e_DefEditor GetDefEditor();
+    constexpr static const char* GetDefEditorName(e_DefEditor a_defEditor)
+    {
+        switch (a_defEditor)
+        {
+        I_INTER_DEFEDITORTABLE(I_INTER_DEFEDITOR_STR)
+        default:
+        {
+            break;
+        }
+        }
+
+        return "Unknown";
+    }
     static void SetDefEditor(e_DefEditor a_defEditor);
 
     static ImGuiKey GetKeyBind(e_KeyBindTarget a_keyBind);
-    static const char* GetKeyBindName(e_KeyBindTarget a_keyBind);
+    constexpr static const char* GetKeyBindName(e_KeyBindTarget a_keyBind)
+    {
+        switch (a_keyBind)
+        {
+        I_INTER_KEYBINDTARGETTABLE(I_INTER_KEYBINDTARGET_STR)
+        default:
+        {
+            break;
+        }
+        }
+
+        return "Unknown";
+    }
     static void SetKeyBind(e_KeyBindTarget a_keyBind, ImGuiKey a_key);
 
     static float GetEngineShutdownTimeout();
@@ -112,7 +174,7 @@ public:
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

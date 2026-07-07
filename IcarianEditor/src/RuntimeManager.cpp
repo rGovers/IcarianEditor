@@ -392,6 +392,8 @@ bool RuntimeManager::Build(const std::filesystem::path& a_path, const std::strin
     };
     IDEFER(CUBE_CSProject_Destroy(&project));
 
+    CUBE_CSProject_AppendDefine(&project, "ICARIAN_EDITOR_ENVIRONMENT");
+
     for (const std::filesystem::path& p : projectScripts)
     {
         const std::filesystem::path absPath = projectPath / p;
@@ -640,7 +642,7 @@ void RuntimeManager::ExecFunction(const std::string_view& a_namespace, const std
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

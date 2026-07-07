@@ -32,25 +32,27 @@ namespace IcarianEditor.Windows
                 foreach (Type type in types)
                 {
                     PWindowAttribute att = type.GetCustomAttribute<PWindowAttribute>();
-                    if (att != null)
+                    if (att == null)
                     {
-                        if (type.IsSubclassOf(typeof(PropertiesEditorWindow)))
-                        {
-                            PropertiesEditorWindow window = Activator.CreateInstance(type) as PropertiesEditorWindow;
-                            if (window != null)
-                            {
-                                s_windows.Add(att.OverrideType, window);
-                            }
-                            else
-                            {
-                                Logger.Error($"IcarianEditorCS: Unabled to create PropertiesEditorWindow of type {type}");
-                            }
-                        }
-                        else
-                        {
-                            Logger.Error($"IcarianEditorCS: {type} has Attribute PWindow and is not inherited from PropertiesEditorWindow");
-                        }
+                        continue;
                     }
+
+                    if (!type.IsSubclassOf(typeof(PropertiesEditorWindow)))
+                    {
+                        Logger.Error($"IcarianEditorCS: {type} has Attribute PWindow and is not inherited from PropertiesEditorWindow");
+
+                        continue;
+                    }
+
+                    PropertiesEditorWindow window = Activator.CreateInstance(type) as PropertiesEditorWindow;
+                    if (window == null)
+                    {
+                        Logger.Error($"IcarianEditorCS: Unabled to create PropertiesEditorWindow of type {type}");
+
+                        continue;
+                    }
+
+                    s_windows.Add(att.OverrideType, window);
                 }
             }
         }
@@ -100,7 +102,7 @@ namespace IcarianEditor.Windows
 
 // MIT License
 // 
-// Copyright (c) 2024 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal

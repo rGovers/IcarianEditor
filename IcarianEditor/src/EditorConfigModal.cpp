@@ -18,20 +18,6 @@ static constexpr const char* EditorConfigTabNames[] =
     "External Tools",
     "Engine"
 };
-static constexpr const char* CodeEditorNames[] =
-{
-    "Default",
-    "Visual Studio",
-    "Visual Studio Code",
-    "Kate"
-};
-
-static constexpr const char* DefEditorNames[] =
-{
-    "Editor",
-    "Visual Studio Code",
-    "Kate"
-};
 
 #ifdef WIN32
 constexpr static bool CodeEditorEnabled[] =
@@ -39,6 +25,7 @@ constexpr static bool CodeEditorEnabled[] =
     true,   // Default
     true,   // Visual Studio
     true,   // VSCode
+    true,   // VSCodium
     false,  // Kate - Unable to validate it works need someone to confirm before enabling
 };
 
@@ -46,6 +33,7 @@ constexpr static bool DefEditorEnabled[] =
 {
     true,   // Editor
     true,   // VSCode
+    true,   // VSCodium
     false,  // Kate - Unable to validate it works need someone to confirm before enabling
 };
 #else
@@ -54,6 +42,7 @@ constexpr static bool CodeEditorEnabled[] =
     true,   // Default
     false,  // Visual Studio
     true,   // VSCode
+    true,   // VSCodium
     true,   // Kate
 };
 
@@ -61,6 +50,7 @@ constexpr static bool DefEditorEnabled[] =
 {
     true,   // Editor
     true,   // VSCode
+    true,   // VSCodium
     true,   // Kate
 };
 #endif
@@ -156,7 +146,9 @@ void EditorConfigModal::ExternalToolsTab()
     const e_CodeEditor codeEditor = EditorConfig::GetCodeEditor();
 
     FlareImGui::Label("Code Editor", LabelRatio);
-    if (ImGui::BeginCombo("##CodeEditor", CodeEditorNames[codeEditor]))
+
+    const char* codeEditorStr = EditorConfig::GetCodeEditorName(codeEditor);
+    if (ImGui::BeginCombo("##CodeEditor", codeEditorStr))
     {
         IDEFER(ImGui::EndCombo());
 
@@ -168,11 +160,13 @@ void EditorConfigModal::ExternalToolsTab()
                 continue;
             }
 
-            const bool selected = codeEditor == i;
+            const e_CodeEditor editor = (e_CodeEditor)i;
 
-            if (ImGui::Selectable(CodeEditorNames[i], selected))
+            const bool selected = codeEditor == i;
+            const char* curEditorStr = EditorConfig::GetCodeEditorName(editor);
+            if (ImGui::Selectable(curEditorStr, selected))
             {
-                EditorConfig::SetCodeEditor((e_CodeEditor)i);
+                EditorConfig::SetCodeEditor(editor);
             }
 
             if (selected)
@@ -185,7 +179,9 @@ void EditorConfigModal::ExternalToolsTab()
     const e_DefEditor defEditor = EditorConfig::GetDefEditor();
 
     FlareImGui::Label("Def Editor", LabelRatio);
-    if (ImGui::BeginCombo("##DefEditor", DefEditorNames[defEditor]))
+
+    const char* defEditorStr = EditorConfig::GetDefEditorName(defEditor);
+    if (ImGui::BeginCombo("##DefEditor", defEditorStr))
     {
         IDEFER(ImGui::EndCombo());
 
@@ -197,11 +193,13 @@ void EditorConfigModal::ExternalToolsTab()
                 continue;
             }
 
-            const bool selected = defEditor == i;
+            const e_DefEditor editor = (e_DefEditor)i;
 
-            if (ImGui::Selectable(DefEditorNames[i], selected))
+            const bool selected = defEditor == i;
+            const char* curEditorStr = EditorConfig::GetDefEditorName(editor);
+            if (ImGui::Selectable(curEditorStr, selected))
             {
-                EditorConfig::SetDefEditor((e_DefEditor)i);
+                EditorConfig::SetDefEditor(editor);
             }
 
             if (selected)
@@ -250,7 +248,7 @@ bool EditorConfigModal::Update()
         ImGui::BeginChild("##Settings", ImVec2(0.0f, 230.0f));
         IDEFER(ImGui::EndChild());
 
-        switch (m_currentTab) 
+        switch (m_currentTab)
         {
         case EditorConfigTab_General:
         {
@@ -306,7 +304,7 @@ bool EditorConfigModal::Update()
 
 // MIT License
 // 
-// Copyright (c) 2025 River Govers
+// Copyright (c) 2026 River Govers
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
