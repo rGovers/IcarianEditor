@@ -1,5 +1,5 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #pragma once
@@ -14,6 +14,7 @@
 #include <queue>
 
 #include "Core/CommunicationPipe.h"
+#include "Core/DMASwapBuffer.h"
 #include "Core/InputBindings.h"
 
 class SSHPipe;
@@ -40,6 +41,7 @@ class EngineProcess
 {
 private:
     static constexpr char PipeName[] = "IcarianEditor-IPC";
+    static constexpr char DMAName[] = "IcarianEditor-DMA";
 
     static constexpr uint32_t DMAModeBit = 0;
     static constexpr uint32_t RemoteModeBit = 1;
@@ -52,50 +54,61 @@ private:
     static uint32_t IPCID;
 
 #ifdef WIN32
-    PROCESS_INFORMATION             m_processInfo;
-    HANDLE                          m_processHandle;
+    PROCESS_INFORMATION                    m_processInfo;
+    HANDLE                                 m_processHandle;
 
     void DestroyProc();
 #else
-    pid_t                           m_process;
-    int                             m_processFD;
+    pid_t                                  m_process;
+    int                                    m_processFD;
 #endif
 
-    IcarianCore::CommunicationPipe* m_ipcPipe;
+    IcarianCore::CommunicationPipe*        m_ipcPipe;
+    volatile IcarianCore::DMAMemoryBuffer* m_dmaBuffer;
 
-    std::vector<DMASwapchainImage>  m_dmaImages;
+    std::vector<DMASwapchainImage>         m_dmaImages;
 
-    double                          m_updateTime;
-    double                          m_frameTime;
+    double                                 m_updateTime;
+    double                                 m_frameTime;
 
-    double                          m_updateTimeout;
-    double                          m_frameTimeout;
+    double                                 m_updateTimeout;
+    double                                 m_frameTimeout;
 
-    float                           m_ups;
-    float                           m_fps;
+    uint64_t                               m_renderOutVal;
 
-    uint32_t                        m_curFrame;
-    uint32_t                        m_dmaSwaps;
+    float                                  m_ups;
+    float                                  m_fps;
 
-    uint32_t                        m_width;
-    uint32_t                        m_height;
+    uint32_t                               m_width;
+    uint32_t                               m_height;
 
-    GLuint                          m_texture;
-    GLuint                          m_dmaTexture;
+    GLuint                                 m_texture;
+    GLuint                                 m_dmaTexture;
 
-    uint32_t                        m_pipefileID;
+    uint32_t                               m_ipcID;
+    uint32_t                               m_pipefileID;
 
-    uint16_t                        m_updates;
-    uint16_t                        m_frames;
+    uint16_t                               m_updates;
+    uint16_t                               m_frames;
 
-    uint8_t                         m_flags;
+    uint8_t                                m_flags;
 
     EngineProcess(IcarianCore::CommunicationPipe* a_pipe, uint32_t a_width, uint32_t a_height);
 
 #ifdef WIN32
-    EngineProcess(HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo, IcarianCore::CommunicationPipe* a_pipe);
+    EngineProcess(uint32_t a_ipcId, HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo, IcarianCore::CommunicationPipe* a_pipe);
 #else
-    EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::CommunicationPipe* a_pipe, uint32_t a_pipefileID, uint32_t a_width, uint32_t a_height);
+    EngineProcess
+    (
+        uint32_t a_ipcId,
+        pid_t a_proc,
+        int a_procFd,
+        IcarianCore::CommunicationPipe* a_pipe,
+        IcarianCore::DMAMemoryBuffer* a_dmaBuffer,
+        uint32_t a_pipefileID,
+        uint32_t a_width,
+        uint32_t a_height
+    );
 #endif
 
     void FlushDMAImages();
@@ -143,19 +156,19 @@ public:
 };
 
 // MIT License
-// 
+//
 // Copyright (c) 2026 River Govers
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

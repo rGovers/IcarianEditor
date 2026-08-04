@@ -1,5 +1,5 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #include "Windows/GameWindow.h"
@@ -179,12 +179,102 @@ void GameWindow::UpdateProcess(double a_delta)
 
             break;
         }
+        case IcarianCore::PipeMessageType_ProfileNewGPUPass:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ICARIAN_ASSERT(msg.Length > 4);
+            const uint32_t id = *(uint32_t*)msg.Data;
+            const char* str = (char*)msg.Data + sizeof(uint32_t);
+
+            ProfilerData::PushNewGPUPass(id, str);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileNewGPUItem:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ICARIAN_ASSERT(msg.Length > sizeof(uint32_t) * 2);
+            const uint32_t passID = *((uint32_t*)msg.Data);
+            const uint32_t id = *((uint32_t*)msg.Data + 1);
+            const char* str = (char*)msg.Data + (sizeof(uint32_t) * 2);
+
+            ProfilerData::PushNewGPUItem(passID, id, str);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileGPUPass:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ProfilerData::PushGPUData(msg.Data, msg.Length);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileGPUEndToEndTime:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ICARIAN_ASSERT(msg.Length == sizeof(float));
+            const float time = *(float*)msg.Data;
+
+            ProfilerData::PushGPUEndToEndTime(time);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileNewScope:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ICARIAN_ASSERT(msg.Length > 4);
+            const uint32_t id = *(uint32_t*)msg.Data;
+            const char* str = (char*)msg.Data + sizeof(uint32_t);
+
+            ProfilerData::PushNewScope(id, str);
+
+            break;
+        }
+        case IcarianCore::PipeMessageType_ProfileNewFrame:
+        {
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
+            {
+                break;
+            }
+
+            ICARIAN_ASSERT(msg.Length > sizeof(uint32_t) * 3);
+            const uint32_t scopeID = *((uint32_t*)msg.Data);
+            const uint32_t frameId = *((uint32_t*)msg.Data + 1);
+            const uint32_t parentId = *((uint32_t*)msg.Data + 2);
+            const char* str = (char*)msg.Data + (sizeof(uint32_t) * 3);
+
+            ProfilerData::PushNewFrame(scopeID, frameId, parentId, str);
+
+            break;
+        }
         case IcarianCore::PipeMessageType_ProfileScope:
         {
-            if (IISBITSET(m_flags, ProfilerSessionBit))
+            if (!IISBITSET(m_flags, ProfilerSessionBit))
             {
-                ProfilerData::PushData(*(ProfileScope*)msg.Data);
+                break;
             }
+
+            ProfilerData::PushData(msg.Data, msg.Length);
 
             break;
         }
@@ -228,6 +318,8 @@ void GameWindow::BuildFrame()
 
     while (true)
     {
+        UpdateProcess(0.0);
+
         const e_EngineFrameWaitStatus imageWait = m_process->WaitImage();
         switch (imageWait)
         {
@@ -242,11 +334,9 @@ void GameWindow::BuildFrame()
         }
         case EngineFrameWaitStatus_Wait:
         {
-            UpdateProcess(0.0);
-
             const std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(100));
+            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(50));
             if (timeout)
             {
                 Logger::Warning("Game window draw timeout");
@@ -532,7 +622,7 @@ void GameWindow::DisplayUpdate(double a_delta)
             // Yes it is counter intuitive that we give less threads to improve performance but a context switch is very expensive and pulls us under 30 FPS even on a very strong CPU
             // Engine defaults to 1/2 of the process so use a 1/4 when in the editor environment
             // And we never allocate everything as the system still needs threads for background things in modern systems
-            // Rule of thumb performance goes up sharply to the number of physical cores 
+            // Rule of thumb performance goes up sharply to the number of physical cores
             // Up slightly to the number of threads on a CPU if there is points it can do a CPU context switch over an OS context switch
             // Then starts going down after you exceed the number of threads as OS context switches are needed
             // I am ignoring big-little based CPUs as they complicate things and just a rule of thumb
@@ -584,19 +674,19 @@ void GameWindow::DisplayUpdate(double a_delta)
 }
 
 // MIT License
-// 
+//
 // Copyright (c) 2026 River Govers
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

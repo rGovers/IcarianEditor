@@ -1,10 +1,11 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #include "Windows/EditorWindow.h"
 
 #include <charconv>
+#include <cstdint>
 #include <imgui.h>
 #include <ImGuizmo.h>
 #include <thread>
@@ -139,6 +140,12 @@ void EditorWindow::UpdateProcess(double a_delta)
         switch (msg.Type)
         {
         case IcarianCore::PipeMessageType_SetCursorState:
+        case IcarianCore::PipeMessageType_ProfileNewGPUPass:
+        case IcarianCore::PipeMessageType_ProfileNewGPUItem:
+        case IcarianCore::PipeMessageType_ProfileGPUPass:
+        case IcarianCore::PipeMessageType_ProfileGPUEndToEndTime:
+        case IcarianCore::PipeMessageType_ProfileNewFrame:
+        case IcarianCore::PipeMessageType_ProfileNewScope:
         case IcarianCore::PipeMessageType_ProfileScope:
         case IcarianCore::PipeMessageType_MemoryFrame:
         {
@@ -170,7 +177,7 @@ void EditorWindow::UpdateProcess(double a_delta)
                     break;
                 }
 
-                const LoggerMessageData data = 
+                const LoggerMessageData data =
                 {
                     .Message = "[Editor Window] " + std::string((char*)msg.Data + header.MessageOffset, header.MessageSize),
                     .Stacktrace = ILAMBDA(
@@ -186,7 +193,10 @@ void EditorWindow::UpdateProcess(double a_delta)
                             {
                                 if (*stacktraceSlider == 0)
                                 {
-                                    vals.emplace_back(std::string(stacktraceMessageBegin, stacktraceSlider - stacktraceMessageBegin));
+                                    const uintptr_t len = (uintptr_t)(stacktraceSlider - stacktraceMessageBegin);
+                                    const std::string str = std::string(stacktraceMessageBegin, (size_t)len);
+
+                                    vals.emplace_back(str);
 
                                     stacktraceMessageBegin = stacktraceSlider + 1;
                                 }
@@ -258,6 +268,8 @@ void EditorWindow::BuildFrame()
 
     while (true)
     {
+        UpdateProcess(0.0);
+
         const e_EngineFrameWaitStatus imageWait = m_process->WaitImage();
         switch (imageWait)
         {
@@ -272,11 +284,9 @@ void EditorWindow::BuildFrame()
         }
         case EngineFrameWaitStatus_Wait:
         {
-            UpdateProcess(0.0);
-
             const std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(100));
+            const bool timeout = now - startTime >= std::chrono::duration(std::chrono::milliseconds(50));
             if (timeout)
             {
                 Logger::Warning("Editor window draw timeout");
@@ -854,19 +864,19 @@ void EditorWindow::DisplayUpdate(double a_delta)
 }
 
 // MIT License
-// 
+//
 // Copyright (c) 2026 River Govers
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE

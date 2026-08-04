@@ -6,55 +6,62 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Core/MemoryUsageFrame.h"
 
-static constexpr int ProfileNameMax = 16;
-static constexpr int ProfileFrameMax = 64;
-static constexpr int ProfileMaxScopes = 1024;
+static constexpr uint32_t ProfileMaxScopes = 512;
 
 struct ProfileFrame
 {
-    char Name[ProfileNameMax];
+    uint32_t NameID;
     float Time;
-    uint8_t Stack;
-};
-
-struct ProfileScope
-{
-    char Name[ProfileNameMax];
-    uint16_t FrameCount;
-    ProfileFrame Frames[ProfileFrameMax];
 };
 
 struct ProfileSnapshot
 {
+    std::string Name;
+    ProfileFrame* Frames;
+    uint32_t* ID;
     uint32_t Index;
     uint32_t StartIndex;
     uint32_t Count;
-    std::string Name;
-    ProfileScope Scopes[ProfileMaxScopes];
+    uint16_t FrameCount;
 };
 
 class ProfilerData
 {
 private:
-    uint32_t                      m_totalMemoryIndex;
-    uint32_t                      m_totalMemoryStartIndex;
-    uint32_t                      m_totalMemoryCount;
+    uint64_t                                  m_osMemoryUsage[ProfileMaxScopes];
+    uint64_t                                  m_mallocMemoryUsage[ProfileMaxScopes];
 
-    uint32_t                      m_memoryFrameIndex;
-    uint32_t                      m_memoryFrameStartIndex;
-    uint32_t                      m_memoryFrameCount;
+    IcarianCore::MemoryUsageFrame             m_frames[ProfileMaxScopes];
 
-    uint64_t                      m_osMemoryUsage[ProfileMaxScopes];
-    uint64_t                      m_mallocMemoryUsage[ProfileMaxScopes];
+    float                                     m_gpuETETime[ProfileMaxScopes];
 
-    IcarianCore::MemoryUsageFrame m_frames[ProfileMaxScopes];
+    std::unordered_map<uint32_t, std::string> m_gpuPassNames;
+    std::unordered_map<uint32_t, std::string> m_gpuItemNames;
+    std::unordered_map<uint32_t, std::string> m_scopeNames;
+    std::unordered_map<uint32_t, std::string> m_frameNames;
+    std::unordered_map<uint32_t, uint32_t>    m_frameParents;
 
-    std::vector<ProfileSnapshot>  m_snapshots;
-    bool                          m_active;
+    std::vector<ProfileSnapshot>              m_gpuSnapshots;
+    std::vector<ProfileSnapshot>              m_snapshots;
+
+    uint32_t                                  m_totalMemoryIndex;
+    uint32_t                                  m_totalMemoryStartIndex;
+    uint32_t                                  m_totalMemoryCount;
+
+    uint32_t                                  m_memoryFrameIndex;
+    uint32_t                                  m_memoryFrameStartIndex;
+    uint32_t                                  m_memoryFrameCount;
+
+    uint32_t                                  m_gpuETEIndex;
+    uint32_t                                  m_gpuETEStartIndex;
+    uint32_t                                  m_gpuETECount;
+
+    bool                                      m_active;
 
     ProfilerData();
 
@@ -80,8 +87,23 @@ public:
     static uint32_t GetMemoryFrameStartIndex();
     static const IcarianCore::MemoryUsageFrame* GetMemoryUsageFrames();
 
-    static void PushData(const ProfileScope& a_scope);
+    static void PushNewGPUPass(uint32_t a_id, const char* a_str);
+    static void PushNewGPUItem(uint32_t a_passID, uint32_t a_id, const char* a_str);
+    static void PushGPUData(const void* a_data, uint32_t a_length);
+    static std::vector<ProfileSnapshot> GetGPUSnapshots();
+    static std::string GetGPUItemName(uint32_t a_id);
+
+    static void PushGPUEndToEndTime(float a_time);
+    static uint32_t GetGPUEndToEndCount();
+    static uint32_t GetGPUEndToEndStartIndex();
+    static const float* GetGPUEndToEndTimes();
+
+    static void PushNewScope(uint32_t a_id, const char* a_str);
+    static void PushNewFrame(uint32_t a_scopeId, uint32_t a_nameId, uint32_t a_parentId, const char* a_str);
+    static void PushData(const void* a_data, uint32_t a_length);
     static std::vector<ProfileSnapshot> GetSnapshots();
+    static std::string GetFrameName(uint32_t a_nameId);
+    static uint32_t GetFrameParent(uint32_t a_frame);
 };
 
 // MIT License

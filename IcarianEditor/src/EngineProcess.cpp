@@ -1,24 +1,25 @@
 // Icarian Editor - Editor for the Icarian Game Engine
-// 
+//
 // License at end of file.
 
 #include "EngineProcess.h"
 
 #ifndef WIN32
 #include <csignal>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
 
-#define GLM_FORCE_SWIZZLE 
+#define GLM_FORCE_SWIZZLE
 #include <glm/glm.hpp>
 
 #include <cassert>
 
 #include "AssetLibrary.h"
 #include "Core/Bitfield.h"
-#include "Core/DMASwapBuffer.h"
 #include "Core/IcarianAssert.h"
 #include "Core/IcarianError.h"
 #include "Core/IcarianLambda.h"
@@ -55,15 +56,17 @@ EngineProcess::EngineProcess(IcarianCore::CommunicationPipe* a_pipe, uint32_t a_
 {
     m_ipcPipe = a_pipe;
 
-    m_dmaSwaps = 0;
-    m_curFrame = 0;
+    m_dmaBuffer = nullptr;
 
     m_width = a_width;
     m_height = a_height;
 
     m_flags = 0;
 
+    m_ipcID = uint32_t(-1);
     m_pipefileID = uint32_t(-1);
+
+    m_renderOutVal = 0;
 
     m_fps = 0.0;
     m_frameTime = 0.0;
@@ -99,7 +102,7 @@ EngineProcess::EngineProcess(IcarianCore::CommunicationPipe* a_pipe, uint32_t a_
 }
 
 #ifdef WIN32
-EngineProcess::EngineProcess(HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo, IcarianCore::CommunicationPipe* a_pipe)
+EngineProcess::EngineProcess(uint32_t a_ipcId, HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo, IcarianCore::CommunicationPipe* a_pipe)
 {
     m_ipcPipe = a_pipe;
 
@@ -111,7 +114,10 @@ EngineProcess::EngineProcess(HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo
 
     m_flags = 0;
 
+    m_ipcID = a_ipcId;
     m_pipefileID = uint32_t(-1);
+
+    m_renderOutVal = 0;
 
     m_fps = 0.0;
     m_frameTime = 0.0;
@@ -139,19 +145,31 @@ EngineProcess::EngineProcess(HANDLE a_procHandle, PROCESS_INFORMATION a_procInfo
     m_dmaTexture = GLuint(-1);
 }
 #else
-EngineProcess::EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::CommunicationPipe* a_pipe, uint32_t a_pipefileID, uint32_t a_width, uint32_t a_height)
+EngineProcess::EngineProcess
+(
+    uint32_t a_ipcId,
+    pid_t a_proc,
+    int a_procFd,
+    IcarianCore::CommunicationPipe* a_pipe,
+    IcarianCore::DMAMemoryBuffer* a_dmaBuffer,
+    uint32_t a_pipefileID,
+    uint32_t a_width,
+    uint32_t a_height
+)
 {
     m_ipcPipe = a_pipe;
 
-    m_dmaSwaps = 0;
-    m_curFrame = 0;
+    m_dmaBuffer = a_dmaBuffer;
 
     m_width = a_width;
     m_height = a_height;
 
     m_flags = 0;
 
+    m_ipcID = a_ipcId;
     m_pipefileID = a_pipefileID;
+
+    m_renderOutVal = 0;
 
     m_fps = 0.0;
     m_frameTime = 0.0;
@@ -166,7 +184,7 @@ EngineProcess::EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::Communicat
     m_process = a_proc;
     m_processFD = a_procFd;
 
-    // So to the people wondering does RGBA == RGBA8 and the answer is yesn't 
+    // So to the people wondering does RGBA == RGBA8 and the answer is yesn't
     // RGBA is not very well defined and upto the implementation
     // Ask me how I found out
 
@@ -183,12 +201,12 @@ EngineProcess::EngineProcess(pid_t a_proc, int a_procFd, IcarianCore::Communicat
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Hic sunt dracones
-    // Be very careful when doing stuff with this texture in this class OpenGL can do fun stuff and cause race conditions in the driver that cannot be controlled 
+    // Be very careful when doing stuff with this texture in this class OpenGL can do fun stuff and cause race conditions in the driver that cannot be controlled
     // as OpenGL does not allow sync without bring the driver to a grinding halt
     // Keep in mind the data this is being populated with is from Vulkan so take appropriate measures
     // Once the data has been copied it is safe to use externally
     // You are doing something that the driver normally handles for you yes even in Vulkan
-    // YOU HAVE BEEN WARNED, If you do not have a basic understanding of GPU drivers good luck!~ 
+    // YOU HAVE BEEN WARNED, If you do not have a basic understanding of GPU drivers good luck!~
     glGenTextures(1, &m_dmaTexture);
     glBindTexture(GL_TEXTURE_2D, m_dmaTexture);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -244,6 +262,15 @@ EngineProcess::~EngineProcess()
 
     IDEFER(
     {
+        if (m_dmaBuffer != nullptr)
+        {
+            const std::string dmaStr = DMAName + std::to_string(m_ipcID);
+            shm_unlink(dmaStr.c_str());
+        }
+    });
+
+    IDEFER(
+    {
         if (m_processFD > 0)
         {
             close(m_processFD);
@@ -273,15 +300,16 @@ EngineProcess::~EngineProcess()
             return;
         }
 
-        const float timeout = EditorConfig::GetEngineShutdownTimeout();
+        const float timeoutVal = EditorConfig::GetEngineShutdownTimeout();
+        const std::chrono::duration timeout = std::chrono::milliseconds((long)(timeoutVal * 1000));
         const std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
         while (IsAlive())
         {
             const std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-            const std::chrono::duration<double> delta = end - start;
+            const std::chrono::duration delta = end - start;
 
-            if (delta.count() > timeout)
+            if (delta >= timeout)
             {
                 Logger::Error("Failed to close IcarianEngine Instance");
 
@@ -380,8 +408,50 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
     IERRCHECKRET(serverPipe != nullptr, nullptr);
     IDEFER(delete serverPipe);
 
+    IcarianCore::DMAMemoryBuffer* dmaBuffer = nullptr;
+
+    const std::string dmaAddr = DMAName + ipcIDStr;
+    const int dmaFd = shm_open(dmaAddr.c_str(), O_CREAT | O_RDWR, 0660);
+    if (dmaFd >= 0)
+    {
+        IDEFER(close(dmaFd));
+
+        ftruncate(dmaFd, sizeof(IcarianCore::DMAMemoryBuffer));
+
+        dmaBuffer = (IcarianCore::DMAMemoryBuffer*)mmap(NULL, sizeof(IcarianCore::DMAMemoryBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, dmaFd, 0);
+        if (dmaBuffer == MAP_FAILED || dmaBuffer == NULL)
+        {
+            shm_unlink(dmaAddr.c_str());
+            dmaBuffer = nullptr;
+        }
+        else
+        {
+            dmaBuffer->RenderOutput = 0;
+            dmaBuffer->Timeline = 0;
+        }
+    }
+    IERRDEFER(
+    {
+        if (dmaBuffer != nullptr)
+        {
+            shm_unlink(dmaAddr.c_str());
+        }
+    });
+
+    // If we do not establish a memory buffer use normal headless mode and send the images down the pipe
+    // If we do we use the buffer for sync and copy swap image out of the shared GPU buffer
+    const char* headlessStr = ILAMBDA(
+    {
+        if (dmaBuffer != nullptr)
+        {
+            ILRETURN "--dma-headless";
+        }
+
+        ILRETURN "--headless";
+    });
+
     // This is a bit odd leaving this here as a note
-    // This create another copy of the process on Unix systems 
+    // This create another copy of the process on Unix systems
     // You can tell if you are the parent or child process based on the return result
     // If I am the child process I run the execute process which overwrites the current process with the new process
     // Unix systems are a bit odd but it works so I am not gonna question it
@@ -401,14 +471,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
         // Starting the engine
         // In a weird state cause in a forked process so doing stuff C style
         // Once execution is started state is normal again
-
-#ifdef WIN32
-        constexpr char HeadlessArg[] = "--headless";
-#else
-        constexpr char HeadlessArg[] = "--dma-headless";
-#endif
-
-        if (execl("./IcarianNative", HeadlessArg, workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), threadArg.c_str(), NULL) < 0)
+        if (execl("./IcarianNative", headlessStr, workingDirArg.c_str(), pipefileArg.c_str(), ipcArg.c_str(), threadArg.c_str(), NULL) < 0)
         {
             printf("Failed to start process \n");
             perror("execl");
@@ -433,7 +496,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
 
         const glm::ivec2 data = glm::ivec2((int)a_width, (int)a_height);
 
-        const IcarianCore::PipeMessage msg = 
+        const IcarianCore::PipeMessage msg =
         {
             .Type = IcarianCore::PipeMessageType_Resize,
             .Length = sizeof(glm::ivec2),
@@ -445,7 +508,7 @@ EngineProcess* EngineProcess::CreateProcess(const std::filesystem::path& a_worki
         const int processFd = sys_pidfd_open(process, 0);
         IERRCHECKRET(processFd >= 0, nullptr);
 
-        return new EngineProcess(process, processFd, ipcPipe, pipefileID, a_width, a_height);
+        return new EngineProcess(ipcID, process, processFd, ipcPipe, dmaBuffer, pipefileID, a_width, a_height);
     }
 #endif
 
@@ -675,7 +738,7 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
 #else
             ISETBIT(m_flags, DMAModeBit);
 
-            const DMASwapBufferFD& swapBuffer = *(DMASwapBufferFD*)msg.Data;
+            const IcarianCore::DMASwapBufferFD& swapBuffer = *(IcarianCore::DMASwapBufferFD*)msg.Data;
 
             // I am a fucking idiot it is the process file descriptor it needs not the process id
             // We need to remap the file descriptors as they will not be valid in this process due to different descriptor tables
@@ -738,7 +801,7 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
             HANDLE processHandle = GetCurrentProcess();
 
             // Different process so need to remap the HANDLE to be valid in the current proccess
-            // Urgh... Had to go through Windows access control documentation and still did not get an answer so fuck it winging it, 
+            // Urgh... Had to go through Windows access control documentation and still did not get an answer so fuck it winging it,
             // meanwhile Linux was just do they have a Unix domain socket open and sent and recieved data cool they have access
             // Windows documentation is good until you read other documentation
             HANDLE imageHandle;
@@ -766,7 +829,7 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
                 ILRETURN val;
             });
 
-            const DMASwapchainImage image = 
+            const DMASwapchainImage image =
             {
                 .MemoryObject = memoryObject,
                 .Texture = textureHandle,
@@ -786,14 +849,6 @@ bool EngineProcess::Update(double a_delta, std::queue<IcarianCore::PipeMessage>*
             IDEFER(delete[] msg.Data);
 
             FlushDMAImages();
-
-            break;
-        }
-        case IcarianCore::PipeMessageType_DMASwap:
-        {
-            IDEFER(delete[] msg.Data);
-
-            ++m_dmaSwaps;
 
             break;
         }
@@ -895,24 +950,15 @@ void EngineProcess::SignalImage()
         return;
     }
 
+    // Does not matter if we do more so to detect ourself doing weird things then a problem if we do fire twice
     if (IISBITSET(m_flags, SignaledBit))
-    {
-        return;
-    }
-
-    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
-    if (m_curFrame >= imageCount)
     {
         return;
     }
 
     ISETBIT(m_flags, SignaledBit);
 
-    const IcarianCore::PipeMessage msg =
-    {
-        .Type = IcarianCore::PipeMessageType_DMASignal
-    };
-    m_ipcPipe->Send(msg);
+    ++m_dmaBuffer->Timeline;
 }
 e_EngineFrameWaitStatus EngineProcess::WaitImage()
 {
@@ -926,54 +972,56 @@ e_EngineFrameWaitStatus EngineProcess::WaitImage()
         return EngineFrameWaitStatus_NotSignaled;
     }
 
-    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
-    if (m_curFrame >= imageCount)
-    {
-        return EngineFrameWaitStatus_Reset;
-    }
-
-    if (m_dmaSwaps <= 0)
+    // Capture the value
+    // We do not care if the value changes while we are working just that the version we have does not
+    // A snapshot is fine because while we are faffing about the Timeline value will not advance
+    // So if the work queue is depleted it will stop by itself until we advance the timeline value
+    const uint64_t outVal = m_dmaBuffer->RenderOutput;
+    if (outVal <= m_renderOutVal)
     {
         return EngineFrameWaitStatus_Wait;
     }
 
-    ICLEARBIT(m_flags, SignaledBit);
-    if (m_dmaSwaps > 0)
+    const uint32_t imageCount = (uint32_t)m_dmaImages.size();
+    if (imageCount <= 0)
     {
-        m_curFrame = (m_curFrame + m_dmaSwaps) % imageCount;
+        // Send a reset signal as we are in a weird state
+        // Probably trying to wait on a frame while the swapchain is rebuilding but not always
+        return EngineFrameWaitStatus_Reset;
+    }
 
-        const DMASwapchainImage& img = m_dmaImages[m_curFrame];
+    IDEFER(m_renderOutVal = outVal);
 
-        if (img.Width == m_width && img.Height == m_height)
-        {
-            glCopyImageSubData
-            (
-                img.Texture,
-                GL_TEXTURE_2D,
-                0,
-                0, 0, 0,
-                m_dmaTexture,
-                GL_TEXTURE_2D,
-                0,
-                0, 0, 0,
-                (GLsizei)img.Width, (GLsizei)img.Height, 1
-            );
-        }
+    ICLEARBIT(m_flags, SignaledBit);
+
+    const uint32_t imageIndex = outVal % imageCount;
+
+    const DMASwapchainImage& img = m_dmaImages[imageIndex];
+    if (img.Width == m_width && img.Height == m_height)
+    {
+        glCopyImageSubData
+        (
+            img.Texture,
+            GL_TEXTURE_2D,
+            0,
+            0, 0, 0,
+            m_dmaTexture,
+            GL_TEXTURE_2D,
+            0,
+            0, 0, 0,
+            (GLsizei)m_width, (GLsizei)m_height, 1
+        );
     }
 
     return EngineFrameWaitStatus_Success;
 }
 void EngineProcess::AdvanceImage()
 {
-    m_curFrame = (m_curFrame + 1) % m_dmaImages.size();
     ICLEARBIT(m_flags, SignaledBit);
 }
 
 void EngineProcess::FlushDMAImages()
 {
-    m_curFrame = 0;
-    m_dmaSwaps = 0;
-
     for (const DMASwapchainImage& image : m_dmaImages)
     {
         glDeleteTextures(1, &image.Texture);
@@ -1155,19 +1203,19 @@ void EngineProcess::SendRuntimeMessage(const std::string_view& a_string, const v
 }
 
 // MIT License
-// 
+//
 // Copyright (c) 2026 River Govers
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
